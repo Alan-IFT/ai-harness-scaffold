@@ -1,10 +1,11 @@
-# 统一换行：shell 脚本与文档一律 LF，避免 CRLF 破坏 shebang
 * text=auto eol=lf
-
-# 二进制资源不做换行转换
 *.png binary
 *.jpg binary
+*.jpeg binary
+*.gif binary
 *.ico binary
-*.pdf binary
 *.woff binary
 *.woff2 binary
+*.ttf binary
+*.zip binary
+*.pdf binary

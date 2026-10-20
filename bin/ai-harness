@@ -1,0 +1,381 @@
+#!/usr/bin/env bash
+# ai-harness — 跨工具防膨胀 AI 辅助开发脚手架：初始化器 / 改造器 / 体检器
+#
+#   bash bin/ai-harness init     <dir> [--no-git] [--dry-run] [--force]
+#   bash bin/ai-harness retrofit <dir> [--dry-run] [--no-git] [--skip-doctor]
+#   bash bin/ai-harness doctor   <dir>
+#   bash bin/ai-harness install-skill [--dest DIR]
+#   bash bin/ai-harness version | help
+#
+# 设计原则：
+#   1. 模板只存一份（./template），本脚本只做「复制 + 冲突隔离 + 栈探测」，不复制业务逻辑。
+#   2. 老项目改造永不覆盖已有文件：冲突内容进 <dir>/.ai-harness/suggested/，人/AI 再合并。
+#   3. ignore 类文件用幂等 marker 块追加，重复执行不会产生第二份。
+#   4. 只依赖 bash + 常见 Unix 工具（cp/find/sed/awk/date），Windows 用 Git Bash 即可。
+set -u
+
+VERSION="1.0.0"
+
+ROOT=$(cd "$(dirname "$0")/.." && pwd) || exit 1
+TPL="$ROOT/template"
+MARK_BEGIN="# >>> ai-harness managed block（勿手改，升级整体替换）>>>"
+MARK_END="# <<< ai-harness managed block <<<"
+
+DRY=0; NOGIT=0; FORCE=0; SKIP_DOCTOR=0
+CONFLICTS=0; COPIED=0; SKIPPED=0; SUGGESTED=""
+IGNORE_FILES=".gitignore .gitattributes .cursorignore .claudeignore"
+
+say()  { printf '%s\n' "$*"; }
+info() { printf '  %s\n' "$*"; }
+warn() { printf '⚠️  %s\n' "$*" >&2; }
+die()  { printf '❌ %s\n' "$*" >&2; exit 1; }
+
+usage() {
+  cat <<EOF
+ai-harness v$VERSION — 跨工具防膨胀 AI 辅助开发脚手架
+
+用法:
+  ai-harness init     <dir> [--no-git] [--dry-run] [--force]
+      新项目：要求目标为空目录（或只有 .git）；复制全套脚手架。
+  ai-harness retrofit <dir> [--no-git] [--skip-doctor] [--dry-run]
+      老项目：不覆盖任何已有文件；探测技术栈生成 verify.conf；
+      扫描代码树生成模块索引桩（标注待人工确认）。
+  ai-harness doctor   <dir>
+      体检：上下文体积、知识卡一致性、门禁自检、当前门状态、verify 配置。
+  ai-harness install-skill [--dest DIR]
+      把本工具装成 DSH skill（默认 \$DSH_HOME/skills 或 ~/.dsh/skills）。
+  ai-harness version | help
+
+退出码: 0 成功；1 参数/状态错误；doctor 发现问题时非 0。
+EOF
+}
+
+need_dir() { [ -n "${1:-}" ] || die "缺少目标目录参数（见 ai-harness help）"; }
+is_git_repo() { [ -d "$1/.git" ]; }
+
+write_version() { # <dir> <mode>
+  mkdir -p "$1/.ai-harness"
+  printf 'version=%s\nmode=%s\ninstalled_at=%s\n' "$VERSION" "$2" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$1/.ai-harness/version"
+}
+
+# -------------------------------------------------------------------- 栈探测
+detect_stack() { # <dir>
+  local d=$1
+  if   [ -f "$d/package.json" ]; then echo node
+  elif [ -f "$d/pyproject.toml" ] || [ -f "$d/requirements.txt" ] || [ -f "$d/setup.py" ]; then echo python
+  elif [ -f "$d/go.mod" ]; then echo go
+  elif [ -f "$d/pom.xml" ] || [ -f "$d/build.gradle" ] || [ -f "$d/build.gradle.kts" ]; then echo java
+  elif [ -f "$d/Cargo.toml" ]; then echo rust
+  else echo generic; fi
+}
+
+# 初判源目录：优先 src/* 或语言惯用目录，否则顶层目录
+source_dirs() { # <dir> <stack>
+  local d=$1 stack=$2 cand=""
+  case $stack in
+    node)   [ -d "$d/src" ] && cand=$(find "$d/src" -mindepth 1 -maxdepth 1 -type d 2>/dev/null) ;;
+    python) cand=$(find "$d" -mindepth 1 -maxdepth 1 -type d ! -name '.*' 2>/dev/null | while read -r p; do [ -f "$p/__init__.py" ] && echo "$p"; done); \
+            [ -z "$cand" ] && [ -d "$d/src" ] && cand=$(find "$d/src" -mindepth 1 -maxdepth 1 -type d 2>/dev/null) ;;
+    go)     for sub in internal pkg cmd app; do [ -d "$d/$sub" ] && cand="$cand$(find "$d/$sub" -mindepth 1 -maxdepth 1 -type d 2>/dev/null)
+"; done ;;
+    java)   [ -d "$d/src/main/java" ] && cand=$(find "$d/src/main/java" -mindepth 1 -maxdepth 1 -type d 2>/dev/null) ;;
+    rust)   [ -d "$d/src" ] && cand=$(find "$d/src" -mindepth 1 -maxdepth 1 -type d 2>/dev/null) ;;
+  esac
+  if [ -z "$cand" ]; then
+    cand=$(find "$d" -mindepth 1 -maxdepth 1 -type d ! -name '.*' 2>/dev/null | while read -r p; do
+      b=$(basename "$p")
+      case $b in node_modules|dist|build|coverage|out|target|vendor|reports|tests|test|docs|scripts|harness|public|assets|static|locale|locales|migrations) continue;; esac
+      echo "$p"
+    done)
+  fi
+  printf '%s\n' "$cand" | sed "s#^$d/##" | sed 's#/$##' | awk 'NF' | head -12
+}
+
+gen_verify_conf() { # <dir> <stack>
+  local d=$1 stack=$2 cmd=""
+  case $stack in
+    node)
+      if [ -f "$d/tsconfig.json" ]; then cmd='npx --no-install tsc --noEmit'
+      elif [ -x "$d/node_modules/.bin/eslint" ]; then cmd='npx --no-install eslint "$TARGET_FILE" --max-warnings=0'
+      elif [ -x "$d/node_modules/.bin/vitest" ]; then cmd='npx --no-install vitest related "$TARGET_FILE" --run --passWithNoTests'
+      fi ;;
+    python)
+      if command -v ruff >/dev/null 2>&1; then cmd='ruff check "$TARGET_FILE"'
+      elif command -v python >/dev/null 2>&1; then cmd='python -m py_compile "$TARGET_FILE"'
+      elif command -v python3 >/dev/null 2>&1; then cmd='python3 -m py_compile "$TARGET_FILE"'
+      fi ;;
+    go)
+      if [ -f "$d/go.mod" ]; then cmd='gofmt -l "$TARGET_FILE" | (! grep .)'; fi ;;
+  esac
+  [ -n "$cmd" ] || return 1
+  {
+    echo "# ai-harness retrofit 自动生成（$(date +%Y-%m-%d)）——请按团队实际工具链修正这一行"
+    echo "# \$TARGET_FILE 由 scripts/ai-verify.sh 注入；没有真实检查时 ai-verify 会拒绝通过（设计如此）"
+    printf 'CUSTOM_CHECK=%s\n' "'$cmd'"
+  } > "$d/harness/verify.conf"
+}
+
+# ------------------------------------------------------------- 复制 + 冲突隔离
+merge_ignore_file() { # <dir> <rel>
+  local tgt=$1 rel=$2 src="$TPL/$2" dst="$1/$2"
+  grep -qF "$MARK_BEGIN" "$dst" 2>/dev/null && { info "= $rel（已含 managed block，跳过）"; SKIPPED=$((SKIPPED+1)); return; }
+  if [ "$DRY" -eq 0 ]; then
+    { echo ""; echo "$MARK_BEGIN"; cat "$src"; echo "$MARK_END"; } >> "$dst"
+    info "↳ 追加 managed block: $rel"
+  else
+    info "↳ [dry-run] 将追加 managed block: $rel"
+  fi
+}
+
+copy_one() { # <dir> <rel>
+  local tgt=$1 rel=$2 src="$TPL/$2" dst="$1/$2"
+  if [ -e "$dst" ] || [ -L "$dst" ]; then
+    if cmp -s "$src" "$dst" 2>/dev/null; then info "= $rel"; SKIPPED=$((SKIPPED+1)); return; fi
+    if [ -f "$dst" ] && grep -q 'managed: retrofit' "$dst" 2>/dev/null; then info "= $rel（retrofit 已定制，保留）"; SKIPPED=$((SKIPPED+1)); return; fi
+    local s="$tgt/.ai-harness/suggested/$rel"
+    if [ "$DRY" -eq 0 ]; then mkdir -p "$(dirname "$s")"; cp "$src" "$s"; fi
+    info "→ 冲突，已放建议文件: .ai-harness/suggested/$rel"
+    CONFLICTS=$((CONFLICTS+1)); SUGGESTED="$SUGGESTED$rel\n"; return
+  fi
+  if [ "$DRY" -eq 0 ]; then mkdir -p "$(dirname "$dst")"; cp "$src" "$dst"; fi
+  info "+ $rel"; COPIED=$((COPIED+1))
+}
+
+copy_tree() { # <dir>
+  local tgt=$1 rel f
+  while IFS= read -r f; do
+    rel=${f#"$TPL"/}
+    case " $IGNORE_FILES " in
+      *" $rel "*) merge_ignore_file "$tgt" "$rel"; continue ;;
+    esac
+    case "${SKIP_EXAMPLES:-0}:$rel" in
+      1:docs/architecture/modules/example-*.md) continue ;;
+    esac
+    copy_one "$tgt" "$rel"
+  done < <(find "$TPL" -type f | sort)
+  [ "$DRY" -eq 0 ] && chmod +x "$tgt"/scripts/*.sh 2>/dev/null || true
+}
+
+make_skeleton_dirs() { # <dir>
+  [ "$DRY" -eq 0 ] || return 0
+  mkdir -p "$1/docs/specs/active" "$1/docs/specs/archive" "$1/.ai-harness/suggested"
+}
+
+# ------------------------------------------------------ 模块索引（retrofit 扫描）
+gen_module_index() { # <dir> <stack> <fresh:0|1>
+  local d=$1 stack=$2 fresh=$3 dirs n=0 row slug base rel date
+  dirs=$(source_dirs "$d" "$stack")
+  [ -n "$dirs" ] || { info "未扫到源码目录，00-INDEX 保持模板状（人工填）"; return 0; }
+  date=$(date +%Y-%m-%d)
+  say ""
+  say "📦 扫描到的候选模块（全部标注「待人工确认」，已生成文档桩）:"
+  while IFS= read -r rel; do
+    [ -n "$rel" ] || continue
+    n=$((n+1))
+    base=$(basename "$rel")
+    slug=$(printf '%s' "$base" | tr 'A-Z' 'a-z' | sed 's/[^a-z0-9._-]/-/g; s/^--*//; s/--*$//')
+    [ -n "$slug" ] || slug="module-$n"
+    local md="$d/docs/architecture/modules/$slug.md"
+    if [ ! -e "$md" ]; then
+      {
+        echo "---"
+        echo "module: $slug"
+        echo "status: draft   # 待人工确认"
+        echo "code_paths:"
+        echo "  - ${rel#./}/"
+        echo "contract_entry: 待补充（该模块对外只读契约文件的路径）"
+        echo "last_updated: $date"
+        echo "---"
+        echo ""
+        echo "# 模块活态架构说明书：$base（待人工确认）"
+        echo ""
+        echo "> 由 \`ai-harness retrofit\` 自动生成。找模块负责人确认边界后，删除本句和所有「待补充」。"
+        echo ""
+        echo "## 1. 模块职责与边界"
+        echo "- 负责：待补充"
+        echo "- 不负责：待补充"
+        echo ""
+        echo "## 2. 对外暴露的公共契约（其它模块只许调这些）"
+        echo "- 待补充"
+        echo ""
+        echo "## 3. 核心数据表 / 数据结构"
+        echo "- 待补充"
+        echo ""
+        echo "## 4. 本模块专属红线"
+        echo "1. 待补充"
+      } > "$md"
+      info "  + docs/architecture/modules/$slug.md  （${rel#./}/）"
+    else
+      info "  = docs/architecture/modules/$slug.md 已存在，跳过"
+    fi
+    # 登记 00-INDEX 行：fresh 直接写；老项目（索引原本已存在）只写建议文件，不改用户原文件
+    row="| **$base（待人工确认）** | \`$rel/**\` | 待补充 | \`@docs/architecture/modules/$slug.md\` |"
+    idx="$d/docs/architecture/00-INDEX.md"
+    if [ "$fresh" -eq 1 ]; then
+      target="$idx"
+    else
+      target="$d/.ai-harness/suggested/docs/architecture/00-INDEX.md"
+      [ -f "$target" ] || target="$idx"
+    fi
+    if [ -f "$target" ] && ! grep -qF "@docs/architecture/modules/$slug.md" "$target"; then
+      local ln
+      ln=$(grep -n '^|' "$target" | tail -1 | cut -d: -f1)
+      if [ -n "$ln" ]; then
+        awk -v n="$ln" -v r="$row" 'NR==n{print; print r; next} {print}' "$target" > "$target.tmp" \
+          && mv "$target.tmp" "$target"
+        if [ "$target" = "$idx" ]; then
+          info "  ↳ 00-INDEX 已登记 $base"
+        else
+          info "  ↳ 候选行已写入 .ai-harness/suggested/…/00-INDEX.md（不改你的索引）"
+        fi
+      fi
+    fi
+  done <<< "$dirs"
+  # 真项目不需要示例模块：fresh 复制时移除示例行与示例文档，避免悬空引用
+  if [ "$n" -gt 0 ]; then
+    rm -f "$d"/docs/architecture/modules/example-*.md
+    if [ "$fresh" -eq 1 ]; then
+      sed -i '/@docs\/architecture\/modules\/example-/d' "$d/docs/architecture/00-INDEX.md"
+      info "已移除模板示例模块（example-*）及其 00-INDEX 行"
+    else
+      info "已移除模板示例模块文档（example-*）；你的 00-INDEX 示例行请人工清掉（或对照 suggested）"
+    fi
+  fi
+  say "  共 $n 个候选模块。下一步：逐个确认边界、契约入口、本模块红线。"
+}
+
+rewrite_allowed_dirs() { # <dir> <stack>
+  local d=$1 stack=$2 dirs list=""
+  dirs=$(source_dirs "$d" "$stack" | head -12)
+  [ -n "$dirs" ] || return 0
+  while IFS= read -r rel; do
+    [ -n "$rel" ] && list="$list${rel}/,"
+  done <<< "$dirs"
+  [ -d "$d/tests" ] && list="${list}tests/,"
+  list="${list}docs/specs/active/"
+  sed -i "s#^ALLOWED_WRITE_DIRS=.*#ALLOWED_WRITE_DIRS=\"$list\"#" "$d/harness/redlines.conf"
+  grep -q 'managed: retrofit' "$d/harness/redlines.conf" 2>/dev/null \
+    || printf '\n# managed: retrofit 已按扫描结果改写本文件（保留本行，重跑不回退、不误报冲突）\n' >> "$d/harness/redlines.conf"
+  info "ALLOWED_WRITE_DIRS 已按扫描结果改写"
+}
+
+# ------------------------------------------------------------------ 命令实现
+cmd_init() {
+  local tgt="" a dry_label=""
+  for a in "$@"; do case $a in --no-git) NOGIT=1;; --dry-run) DRY=1;; --force) FORCE=1;; -*) die "未知参数: $a";; *) tgt=$a;; esac; done
+  need_dir "$tgt"; [ -d "$TPL" ] || die "模板缺失: $TPL"
+  if [ -d "$tgt" ]; then
+    local extra
+    extra=$(find "$tgt" -mindepth 1 -maxdepth 1 ! -name '.git' 2>/dev/null | head -1)
+    if [ -n "$extra" ] && [ "$FORCE" -eq 0 ]; then
+      die "目标非空：$tgt（新项目请用空目录；改造既有项目请用 retrofit；确实要混装加 --force）"
+    fi
+  else
+    [ "$DRY" -eq 0 ] && mkdir -p "$tgt"
+  fi
+  say "🚀 init → $tgt （template v$VERSION$dry_label）"
+  copy_tree "$tgt"
+  make_skeleton_dirs "$tgt"
+  if [ "$DRY" -eq 0 ]; then
+    write_version "$tgt" init
+    ( cd "$tgt" && bash scripts/ai-gate.sh status >/dev/null 2>&1 || true )   # 首次记录红线基线
+    if [ "$NOGIT" -eq 0 ] && ! is_git_repo "$tgt"; then git -C "$tgt" init -b main >/dev/null && info "git 仓库已初始化（main）"; fi
+  fi
+  say ""
+  say "✅ 完成：+$COPIED 个新文件，$SKIPPED 个同内容。"
+  say "下一步（需要判断的部分，建议让 AI 按 skill 引导完成）:"
+  say "  1. 改 docs/architecture/00-INDEX.md：把 example-* 换成你的真实模块"
+  say "  2. 改 docs/architecture/modules/：每个模块写职责/契约/红线"
+  say "  3. 配 harness/verify.conf：写一条真实增量检查命令（否则 ai-verify 会拒绝通过）"
+  say "  4. 体检：bash scripts/harness-selftest.sh && bash scripts/ai-check-bloat.sh"
+  say "  5. 试跑一条真实小需求：bash scripts/ai-new-spec.sh feat-hello"
+}
+
+cmd_retrofit() {
+  local tgt="" a fresh=0
+  for a in "$@"; do case $a in --dry-run) DRY=1;; --no-git) NOGIT=1;; --skip-doctor) SKIP_DOCTOR=1;; -*) die "未知参数: $a";; *) tgt=$a;; esac; done
+  need_dir "$tgt"; [ -d "$tgt" ] || die "目标不存在: $tgt"; [ -d "$TPL" ] || die "模板缺失: $TPL"
+  [ -e "$tgt/AGENTS.md" ] || fresh=1
+  SKIP_EXAMPLES=1
+  local stack; stack=$(detect_stack "$tgt")
+  say "🔧 retrofit → $tgt"
+  say "  技术栈探测: $stack"
+  say ""
+  copy_tree "$tgt"
+  make_skeleton_dirs "$tgt"
+  if [ "$DRY" -eq 0 ]; then
+    write_version "$tgt" retrofit
+    if [ -f "$tgt/harness/verify.conf" ]; then
+      info "harness/verify.conf 已存在，保留（不覆盖）"
+    elif gen_verify_conf "$tgt" "$stack"; then
+      info "已生成 harness/verify.conf（请核对命令）"
+    else
+      warn "未识别出可用的检查命令：请手写 harness/verify.conf，否则 ai-verify 会因 0 项检查失败（设计如此）"
+    fi
+    rewrite_allowed_dirs "$tgt" "$stack"
+    gen_module_index "$tgt" "$stack" "$fresh"
+    ( cd "$tgt" && bash scripts/ai-gate.sh status >/dev/null 2>&1 || true )
+    if [ "$NOGIT" -eq 0 ] && ! is_git_repo "$tgt"; then git -C "$tgt" init -b main >/dev/null && info "git 仓库已初始化（main）"; fi
+  else
+    gen_module_index "$tgt" "$stack" "$fresh" >/dev/null 2>&1 || true
+  fi
+  say ""
+  if [ "$CONFLICTS" -gt 0 ]; then
+    say "⚠️  有 $CONFLICTS 个文件与已有内容冲突，未覆盖；建议文件在 .ai-harness/suggested/："
+    printf '%b' "$SUGGESTED" | sed 's/^/     - /'
+    say "   合并原则：只把模板里的「harness 机制」并进你的现有文件；过时/重复的旧文档移入 docs/specs/archive/，不要留两份。"
+  fi
+  say "✅ 完成：+$COPIED 个新文件，$SKIPPED 个同内容，$CONFLICTS 个冲突。"
+  if [ "$SKIP_DOCTOR" -eq 0 ] && [ "$DRY" -eq 0 ]; then doctor_core "$tgt"; fi
+}
+
+doctor_core() { # <dir>
+  local tgt=$1 rc=0
+  say ""
+  say "🩺 doctor → $tgt"
+  [ -f "$tgt/scripts/ai-gate.sh" ] || { warn "没有 scripts/ai-gate.sh，先 init/retrofit"; return 1; }
+  ( cd "$tgt" && bash scripts/ai-check-bloat.sh ) || rc=1
+  ( cd "$tgt" && bash scripts/ai-knowledge.sh check ) || rc=1
+  ( cd "$tgt" && bash scripts/ai-gate.sh status | tail -3 ) || rc=1
+  ( cd "$tgt" && bash scripts/harness-selftest.sh >/tmp/ai-harness-selftest.log 2>&1 ); local sr=$?
+  if [ "$sr" -eq 0 ]; then info "🟢 门禁自检通过（55 项断言）"
+  else warn "🔴 门禁自检失败，详见 /tmp/ai-harness-selftest.log 或直接跑 bash scripts/harness-selftest.sh"; rc=1; fi
+  if [ -f "$tgt/harness/verify.conf" ]; then info "verify.conf: 已配置"; else warn "verify.conf: 未配置 → ai-verify 会拒绝通过（设计如此）"; fi
+  [ "$rc" -eq 0 ] && say "🟢 doctor 通过" || say "🔴 doctor 有问题，先修再开工"
+  return "$rc"
+}
+
+cmd_doctor() { need_dir "${1:-}"; [ -d "$1" ] || die "目标不存在: $1"; doctor_core "${1:-}"; }
+
+cmd_install_skill() {
+  local dest="" a
+  while [ $# -gt 0 ]; do
+    case $1 in
+      --dest) shift; dest=${1:-} ;;
+      --dest=*) dest=${1#--dest=} ;;
+      -*) die "未知参数: $1" ;;
+      *) dest=$1 ;;
+    esac
+    shift
+  done
+  [ -n "$dest" ] || dest="${DSH_HOME:-$HOME/.dsh}/skills/ai-harness-scaffold"
+  [ -f "$ROOT/skill/SKILL.md" ] || die "缺少 skill/SKILL.md"
+  if [ -d "$dest" ] && [ -f "$dest/.ai-harness-skill" ]; then rm -rf "$dest"; fi
+  mkdir -p "$dest"
+  cp -R "$ROOT/skill/." "$dest/"
+  cp -R "$ROOT/bin" "$ROOT/template" "$dest/"
+  cp "$ROOT/README.md" "$dest/README.md" 2>/dev/null || true
+  : > "$dest/.ai-harness-skill"
+  say "✅ 已安装 DSH skill: $dest"
+  say "   skill 入口: $dest/SKILL.md；CLI: bash \"$dest/bin/ai-harness\" help"
+}
+
+case "${1:-help}" in
+  init) shift; cmd_init "$@" ;;
+  retrofit) shift; cmd_retrofit "$@" ;;
+  doctor) shift; cmd_doctor "$@" ;;
+  install-skill) shift; cmd_install_skill "$@" ;;
+  version) say "ai-harness $VERSION (template @ $ROOT)" ;;
+  help|-h|--help) usage ;;
+  *) usage; exit 1 ;;
+esac
