@@ -22,6 +22,11 @@ mkdir -p "$SB/docs/specs" "$SB/harness"
 cp -r "$ROOT/scripts" "$SB/scripts"
 cp -r "$ROOT/docs/specs/_templates" "$SB/docs/specs/_templates"
 cp "$ROOT/harness/redlines.conf" "$SB/harness/redlines.conf"
+# 自检用固定夹具阈值；目标项目可以合法选择不同数值。
+sed -i -e 's/^FEASIBILITY_MIN=.*/FEASIBILITY_MIN=60/' \
+       -e 's/^CR_MAX_ROUNDS=.*/CR_MAX_ROUNDS=4/' \
+       -e 's/^VERIFY_MAX_ATTEMPTS=.*/VERIFY_MAX_ATTEMPTS=3/' "$SB/harness/redlines.conf"
+cp "$SB/harness/redlines.conf" "$TMP/redlines.fixture"
 # 架构路由表与模块活文档（G3 模块关联校验需要）
 mkdir -p "$SB/docs/architecture/modules"
 cat >"$SB/docs/architecture/00-INDEX.md" <<'MD'
@@ -453,7 +458,7 @@ echo "== 7. 红线漂移必须阻断推进 =="
 printf '\n# tampered by selftest\n' >>harness/redlines.conf
 expect_fail "红线漂移时 pass 被阻断" "漂移" bash scripts/ai-gate.sh pass t-good g1
 expect_out "status 报出红线漂移" "漂移" bash scripts/ai-gate.sh status t-good
-cp "$ROOT/harness/redlines.conf" harness/redlines.conf
+cp "$TMP/redlines.fixture" harness/redlines.conf
 expect_out "恢复红线后基线重新一致" "一致" bash scripts/ai-gate.sh status t-good
 
 echo "== 8. 门禁回退（reset） =="
@@ -477,7 +482,7 @@ echo "== 10. 成本包络：连续失败计数与黄卡 =="
 ONLY="$TMP/only"
 mkdir -p "$ONLY/scripts" "$ONLY/harness" "$ONLY/docs/specs/active/only/reports"
 cp -r "$ROOT/scripts/." "$ONLY/scripts/"
-cp "$ROOT/harness/redlines.conf" "$ONLY/harness/redlines.conf"
+cp "$TMP/redlines.fixture" "$ONLY/harness/redlines.conf"
 printf 'CUSTOM_CHECK="false"\n' >"$ONLY/harness/verify.conf"
 : >"$ONLY/src.ts"
 (
@@ -557,6 +562,39 @@ rm -f .knowledge/cards/K-0002.md
 expect_fail "knowledge check 拒绝索引引用不存在卡片" "不存在" bash scripts/ai-knowledge.sh check
 sed -i '/K-0002/d' .knowledge/INDEX.md
 expect_out "删卡并删索引后恢复一致" "一致" bash scripts/ai-knowledge.sh check
+
+# ---------------------------------------------------------- 单一配置来源 ----
+echo "== 12. 阈值只从项目配置读取 =="
+cp harness/redlines.conf "$TMP/redlines.original"
+sed -i 's/^FEASIBILITY_MIN=.*/FEASIBILITY_MIN=81/' harness/redlines.conf
+mk_spec t-config-threshold
+expect_fail "修改可行性阈值后 G1 使用新值" "81" bash scripts/ai-gate.sh check t-config-threshold g1
+cp "$TMP/redlines.original" harness/redlines.conf
+sed -i 's/^AGENTS_MAX_LINES=.*/AGENTS_MAX_LINES=17/' harness/redlines.conf
+printf 'line\n%.0s' {1..18} >AGENTS.md
+expect_fail "体积体检按项目配置的新上限拒绝" "硬上限 17 行" bash scripts/ai-check-bloat.sh
+rm AGENTS.md
+cp "$TMP/redlines.original" harness/redlines.conf
+sed -i 's/^KNOWLEDGE_TTL_DAYS=.*/KNOWLEDGE_TTL_DAYS=29/' harness/redlines.conf
+expect_out "知识保鲜显示项目配置的新期限" "TTL 29 天" bash scripts/ai-knowledge.sh ttl
+cp "$TMP/redlines.original" harness/redlines.conf
+sed -i '/^FEASIBILITY_MIN=/d' harness/redlines.conf
+expect_fail "缺失必要配置键时 gate 拒绝" "FEASIBILITY_MIN" bash scripts/ai-gate.sh check t-config-threshold g1
+cp "$TMP/redlines.original" harness/redlines.conf
+sed -i 's/^VERIFY_MAX_SECONDS=.*/VERIFY_MAX_SECONDS=invalid/' harness/redlines.conf
+expect_fail "非法验证预算时 verify 拒绝" "VERIFY_MAX_SECONDS" bash scripts/ai-verify.sh --spec t-config-threshold src/export/service.ts
+cp "$TMP/redlines.original" harness/redlines.conf
+sed -i 's/^AGENTS_MAX_LINES=.*/AGENTS_MAX_LINES=invalid/' harness/redlines.conf
+expect_fail "非法体积预算时 bloat 拒绝" "AGENTS_MAX_LINES" bash scripts/ai-check-bloat.sh
+cp "$TMP/redlines.original" harness/redlines.conf
+sed -i 's/^AGENTS_MAX_LINES=.*/AGENTS_MAX_LINES=999999999999999999999999999/' harness/redlines.conf
+expect_fail "超大整数预算时 bloat 拒绝" "整数范围" bash scripts/ai-check-bloat.sh
+cp "$TMP/redlines.original" harness/redlines.conf
+sed -i 's/^KNOWLEDGE_TTL_DAYS=.*/KNOWLEDGE_TTL_DAYS=invalid/' harness/redlines.conf
+expect_fail "非法知识期限时 knowledge 拒绝" "KNOWLEDGE_TTL_DAYS" bash scripts/ai-knowledge.sh check
+rm harness/redlines.conf
+expect_fail "缺失项目配置时拒绝" "缺少配置" bash scripts/ai-gate.sh check t-config-threshold g1
+cp "$TMP/redlines.original" harness/redlines.conf
 
 # ---------------------------------------------------------------- 汇总 --------
 echo ""

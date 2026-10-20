@@ -7,15 +7,15 @@
 ## 0. 阶段门（G1~G7）
 | 门 | 通过条件 | 失败回到 | 推进方式 |
 | :-- | :-- | :-- | :-- |
-| G1 需求澄清 | 原始问题与四项必答、象限与依据已填；①~③总分 ≥60；④人工移交 | 重做访谈（需求侧） | `bash scripts/ai-gate.sh pass {{FEATURE_NAME}} g1` |
+| G1 需求澄清 | 原始问题与四项必答、象限与依据已填；①~③总分达到 `FEASIBILITY_MIN`；④人工移交 | 重做访谈（需求侧） | `bash scripts/ai-gate.sh pass {{FEATURE_NAME}} g1` |
 | G2 验收标准 | AC 表有通过 / 不通过 / 量化证据 | G1 补需求 | `pass g2` |
 | G3 方案设计 | 模块登记 + 依赖序 + 文件与间接影响 + 检索依据 + 对抗自审；①可单步，②③需人工前置决策 | G2 补 AC | `pass g3` |
 | G4 实现完成 | 任务全 `[x]`、知识检索与有效卡片、`verification.md` 对应当前代码且 PASS | G3 改设计 / 文件清单 | `pass g4` |
-| G5 独立 CR | 独立上下文产出 `review.md`，关键问题 = 0，CR 轮次 ≤4 | G4 补实现 / 测试 | `pass g5` |
+| G5 独立 CR | 独立上下文产出 `review.md`，关键问题 = 0，CR 轮次不超 `CR_MAX_ROUNDS` | G4 补实现 / 测试 | `pass g5` |
 | G6 交付核验 | Agent 跑冒烟并写 `acceptance.md`；①自动，②③记录人的明确决定及来源 | G5 补 CR / 补决策 | `pass g6`（Agent 记录；人的决定来自交互） |
 | G7 归档 | 按 `.agents/skills/archive-spec.md` 归档 | G6 补验收 | `pass g7` |
 
-> 同一门连续 3 次不过：更新 WIP 后停下问人，禁止第 4 次硬闯。CR 修复轮次上限 4 轮（`harness/redlines.conf` 的 `CR_MAX_ROUNDS`），触顶转人工。
+> 同一目标连续验证失败达到 `VERIFY_MAX_ATTEMPTS`：更新 WIP 后停下说明卡点。CR 修复轮次达到 `CR_MAX_ROUNDS` 时转人工；两项上限都取本项目 `harness/redlines.conf`。
 > 回滚代码后用 `bash scripts/ai-gate.sh reset {{FEATURE_NAME}} <gate> --reason "..."` 让该门及后续门失效。
 
 ## 1. 上下文清单（开工前先填，避免乱读）

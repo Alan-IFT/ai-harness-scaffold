@@ -89,14 +89,17 @@ bash scripts/ai-gate.sh status
 bash scripts/harness-selftest.sh
 ```
 
-本仓库在接入前已有 Git 历史和 `main` 分支，因此自用接入保留原仓库；没有重新执行 `git init`。当前接入工作记录在 `docs/specs/active/feat-self-hosting/`。
+本仓库在接入前已有 Git 历史和 `main` 分支，因此自用接入保留原仓库；没有重新执行 `git init`。接入记录已归档在 `docs/specs/archive/2026-10/feat-self-hosting/`。
 
 `template/` 里包含：`AGENTS.md`（L1 入口）、`MEMORY.md`（踩坑池）、`docs/`（轻量需求入口 + 模块活文档 + Spec 与验证摘要模板 + 度量）、
-`scripts/`（ai-gate / ai-verify / ai-resume / ai-new-spec / ai-state-id / ai-check-bloat / ai-knowledge / harness-selftest）、
+`scripts/`（ai-gate / ai-verify / ai-resume / ai-new-spec / ai-state-id / ai-config / ai-check-bloat / ai-knowledge / harness-selftest）、
 `harness/redlines.conf`（唯一阈值来源）、`.knowledge/`（知识卡）、`.agents/skills/`（阶段技能）。
 通用 CI 接入命令见 `template/harness/CI.md`；覆盖率和变异测试阈值须由目标项目的 CI 实现。
 老项目 `retrofit --dry-run` 只读；正式接入不会覆盖已有文件、删除同名示例文件或自动改写红线。目录扫描结果放在 `.ai-harness/suggested/` 供审核。
+若旧项目的红线配置缺少必要键或值无效，脚本会指出键名并停止；维护者按项目需要补齐 `harness/redlines.conf` 后再运行。脚本不使用另一套隐含默认阈值。
 示例领域图与路线图不会复制进老项目，避免把虚构架构当成项目事实。
+
+单一事实来源按项目划分：`template/scripts/` 是分发机制源码；`template/harness/redlines.conf` 是新项目初始样本；安装后的项目各自以自己的 `harness/redlines.conf` 为阈值来源。根目录 `scripts/` 是薄转发，根目录 `harness/redlines.conf` 只属于本仓库。指南与 Spec 模板只引用配置键；当前工作状态由项目内 Spec、活文档和 Git 记录。
 
 ## Claude Code ↔ Codex 接力
 

@@ -24,11 +24,9 @@ BASELINE="harness/.redlines.baseline"
 FEAT=""
 DIR=""
 
-# 阈值唯一来源（人类可改，AI 不可自改）；文件缺失时用内置默认值
-CR_MAX_ROUNDS=4
-FEASIBILITY_MIN=60
-KNOWLEDGE_TTL_DAYS=180
-[ -f "$REDLINES" ] && . "$REDLINES" 2>/dev/null || true
+# 阈值只从当前项目配置读取；缺失或无效时明确拒绝。
+. "$(dirname "${BASH_SOURCE[0]}")/ai-config.sh" || exit 1
+ai_config_load "$REDLINES" CR_MAX_ROUNDS FEASIBILITY_MIN KNOWLEDGE_TTL_DAYS || exit 1
 
 say() { printf '%s\n' "$*"; }
 die() { printf '❌ %s\n' "$*" >&2; exit 1; }
@@ -229,7 +227,7 @@ ck_g4() {
   [ -n "$target" ] && [ -f "$target" ] || { say "验证摘要缺少有效目标文件：$target"; return 1; }
   [ -n "$saved_state" ] || { say "验证摘要缺少代码状态指纹"; return 1; }
   current_state=$(bash scripts/ai-state-id.sh "$target") || return 1
-  [ "$saved_state" = "$current_state" ] || { say "验证摘要已过期：代码或提交在验证后变化，请重新运行 ai-verify.sh"; return 1; }
+  [ "$saved_state" = "$current_state" ] || { say "验证摘要已过期：代码或 Git 暂存内容在验证后变化，请重新运行 ai-verify.sh"; return 1; }
   # 前置强注入：§1 必须写明注入的知识卡（或「无相关卡片」），引用的卡必须真实存在
   local inj ids id card ttl today lookup
   lookup=$(section_body "$f" "1.")

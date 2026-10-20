@@ -36,7 +36,8 @@ user-invocable: true
 
 看 `<dir>/.ai-harness/suggested/` 与已有文件：
 
-- 已有 `AGENTS.md`：**不要整体替换**。只并入机制段落（门禁表 G1~G7、迭代上限、红黄绿卡、验证口径、上下文分层），保留项目专属规则，保证 **仍 <120 行**；超了就拆到 `docs/architecture/modules/`。
+- 已有 `AGENTS.md`：**不要整体替换**。只并入机制段落（门禁表 G1~G7、失败包络、红黄绿卡、验证口径、上下文分层），保留项目专属规则，并按目标项目 `harness/redlines.conf` 的 `AGENTS_MAX_LINES` 体检；超了就拆到 `docs/architecture/modules/`。
+- 已有 `harness/redlines.conf`：保留项目现有数值；核对模板脚本要求的配置键，缺键时由维护者按项目需要补齐，不能依赖脚本中的隐含默认值。`template/harness/redlines.conf` 只是新项目初始样本，不是所有项目共享的运行时配置。
 - 已有 `docs/architecture/00-INDEX.md`：把模板表格行并入既有表格，保留用户已有模块行；**老项目的索引不要被脚本生成的候选行污染**。
 - 已有 `.gitignore` / `.cursorignore`：用 managed block 追加，不重复追加。
 - 过时、重复、被取代的旧材料 → 移入 `docs/specs/archive/`（或项目既有归档目录），**不留两份真相**；删除前在汇报里列清单。

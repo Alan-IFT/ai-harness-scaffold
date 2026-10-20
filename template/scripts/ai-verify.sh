@@ -55,12 +55,9 @@ elif [ -d docs/specs/active ]; then
 fi
 [ -n "$SPEC_DIR" ] && REPORT_DIR="$SPEC_DIR/reports"
 
-# --- 红线预算（harness/redlines.conf 是唯一阈值来源）---
-VERIFY_MAX_SECONDS=120
-[ -f harness/redlines.conf ] && . harness/redlines.conf 2>/dev/null || true
-case "${VERIFY_MAX_SECONDS:-}" in ''|*[!0-9]*) VERIFY_MAX_SECONDS=120 ;; esac
-VERIFY_MAX_ATTEMPTS=${VERIFY_MAX_ATTEMPTS:-3}
-case "${VERIFY_MAX_ATTEMPTS:-}" in ''|*[!0-9]*) VERIFY_MAX_ATTEMPTS=3 ;; esac
+# --- 红线预算（当前项目 harness/redlines.conf 是唯一阈值来源）---
+. "$(dirname "${BASH_SOURCE[0]}")/ai-config.sh" || exit 1
+ai_config_load harness/redlines.conf VERIFY_MAX_SECONDS VERIFY_MAX_ATTEMPTS || exit 1
 
 START_TIME=$(date +%s)
 LOG=$(mktemp "${TMPDIR:-/tmp}/ai-verify-XXXXXX.log" 2>/dev/null || printf '/tmp/ai-verify-%s.log' "$$")
@@ -208,7 +205,7 @@ if [ -n "$REPORT_DIR" ]; then
     echo "- command: bash scripts/ai-verify.sh --spec $SPEC_NAME $TARGET_FILE"
     echo "- verified_at_utc: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
     echo ""
-    echo "详细输出仅在本地 reports/；代码或提交变化后重新验证。"
+    echo "详细输出仅在本地 reports/；代码内容或 Git 暂存状态变化后重新验证，同一索引内容提交后仍有效。"
   } >"$SUMMARY"
   echo "📝 可交接摘要: $SUMMARY"
 else

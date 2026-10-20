@@ -19,8 +19,8 @@ KNOW=".knowledge"
 INDEX="$KNOW/INDEX.md"
 CARDS="$KNOW/cards"
 REDLINES="harness/redlines.conf"
-TTL_DAYS=180
-[ -f "$REDLINES" ] && . "$REDLINES" 2>/dev/null || true
+. "$(dirname "${BASH_SOURCE[0]}")/ai-config.sh" || exit 1
+ai_config_load "$REDLINES" KNOWLEDGE_TTL_DAYS || exit 1
 
 say() { printf '%s\n' "$*"; }
 die() { printf '❌ %s\n' "$*" >&2; exit 1; }
@@ -65,7 +65,7 @@ cmd_check() {
 cmd_ttl() {
   local today id ttl f n=0
   today=$(date +%Y-%m-%d)
-  say "== 知识卡保鲜（今天 $today / TTL ${KNOWLEDGE_TTL_DAYS:-$TTL_DAYS} 天）=="
+  say "== 知识卡保鲜（今天 $today / TTL ${KNOWLEDGE_TTL_DAYS} 天）=="
   for f in "$CARDS"/K-*.md; do
     [ -f "$f" ] || continue
     id=$(basename "$f" .md); ttl=$(field "$f" 复核期限)

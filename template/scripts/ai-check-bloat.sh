@@ -1,17 +1,12 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # ai-check-bloat.sh — 上下文体积门禁
-# 阈值来自 harness/redlines.conf（人类可改，AI 不可自改）
+# 阈值来自当前项目 harness/redlines.conf
 # ==============================================================================
 set -u
 
-AGENTS_MAX_LINES=120
-MEMORY_MAX_LINES=150
-ACTIVE_SPECS_LIMIT=3
-[ -f harness/redlines.conf ] && . harness/redlines.conf 2>/dev/null || true
-case "${AGENTS_MAX_LINES:-}"   in ''|*[!0-9]*) AGENTS_MAX_LINES=120 ;; esac
-case "${MEMORY_MAX_LINES:-}"   in ''|*[!0-9]*) MEMORY_MAX_LINES=150 ;; esac
-case "${ACTIVE_SPECS_LIMIT:-}" in ''|*[!0-9]*) ACTIVE_SPECS_LIMIT=3 ;; esac
+. "$(dirname "${BASH_SOURCE[0]}")/ai-config.sh" || exit 1
+ai_config_load harness/redlines.conf AGENTS_MAX_LINES MEMORY_MAX_LINES ACTIVE_SPECS_LIMIT || exit 1
 
 STATUS=0
 
