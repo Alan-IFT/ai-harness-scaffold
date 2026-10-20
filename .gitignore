@@ -1,0 +1,18 @@
+# 依赖与构建产物
+node_modules/
+dist/
+build/
+coverage/
+
+# 本地环境与凭据（.env.example 可入库，其余不入库）
+.env
+.env.*
+!.env.example
+
+# 增量验证产物：本地证据，不入库（由 scripts/ai-verify.sh 生成）
+docs/specs/active/*/reports/
+
+# 编辑器 / 系统杂项
+.DS_Store
+Thumbs.db
+*.log
