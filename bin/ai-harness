@@ -364,6 +364,7 @@ cmd_install_skill() {
   mkdir -p "$dest"
   cp -R "$ROOT/skill/." "$dest/"
   cp -R "$ROOT/bin" "$ROOT/template" "$dest/"
+  find "$dest" -name '.dsh-ops-update-*.lock' -delete 2>/dev/null || true
   cp "$ROOT/README.md" "$dest/README.md" 2>/dev/null || true
   : > "$dest/.ai-harness-skill"
   say "✅ 已安装 DSH skill: $dest"
