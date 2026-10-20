@@ -1,0 +1,125 @@
+# verify: ai-verify.sh
+# target: template/scripts/ai-config.sh
+# result: PASS
+# checks: 1  failed: 0  duration: 89s
+### 自定义检查 (harness/verify.conf)
+== 1. 模板生成与参数校验 ==
+  ✅ ai-new-spec 生成新 spec 文档
+  ✅ ai-new-spec 拒绝无参
+  ✅ ai-new-spec 拒绝同名重复
+  ✅ ai-new-spec 拒绝路径别名
+  ✅ 新 spec 含 acceptance.md（G6 留痕）
+  ✅ 新 spec 含 verification.md（跨 IDE 接力）
+== 2. 空模板必须被逐门拒绝（模板占位不能算完成） ==
+  ✅ G1 拒绝未澄清的需求
+  ✅ G2 拒绝空 AC 表
+  ✅ G3 拒绝模板占位路径 path/to/
+  ✅ G4 拒绝模板占位路径 path/to/
+  ✅ G5 拒绝缺失的 review.md
+  ✅ G1 拒绝待确认问题未清零
+  ✅ G1 拒绝丢失提出者原意
+  ✅ G1 拒绝可行性 <60
+  ✅ G1 拒绝自报总分与表格不一致
+  ✅ G1 象限④必须写明人工接管
+  ✅ G1 允许④完成分类移交，无需凑可行性评分
+  ✅ 象限④不得进入 G2
+  ✅ 象限④即使用 --force 也不能推进 G3
+  ✅ 象限④可记录 G1 分类
+  ✅ 象限④状态提示移出 active
+  ✅ 象限①允许单步精简设计
+  ✅ 象限③有前置决策可进入设计门
+  ✅ 象限②缺前置决策被 G3 拒绝
+  ✅ G3 拒绝漏查间接消费者
+  ✅ G3 拒绝无检索依据
+  ✅ G4 拒绝未完成任务
+  ✅ G3 拒绝引用不存在的模块文档
+  ✅ G3 拒绝未在 00-INDEX 登记的模块
+== 3. 好样例必须通过 G1~G5 ==
+  ✅ G1 通过
+  ✅ G2 通过
+  ✅ G3 通过
+  ✅ G4 通过（可交接摘要对应当前代码且 checks≥1）
+  ✅ G5 通过（审查者 + 未参与实现）
+  ✅ status 能渲染下一门
+  ✅ G6 通过（acceptance.md 留痕齐全）
+  ✅ G6 拒绝缺少 acceptance.md
+  ✅ G6 拒绝缺少客观证据
+  ✅ G6 拒绝未检查的 AC
+  ✅ G6 拒绝遗漏第二条 AC
+  ✅ G6 要求逐条 AC 均有证据
+  ✅ ②的 G6 拒绝缺少人的决定
+  ✅ ②的 G6 拒绝占位决策来源
+  ✅ ①有证据可由 Agent 推进 G6
+== 4. 验证摘要必须有目标、真实检查和当前代码状态 ==
+  ✅ G4 拒绝失败摘要
+  ✅ G4 拒绝 0 项检查的 PASS
+  ✅ G4 拒绝缺少目标的摘要
+  ✅ G4 拒绝代码变化后的过期摘要
+  ✅ 多个活跃 Spec 必须显式选择
+  ✅ ai-verify 拒绝路径别名 Spec
+  ✅ 指定 Spec 的接手快照显示验证摘要
+  ✅ 真实 ai-verify 为指定 Spec 生成摘要
+  ✅ 真实验证摘要记入 PASS
+  ✅ G4 接受真实生成的摘要
+warning: in the working copy of 'other.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'scripts/ai-state-id.sh', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'source.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'other.txt', LF will be replaced by CRLF the next time Git touches it
+  ✅ Git 指纹识别非目标代码文件变化
+warning: in the working copy of 'other.txt', LF will be replaced by CRLF the next time Git touches it
+  ✅ Git 指纹在暂存到提交后稳定
+warning: in the working copy of 'new.txt', LF will be replaced by CRLF the next time Git touches it
+  ✅ 新文件暂存到提交后指纹稳定
+  ✅ 交付度量不使代码指纹过期
+== 5. 独立 CR 证据链（自己审自己不留痕 = 未审查） ==
+  ✅ G5 拒绝未声明「未参与实现」
+  ✅ G5 拒绝模板占位的审查者
+  ✅ G5 拒绝 CR 轮次超上限
+  ✅ G5 拒绝缺少 CR 轮次
+== 6. Agent 记录与人工身份标记的本地防误操作 ==
+  ✅ ②有人决定与客观证据后可由 Agent 记录 G6
+  ✅ G6 拒绝非 TTY 的 --by human
+  ✅ baseline 拒绝非 TTY 确认
+== 7. 红线漂移必须阻断推进 ==
+  ✅ 红线漂移时 pass 被阻断
+  ✅ status 报出红线漂移
+  ✅ 恢复红线后基线重新一致
+== 8. 门禁回退（reset） ==
+  ✅ reset 使 g2 及之后失效
+  ✅ .gates 里已删除 g2
+  ✅ .gates 里已删除 g3
+  ✅ .gates 里保留 g1
+  ✅ reset 后 pass g3 被前置门拦住
+  ✅ 未知门被拒
+  ✅ 未知 spec 被拒
+== 9. 零检查 = 未验证（本地可信最低门槛） ==
+  ✅ 无项目工具链时 ai-verify 必须失败
+== 10. 成本包络：连续失败计数与黄卡 ==
+  ✅ 连续失败计数 = 3
+  ✅ 第 3 次失败输出黄卡
+== 11. 知识卡体检与前置强注入 ==
+  ✅ knowledge check 索引与卡片一致
+  ✅ suggest 按模块列有效卡
+  ✅ impact 按变更路径提示复核
+  ✅ G4 通过：注入的知识卡存在
+  ✅ G4 拒绝注入不存在的知识卡
+  ✅ G4 拒绝缺少注入知识行
+  ✅ G4 拒绝无知识检索依据
+  ✅ G4 拒绝过期知识卡
+  ✅ G4 拒绝待验证知识卡
+  ✅ ttl 列出清理候选
+  ✅ knowledge check 拒绝置信度 >1
+  ✅ knowledge check 拒绝索引引用不存在卡片
+  ✅ 删卡并删索引后恢复一致
+== 12. 阈值只从项目配置读取 ==
+  ✅ 修改可行性阈值后 G1 使用新值
+  ✅ 体积体检按项目配置的新上限拒绝
+  ✅ 知识保鲜显示项目配置的新期限
+  ✅ 缺失必要配置键时 gate 拒绝
+  ✅ 非法验证预算时 verify 拒绝
+  ✅ 非法体积预算时 bloat 拒绝
+  ✅ 非法知识期限时 knowledge 拒绝
+  ✅ 缺失项目配置时拒绝
+
+== 自检结果：99 项断言，失败 0 项 ==
+🟢 门禁自检通过：该拒的拒了，该过的过了。

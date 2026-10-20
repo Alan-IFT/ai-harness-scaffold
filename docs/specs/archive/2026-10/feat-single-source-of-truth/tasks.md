@@ -1,8 +1,8 @@
 # 原子执行队列与跨工具接力棒: feat-single-source-of-truth
 
-- **需求文档**: `docs/specs/active/feat-single-source-of-truth/requirements.md`
-- **设计文档**: `docs/specs/active/feat-single-source-of-truth/design.md`
-- **当前阶段**: 以 `bash scripts/ai-gate.sh status feat-single-source-of-truth` 为准；`.gates` 由脚本维护。
+- **需求文档**: `docs/specs/archive/2026-10/feat-single-source-of-truth/requirements.md`
+- **设计文档**: `docs/specs/archive/2026-10/feat-single-source-of-truth/design.md`
+- **当前阶段**: G1~G7 已通过并归档；权威门记录见本目录 `.gates`（脚本维护）。
 
 ## 0. 阶段门
 按根 `AGENTS.md` 和 `template/scripts/ai-gate.sh` 执行 G1~G7；阈值数值只查本项目 `harness/redlines.conf`。G4 需当前状态 PASS 的验证摘要；G5 需独立上下文审查；G6 由 Agent 跑客观检查并记录 维护者 的结果决定；G7 归档。
@@ -46,11 +46,11 @@
 - 现有脚本各自执行少量 Bash 配置 `source`；本次只合并重复阈值读取与必要键校验，不创建外部配置服务。
 
 ## 4. Current WIP & Handoff Scratchpad
-- **当前正在执行的任务**: 维护者 已批准本 Spec，G6 已通过；准备 G7 归档。
+- **当前正在执行的任务**: 无；维护者 已批准，G7 已通过并归档。
 - **前置依赖 / 并行关系**: Task 1 → Task 2 → Task 4；Task 3 可在加载器稳定后进行。
 - **已完成的小步进展**: 两项前置 Spec 已归档；配置加载器、文档和夹具改造完成。临时安装项目在 CR 上限、重试上限、可行性阈值均与模板不同的情况下完整自检 100/100 通过；本仓库最终 `ai-verify.sh` PASS、100/100，自检报告见 `reports/verify-20261020-084159-151.log`；G4 和独立 G5 已通过。逐条 AC 的 Agent 证据见 `acceptance.md`。
 - **正在编辑的文件**: `template/scripts/harness-selftest.sh` 已修复；现无继续编辑的实现文件。
 - **已排除的死胡同 / 错误方案**: 根目录复制第二套机制；把不同项目配置强制共用。
 - **上次验证与未验证改动**: `verification.md` 的 PASS 和状态指纹属于最终夹具修复后版本；之后仅更新本 Spec 的交接文案，无实现代码改动。
-- **下一步立即执行的唯一动作**: 提交 维护者 的 G6 决定，记录度量并将 Spec 移入 archive，推进 G7。
+- **下一步立即执行的唯一动作**: 无待执行开发动作；下游项目接入后的反馈按 `docs/metrics.md` 回访。
 - **knowledge_feedback**: 暂无。
