@@ -39,7 +39,7 @@
 - **红线不可自改**：`harness/redlines.conf` 只允许人类修改；本地基线漂移会阻断 pass，跨工作区仍需用 Git 审查变更。
 
 ## 3. 知识飞轮（让经验跨需求复用，而不是从零猜）
-- **交付后蒸馏**：功能归档前按 `.agents/skills/knowledge-distill.md` 把可复用结论写成知识卡（`.knowledge/cards/K-XXXX.md`）并登记 `.knowledge/INDEX.md`；只留能跨需求复用的，不复述代码。
+- **知识蒸馏**：最后一次正式 G4 验证前按 `.agents/skills/knowledge-distill.md` 把可复用结论写成知识卡（`.knowledge/cards/K-XXXX.md`）并登记 `.knowledge/INDEX.md`；只留能跨需求复用的，不复述代码。归档时复核，不补写使验证摘要过期的文件。
 - **前置强注入**：写 `tasks.md` §1 时记录检索依据与采用的知识卡（没有就写「无相关卡片」及原因）；G4 校验卡片存在、有效且非待验证。
 - **检索与变更复核**：先用 `ai-knowledge.sh suggest <module>` 列候选并记取舍；改动关联路径后用 `ai-knowledge.sh impact <path...>` 找待复核卡。过期和 `#待验证` 卡不得注入。
 - **保鲜与降权**：复核期限按 `KNOWLEDGE_TTL_DAYS` 设置，过期卡视为清理候选；`knowledge_feedback` 连续反馈错误的知识卡要降置信度或删掉。体检：`bash scripts/ai-knowledge.sh check|ttl`。
@@ -51,7 +51,7 @@
 
 ## 5. 防膨胀与验证口径 (Anti-Bloat & Verification)
 - **只读契约，不读实现**：跨模块只读目标模块的公共契约文件（`index.ts` / `types.ts` / 接口定义）。
-- **验证口径**：开发中可跑 `bash scripts/ai-verify.sh --quick --spec <feat> <file>`，需在 `harness/verify.conf` 配 `QUICK_CHECK`，它不生成 G4 摘要；G4 前跑不带 `--quick` 的正式验证。设计 §4 的精确路径清单经显式确认覆盖验证命令、脚本、配置与测试依赖后才可缩小指纹；无法安全判定时保守回退全仓。摘要在 `verification.md`，详细日志留本机；全量回归仍按 CI 配置执行。
+- **验证口径**：开发中可跑 `bash scripts/ai-verify.sh --quick --spec <feat> <file>`，需在 `harness/verify.conf` 配 `QUICK_CHECK`，它不生成 G4 摘要；G4 前跑不带 `--quick` 的正式验证，目标选择归档后路径与内容稳定的项目文件，不用 `docs/specs/**` 或 `docs/metrics.md`。设计 §4 的精确路径清单经显式确认覆盖验证命令、脚本、配置与测试依赖后才可缩小指纹；无法安全判定时保守回退全仓。摘要在 `verification.md`，详细日志留本机；全量回归仍按 CI 配置执行。
 - **实时存盘**：每完成一个子步骤，立即更新 `tasks.md` 的 WIP 区（含「正在编辑的文件」）；每个 `[x]` 任务先验证再原子 commit。
 - **红 / 黄 / 绿卡**：🟢 绿＝单个 `[x]` 任务通过验证，可自动流转；🟡 黄＝同一目标连续失败达到 `VERIFY_MAX_ATTEMPTS` / 门禁互相冲突 / 需扩范围或改契约 → 停下说明并等人；🔴 红＝不可逆或高爆炸半径（删数据、`git push --force`、改 `redlines.conf`、②③的 G6 风险决定、发布上线）→ 必须人明确同意。
 - **参数缺省即拒**：部署、发布、批量、删除类命令必须显式指定环境与范围；没有"默认全量 / 默认所有用户"，不确定就报错退出。

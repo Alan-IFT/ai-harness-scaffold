@@ -33,6 +33,20 @@ case "$TARGET_FILE" in
     echo "❌ 请使用项目内的相对文件路径，确保验证摘要能跨工作区复用: $TARGET_FILE" >&2
     exit 1 ;;
 esac
+case "$TARGET_FILE" in
+  *//*|*/./*)
+    echo "❌ 请使用无重复分隔符或中间 ./ 的规范化项目路径: $TARGET_FILE" >&2
+    exit 1 ;;
+esac
+if [ "$QUICK" -eq 0 ]; then
+  stable_target="$TARGET_FILE"
+  while [ "${stable_target#./}" != "$stable_target" ]; do stable_target="${stable_target#./}"; done
+  case "$stable_target" in
+    docs/specs/*|docs/metrics.md)
+      echo "❌ 正式验证目标不能选归档时会移动或更新的流程文件: $TARGET_FILE" >&2
+      exit 1 ;;
+  esac
+fi
 export TARGET_FILE
 
 # 验证前确定归属，避免多任务时把结果写错 Spec。

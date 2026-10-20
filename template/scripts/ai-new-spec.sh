@@ -24,6 +24,11 @@ if [ -d "$TARGET_DIR" ]; then
   echo "⚠️  目录已存在，未覆盖: $TARGET_DIR"
   exit 1
 fi
+ARCHIVED_DIR=$(find docs/specs/archive -mindepth 2 -maxdepth 2 -type d -name "$FEAT_NAME" -print -quit 2>/dev/null)
+if [ -n "$ARCHIVED_DIR" ]; then
+  echo "❌ 错误: Spec ID 已归档，不能重用: $ARCHIVED_DIR"
+  exit 1
+fi
 TEMPLATE_DIR="${AI_HARNESS_TEMPLATE_DIR:-docs/specs/_templates}"
 if [ ! -d "$TEMPLATE_DIR" ]; then
   echo "❌ 错误: 找不到 Spec 模板目录: $TEMPLATE_DIR（请在仓库根目录运行）"

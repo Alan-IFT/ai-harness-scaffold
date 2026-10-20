@@ -1,0 +1,5 @@
+reset	2026-10-20T17:27:17Z	feat-verify-archive-cost	回退 g1 及之后（移除 3 条）：性能试验未改善总耗时，收窄为实测结论与稳定 ID 归档
+reset	2026-10-20T17:28:03Z	feat-verify-archive-cost	回退 g3 及之后（移除 1 条）：补全自检剖析数据与无收益试验结论
+reset	2026-10-20T17:32:14Z	feat-verify-archive-cost	回退 g1 及之后（移除 3 条）：独立审查发现归档 ID 重用与知识卡/路线图指纹边界，需求和设计已修订
+reset	2026-10-20T17:32:46Z	feat-verify-archive-cost	回退 g3 及之后（移除 1 条）：设计文档按独立审查意见澄清契约与计时证据
+reset	2026-10-20T17:36:53Z	feat-verify-archive-cost	回退 g1 及之后（移除 3 条）：补齐正式验证目标不能使用归档会变动的流程文件

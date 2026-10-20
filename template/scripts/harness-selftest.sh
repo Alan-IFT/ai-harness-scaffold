@@ -257,6 +257,8 @@ echo "== 1. 模板生成与参数校验 =="
 expect_ok   "ai-new-spec 生成新 spec 文档" bash scripts/ai-new-spec.sh t-empty
 expect_fail "ai-new-spec 拒绝无参" "请提供功能名称" bash scripts/ai-new-spec.sh
 expect_fail "ai-new-spec 拒绝同名重复" "已存在" bash scripts/ai-new-spec.sh t-empty
+mkdir -p docs/specs/archive/2026-10/t-archived-id
+expect_fail "ai-new-spec 拒绝重用已归档 ID" "已归档，不能重用" bash scripts/ai-new-spec.sh t-archived-id
 expect_fail "ai-new-spec 拒绝路径别名" "只允许" bash scripts/ai-new-spec.sh ..
 file_has "新 spec 含 acceptance.md（G6 留痕）" docs/specs/active/t-empty/acceptance.md "核验执行者"
 file_has "新 spec 含 verification.md（跨 IDE 接力）" docs/specs/active/t-empty/verification.md "UNVERIFIED"
@@ -419,6 +421,12 @@ sed -i '$d' src/export/service.ts
 
 expect_fail "多个活跃 Spec 必须显式选择" "显式指定" bash scripts/ai-verify.sh src/export/service.ts
 expect_fail "ai-verify 拒绝路径别名 Spec" "无效 Spec" bash scripts/ai-verify.sh --spec .. src/export/service.ts
+expect_fail "正式验证拒绝会移动的 Spec 文档目标" "流程文件" bash scripts/ai-verify.sh --spec t-good docs/specs/active/t-good/requirements.md
+mkdir -p docs
+printf '# Metrics\n' >docs/metrics.md
+expect_fail "正式验证拒绝归档时会更新的度量目标" "流程文件" bash scripts/ai-verify.sh --spec t-good ./docs/metrics.md
+expect_fail "验证拒绝重复分隔符绕过流程目标限制" "规范化项目路径" bash scripts/ai-verify.sh --spec t-good docs//metrics.md
+expect_fail "验证拒绝中间点目录绕过流程目标限制" "规范化项目路径" bash scripts/ai-verify.sh --spec t-good docs/./specs/active/t-good/requirements.md
 expect_out "指定 Spec 的接手快照显示验证摘要" "可交接验证摘要" bash scripts/ai-resume.sh t-good
 mk_spec t-real-verify
 printf "CUSTOM_CHECK='test -f \"\$TARGET_FILE\"'\n" >harness/verify.conf
