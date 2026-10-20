@@ -31,6 +31,7 @@
 mkdir -p docs/specs/archive/$(date +%Y-%m)
 git mv docs/specs/active/<feat> docs/specs/archive/$(date +%Y-%m)/
 ```
+归档前后的详细 `reports/` 只留本机，不入 Git。`git mv` 可能把原本被忽略的日志一并暂存；提交前用 `git ls-files docs/specs/archive/YYYY-MM/<feat>/reports/` 检查，若有输出，用 `git rm --cached -r -- docs/specs/archive/YYYY-MM/<feat>/reports/` 取消跟踪（`--cached` 保留本机文件）。可交接的结果仍以 `verification.md` 摘要为准。
 > `docs/specs/archive/**` 已被 `.cursorignore` / `.claudeignore` 屏蔽，归档后不再进入任何 AI 会话的检索范围。
 
 ## Step 5: 记录归档门 + 更新路线图
