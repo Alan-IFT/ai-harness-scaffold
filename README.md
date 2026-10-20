@@ -46,9 +46,9 @@ bash scripts/ai-resume.sh        # 接手快照：门状态、WIP、知识库、
 bash scripts/ai-gate.sh status   # G1~G7 阶段门
 ```
 
-粗想法可先记在项目内 `docs/INTAKE.md`，保留原话与处理决定；明确的需求直接建 Spec。①低风险小改动可用单步精简设计；②③先记录人的风险或架构决定；④完成分类与人工移交后，门禁会阻止继续自动开发。设计时核对间接消费者与实际检索范围。知识卡可用 `ai-knowledge.sh suggest <module>` 找候选，代码改动后用 `impact <path...>` 提示复核；验收模板记录发布与回访结果。
+粗想法可先记在项目内 `docs/INTAKE.md`，保留原话与处理决定；明确的需求直接建 Spec。①低风险小改动可用单步紧凑设计；②③先记录人的风险或架构决定，并在 G3 列出边界样本；④完成分类与人工移交后，门禁会阻止继续自动开发。设计时核对间接消费者与实际检索范围。知识卡可用 `ai-knowledge.sh suggest <module>` 找候选，代码改动后用 `impact <path...>` 提示复核；验收模板记录发布与回访结果。
 
-G6 由 Agent 执行冒烟和 AC 核对，并把命令、环境、结果写入 `acceptance.md`。①证据充分时自动收尾；②③只把需要判断的风险、结果和遗留交给人，通过对话取得明确决定后由 Agent 记录并推进门禁。用户不必填写 Markdown、亲跑检查命令或逐篇阅读全部材料；记录会区分人的决定和 Agent 执行的检查。本地文件不是身份认证，需要强制审批时使用项目自己的权限机制。
+G6 由 Agent 执行冒烟和 AC 核对，并把命令、环境、结果写入 `acceptance.md`。①证据充分时自动收尾；②③默认把风险和结果交给人决定。维护者也可在 G3 明确限定条件委托：仅当 AC 全通过、G5 无阻塞且无新增重大风险时由 Agent 收尾；超出范围仍须当次决定。用户不必填写 Markdown 或亲跑命令。本地文件不是身份认证，需要强制审批时使用项目自己的权限机制。
 
 ## 两种模式的区别
 
@@ -109,13 +109,15 @@ bash scripts/harness-selftest.sh
 
 ```bash
 bash scripts/ai-resume.sh feat-example
+bash scripts/ai-verify.sh --quick --spec feat-example src/example.ts  # 需配置 QUICK_CHECK；不生成 G4 摘要
 bash scripts/ai-verify.sh --spec feat-example src/example.ts
 bash scripts/ai-gate.sh status feat-example
+bash scripts/ai-gate.sh metrics feat-example
 ```
 
 换 IDE 且使用同一工作区，可直接接手未提交改动；换 worktree 或电脑时，须用 Git 提交或补丁传递未提交代码。
 没有 Git 时摘要只能检测目标文件本身的变化，因此完整的跨工作区接力应使用 Git。
-G4 要求验证摘要与当前代码状态一致。修改代码或暂存后请重新验证；相同索引内容提交后指纹保持稳定。TTY 和本地红线哈希只防误操作；
+G4 只认不带 `--quick` 的正式验证摘要。设计 §4 逐条列精确文件路径（含测试、配置和依赖），并显式确认验证命令及其间接依赖后，新 Spec 才可依据 G3 基准提交隔离其他活跃 Spec 的改动；任一清单条目含多个路径、旧 Spec 无基准、清单不完整或存在未归属改动时保守回退全仓。任意 `CUSTOM_CHECK` 的依赖不能由脚本自动推断，无法确认时保持全仓指纹。修改相关代码或暂存后请重验；相同索引内容提交后指纹保持稳定。TTY 和本地红线哈希只防误操作；
 需要强制人工审批时，用目标项目自己的外部权限机制。
 
 ## 设计取舍

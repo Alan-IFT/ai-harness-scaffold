@@ -3,13 +3,15 @@
 # ai-verify.sh — 增量极速验证（本地可信的最低门槛）
 # 设计原则：未验证 ≠ 通过。没有任何真实检查被执行时，本脚本必须失败。
 #
-# 用法：bash scripts/ai-verify.sh --spec <feature> <file_path>
+# 用法：bash scripts/ai-verify.sh [--quick] --spec <feature> <file_path>
 # 无活跃 Spec 时可只传文件；恰好一个活跃 Spec 时兼容旧用法。
 # 自动探测（工具已安装才跑）：ESLint / tsc / Vitest；ruff / pytest；go vet / go test
 # 自定义：harness/verify.conf 里写  CUSTOM_CHECK="<命令，可用 $TARGET_FILE>"
 # ==============================================================================
 set -u
 
+QUICK=0
+if [ "${1:-}" = "--quick" ]; then QUICK=1; shift; fi
 SPEC_NAME=""
 if [ "${1:-}" = "--spec" ]; then
   SPEC_NAME="${2:-}"
@@ -19,7 +21,7 @@ fi
 TARGET_FILE="${1:-}"
 if [ -z "$TARGET_FILE" ]; then
   echo "❌ 错误: 请指定要验证的文件路径！"
-  echo "👉 用法: bash scripts/ai-verify.sh --spec <feature> <file_path>"
+  echo "👉 用法: bash scripts/ai-verify.sh [--quick] --spec <feature> <file_path>"
   exit 1
 fi
 if [ ! -f "$TARGET_FILE" ]; then
@@ -94,6 +96,8 @@ redact() {
 
 has_dep() { grep -q "\"$1\"" package.json 2>/dev/null; }
 
+# quick 只运行项目显式配置的 QUICK_CHECK，避免自动探测触发昂贵的全量工具。
+if [ "$QUICK" -eq 0 ]; then
 # ---------------------------------------------------------------- Node / TS --
 if [ -f package.json ]; then
   if [ ! -d node_modules ]; then
@@ -134,10 +138,15 @@ if [ -f go.mod ] && command -v go >/dev/null 2>&1; then
   run_check "Go vet ($PKG_DIR)"  go vet "$PKG_DIR"
   run_check "Go test ($PKG_DIR)" go test "$PKG_DIR"
 fi
+fi # --quick 跳过自动工具探测
 
 # ------------------------------------------------------- 自定义检查（可选） --
 [ -f harness/verify.conf ] && . harness/verify.conf 2>/dev/null || true
-if [ -n "${CUSTOM_CHECK:-}" ]; then
+if [ "$QUICK" -eq 1 ]; then
+  if [ -n "${QUICK_CHECK:-}" ]; then
+    run_check "快速检查 (harness/verify.conf)" bash -c "$QUICK_CHECK"
+  fi
+elif [ -n "${CUSTOM_CHECK:-}" ]; then
   run_check "自定义检查 (harness/verify.conf)" bash -c "$CUSTOM_CHECK"
 fi
 
@@ -148,12 +157,23 @@ if [ "$CHECKS" -eq 0 ]; then
   echo ""
   echo "❌ 未执行任何真实检查 —— 本次视为【未验证】（未验证 ≠ 通过）"
   echo "   接入方式（任一）："
-  echo "   1) 装好项目工具链后重跑（自动探测 ESLint/tsc/Vitest、ruff/pytest、go vet/test）"
-  echo "   2) 在 harness/verify.conf 写：CUSTOM_CHECK=\"<你的命令，可用 \$TARGET_FILE>\""
+  if [ "$QUICK" -eq 1 ]; then
+    echo "   在 harness/verify.conf 配置 QUICK_CHECK（可用 \$TARGET_FILE）"
+  else
+    echo "   安装项目工具链，或在 harness/verify.conf 配置 CUSTOM_CHECK（可用 \$TARGET_FILE）"
+  fi
   FAIL=1
 fi
 
 RESULT=PASS; [ "$FAIL" -ne 0 ] && RESULT=FAIL
+
+if [ "$QUICK" -eq 1 ]; then
+  if [ "$RESULT" = FAIL ]; then tail -n 20 "$LOG" | redact | sed 's/^/   /'; fi
+  rm -f "$LOG"
+  echo "快速检查：$RESULT（$CHECKS 项，${DUR}s）；不生成 G4 验证摘要"
+  [ "$RESULT" = PASS ]
+  exit $?
+fi
 
 if [ "$FAIL" -ne 0 ]; then
   echo ""
@@ -192,7 +212,7 @@ if [ -n "$REPORT_DIR" ]; then
     redact <"$LOG"
   } >"$OUT"
   echo "📄 验证报告: $OUT"
-  STATE_ID=$(bash scripts/ai-state-id.sh "$TARGET_FILE") || { rm -f "$LOG"; exit 1; }
+  STATE_ID=$(bash scripts/ai-state-id.sh --spec "$SPEC_NAME" "$TARGET_FILE") || { rm -f "$LOG"; exit 1; }
   SUMMARY="$SPEC_DIR/verification.md"
   {
     echo "# 增量验证摘要（随项目文档和 Git 交接）"

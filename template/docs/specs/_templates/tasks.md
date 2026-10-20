@@ -4,19 +4,8 @@
 - **设计文档**: `docs/specs/active/{{FEATURE_NAME}}/design.md`
 - **当前阶段**: 以 `bash scripts/ai-gate.sh status {{FEATURE_NAME}}` 为准。`docs/specs/active/{{FEATURE_NAME}}/.gates` 由脚本维护，**禁止手改**。
 
-## 0. 阶段门（G1~G7）
-| 门 | 通过条件 | 失败回到 | 推进方式 |
-| :-- | :-- | :-- | :-- |
-| G1 需求澄清 | 原始问题与四项必答、象限与依据已填；①~③总分达到 `FEASIBILITY_MIN`；④人工移交 | 重做访谈（需求侧） | `bash scripts/ai-gate.sh pass {{FEATURE_NAME}} g1` |
-| G2 验收标准 | AC 表有通过 / 不通过 / 量化证据 | G1 补需求 | `pass g2` |
-| G3 方案设计 | 模块登记 + 依赖序 + 文件与间接影响 + 检索依据 + 对抗自审；①可单步，②③需人工前置决策 | G2 补 AC | `pass g3` |
-| G4 实现完成 | 任务全 `[x]`、知识检索与有效卡片、`verification.md` 对应当前代码且 PASS | G3 改设计 / 文件清单 | `pass g4` |
-| G5 独立 CR | 独立上下文产出 `review.md`，关键问题 = 0，CR 轮次不超 `CR_MAX_ROUNDS` | G4 补实现 / 测试 | `pass g5` |
-| G6 交付核验 | Agent 跑冒烟并写 `acceptance.md`；①自动，②③记录人的明确决定及来源 | G5 补 CR / 补决策 | `pass g6`（Agent 记录；人的决定来自交互） |
-| G7 归档 | 按 `.agents/skills/archive-spec.md` 归档 | G6 补验收 | `pass g7` |
-
-> 同一目标连续验证失败达到 `VERIFY_MAX_ATTEMPTS`：更新 WIP 后停下说明卡点。CR 修复轮次达到 `CR_MAX_ROUNDS` 时转人工；两项上限都取本项目 `harness/redlines.conf`。
-> 回滚代码后用 `bash scripts/ai-gate.sh reset {{FEATURE_NAME}} <gate> --reason "..."` 让该门及后续门失效。
+## 0. 阶段门
+以 `bash scripts/ai-gate.sh status {{FEATURE_NAME}}` 的 `.gates` 结果为准；规则见 `AGENTS.md`。此处只记未完成任务，不复制阶段表。回滚后用 `ai-gate.sh reset` 使受影响门失效。
 
 ## 1. 上下文清单（开工前先填，避免乱读）
 - **必读**：`requirements.md`、`design.md`、本文件、涉及模块的活文档
@@ -31,8 +20,8 @@
 ## 2. 原子任务序列 (Atomic Execution Queue)
 > 铁律：
 > 1. 每次只认领 **1 个** `[ ]`，粒度 5~15 分钟；单任务 >5 文件或跨 2 子系统必须拆。
-> 2. TDD：先写 / 改测试 → 写实现 → `bash scripts/ai-verify.sh --spec {{FEATURE_NAME}} <file>` 通过。
-> 3. 完成后：勾 `[x]` → 清空 WIP → 原子 commit（记 commit hash）。
+> 2. 先写 / 改关键测试 → 写实现 → 开发中用 `ai-verify.sh --quick --spec {{FEATURE_NAME}} <file>`；G4 前用无 `--quick` 的正式验证。quick 不生成 G4 摘要。
+> 3. 完成后：勾 `[x]` → 清空 WIP → 原子 commit。
 
 - [ ] **Task 1: 定义数据结构与接口契约类型** `[<<< CURRENT ACTIVE TASK]`
   - **涉及文件**: `path/to/types.ts`
@@ -71,6 +60,6 @@
 - **正在编辑的文件**（下一个 Agent 必须**重新读**这些文件，不要凭记忆）：
   - 
 - **已排除的死胡同 / 错误方案 (勿重复踩坑)**: 无
-- **上次验证与未验证改动**: 看 `verification.md`；若之后改过代码或提交，标明未验证并重跑。
+- **上次验证与未验证改动**: 看 `verification.md`；G4 前若代码内容变化，重跑正式验证。`ai-resume.sh` 会提示摘要是否过期。
 - **下一步立即执行的唯一动作 (Next Immediate Action)**：按照 `design.md` 第 3.2 节定义接口类型并跑验证脚本。
 - **knowledge_feedback**（若 `MEMORY.md` / 知识卡 / 模块活文档与代码不符，记在这里，GC 时降权）：

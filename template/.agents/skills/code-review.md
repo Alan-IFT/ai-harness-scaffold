@@ -48,6 +48,7 @@
 - **审查时间**：YYYY-MM-DD
 - **审查范围**：<git diff 范围 + design.md 文件清单>
 - **CR 轮次**：<当前轮次> / <从 CR_MAX_ROUNDS 读取的上限>
+- 审查状态：<从本次 verification.md 的 `- state:` 原样复制；新 Spec 的 G5 会校验>
 
 ## 结论
 - 关键问题（必须修）：0

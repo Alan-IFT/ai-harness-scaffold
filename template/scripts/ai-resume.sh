@@ -49,7 +49,7 @@ if [ -d docs/specs/active ]; then
       target=$(sed -n 's/^- target: //p' "$spec/verification.md" | head -n 1)
       saved=$(sed -n 's/^- state: //p' "$spec/verification.md" | head -n 1)
       if [ -f "$target" ] && [ -n "$saved" ]; then
-        current=$(bash scripts/ai-state-id.sh "$target" 2>/dev/null || true)
+        current=$(bash scripts/ai-state-id.sh --spec "$(basename "$spec")" "$target" 2>/dev/null || true)
         [ "$current" = "$saved" ] || echo "  ⚠️  验证摘要已过期：代码或提交在验证后变化"
       fi
     fi
@@ -97,5 +97,5 @@ echo "1. 先看 [1] 的「下一门」：门禁未过，不要开始编码。"
 echo "2. 有未提交改动 → 先 git diff 看懂上一步；结合 [2] 的 WIP 区继续，严禁推倒重写已通过验证的代码。"
 echo "3. 按任务的代码路径读 docs/architecture/00-INDEX.md 和相关模块活文档。"
 echo "4. 本地跑 bash scripts/ai-verify.sh --spec <feat> <file>；摘要写入 verification.md，详细日志留本机。"
-echo "5. G6 是人工验收门：到点就停下等人，不要自己 pass。"
+echo "5. G6 由 Agent 核验；②③按当次人的决定或 G3 的明确条件委托推进，不推断授权。"
 echo "=="

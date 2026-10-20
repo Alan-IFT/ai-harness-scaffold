@@ -19,7 +19,7 @@
 5. 一次性的过程细节 / 谁改了什么 → 不蒸馏，归档里留着即可。
 
 ## Step 3: 记录度量（`docs/metrics.md` 追加一行）
-从 `docs/INTAKE.md`、当前 Spec、`.gates`、`review.md`、`.violations` 和仍可用的本地 `reports/` 里抄事实，不要美化；缺少时间戳或日志时写「未知」：
+先运行 `bash scripts/ai-gate.sh metrics <feat>`，从 `.gates` 自动得到门间耗时；再从 `docs/INTAKE.md`、当前 Spec、`review.md`、`.violations` 和本地 `reports/` 补充非门禁事实。不要另算一份时间或美化；缺少时间戳写「未知」：
 - 需求提出 → G1、G3 → G4、G4 → G6 的耗时；人工或外部依赖等待只记有证据的时间。
 - 遗漏的间接影响与返工、交付形态及实际反馈；待发布或未观察写清状态。
 - 若 G7 时仍待发布，在 `acceptance.md` 留回访时间；发布后补记结果并更新 `docs/metrics.md` 对应行，不把「测试通过」写成用户效果。

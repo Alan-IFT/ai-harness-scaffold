@@ -99,7 +99,7 @@ make_report() {   # $1=reports 目录：模拟 ai-verify.sh 真实产出
 ### Vitest related
 MD
   spec=$(basename "$(dirname "$1")")
-  state=$(bash scripts/ai-state-id.sh src/export/service.ts)
+  state=$(bash scripts/ai-state-id.sh --spec "$spec" src/export/service.ts)
   cat >"$(dirname "$1")/verification.md" <<MD
 # 增量验证摘要
 
@@ -174,6 +174,7 @@ Controller → ExportService → 导出任务表。
 2. 协议层：任务创建接口
 3. 逻辑层：CSV 生成与下载
 检查点：完成第 1、2 步后各跑一次增量验证。
+- 边界样本：并发超限、无权限、任务失败和空导出。
 
 ## 3. 契约与 Schema
 新增表 export_task（id、uid、status、created_at）。
@@ -224,6 +225,7 @@ MD
 | UID 取自登录态 | ✅ | src/export/controller.ts:12 |
 MD
   make_report "$d/reports"
+  printf '%s\n' "- 审查状态：$(sed -n 's/^- state: //p' "$d/verification.md" | head -n 1)" >>"$d/review.md"
   cat >"$d/acceptance.md" <<'MD'
 # 交付核验报告 (Acceptance): selftest
 
@@ -323,6 +325,11 @@ expect_fail "G3 拒绝引用不存在的模块文档" "不存在" bash scripts/a
 mk_spec t-unreg
 sed -i 's#docs/architecture/modules/example-export.md#docs/architecture/modules/unregistered-export.md#' docs/specs/active/t-unreg/design.md
 expect_fail "G3 拒绝未在 00-INDEX 登记的模块" "登记" bash scripts/ai-gate.sh check t-unreg g3
+mk_spec t-noboundary
+sed -i '/^- 边界样本：/d' docs/specs/active/t-noboundary/design.md
+expect_fail "②③的 G3 拒绝缺少边界样本" "边界样本" bash scripts/ai-gate.sh check t-noboundary g3
+printf '%s\n' '- 边界样本：无' >>docs/specs/active/t-noboundary/design.md
+expect_fail "②③的 G3 拒绝占位边界样本" "边界样本" bash scripts/ai-gate.sh check t-noboundary g3
 
 echo "== 3. 好样例必须通过 G1~G5 =="
 mk_spec t-good
@@ -332,6 +339,7 @@ expect_ok "G3 通过" bash scripts/ai-gate.sh pass t-good g3
 expect_ok "G4 通过（可交接摘要对应当前代码且 checks≥1）" bash scripts/ai-gate.sh pass t-good g4
 expect_ok "G5 通过（审查者 + 未参与实现）" bash scripts/ai-gate.sh pass t-good g5
 expect_out "status 能渲染下一门" "下一门" bash scripts/ai-gate.sh status t-good
+expect_out "metrics 从门记录派生耗时" "g3 → g4:" bash scripts/ai-gate.sh metrics t-good
 expect_ok "G6 通过（acceptance.md 留痕齐全）" bash scripts/ai-gate.sh check t-good g6
 mv docs/specs/active/t-good/acceptance.md "$TMP/acc.bak"
 expect_fail "G6 拒绝缺少 acceptance.md" "acceptance.md" bash scripts/ai-gate.sh check t-good g6
@@ -359,6 +367,37 @@ sed -i 's/②人机协同/①低风险小改动/' docs/specs/active/t-auto/requi
 sed -i '/^- 人工决策人：/d; /^- 人工决定：/d; /^- 决策来源：/d' docs/specs/active/t-auto/acceptance.md
 for g in g1 g2 g3 g4 g5; do bash scripts/ai-gate.sh pass t-auto "$g" >/dev/null || exit 1; done
 expect_ok "①有证据可由 Agent 推进 G6" bash scripts/ai-gate.sh pass t-auto g6
+mk_spec t-delegated
+for g in g1 g2 g3 g4 g5; do bash scripts/ai-gate.sh pass t-delegated "$g" >/dev/null || exit 1; done
+sed -i 's/^- 人工决定：.*/- 人工决定：预先授权/' docs/specs/active/t-delegated/acceptance.md
+sed -i 's#^- 需人判断的风险 / 遗留：.*#- 需人判断的风险 / 遗留：无#' docs/specs/active/t-delegated/acceptance.md
+printf '%s\n' '- 验收方式：预授权委托' >>docs/specs/active/t-delegated/acceptance.md
+expect_fail "G6 拒绝无 G3 授权的委托" "缺少 G3 明确授权" bash scripts/ai-gate.sh check t-delegated g6
+add_delegation() {
+  local design="$1"
+  awk '{ print; if ($0 ~ /^- 人工前置决策：/) {
+    print "- 条件委托决策人：运营负责人"
+    print "- 条件委托来源：模拟对话"
+    print "- 条件委托范围：仅 AC 全通过、G5 通过且无新增重大风险"
+    print "- 条件委托结论：同意"
+  }}' "$design" >"$design.tmp"
+  mv "$design.tmp" "$design"
+}
+add_delegation docs/specs/active/t-delegated/design.md
+expect_fail "G6 拒绝 G3 后补写的委托" "授权快照不一致" bash scripts/ai-gate.sh check t-delegated g6
+bash scripts/ai-gate.sh reset t-delegated g3 --reason '测试 G3 重新确认委托' >/dev/null || exit 1
+for g in g3 g4 g5; do bash scripts/ai-gate.sh pass t-delegated "$g" >/dev/null || exit 1; done
+expect_ok "G6 接受 G3 明确限定范围的委托" bash scripts/ai-gate.sh check t-delegated g6
+sed -i 's#^- 需人判断的风险 / 遗留：无#- 需人判断的风险 / 遗留：出现新增重大风险#' docs/specs/active/t-delegated/acceptance.md
+expect_fail "G6 拒绝委托后的新增重大风险" "仍有需人判断的风险" bash scripts/ai-gate.sh check t-delegated g6
+mk_spec t-denied-delegation
+add_delegation docs/specs/active/t-denied-delegation/design.md
+sed -i 's/^- 条件委托结论：同意/- 条件委托结论：不同意/' docs/specs/active/t-denied-delegation/design.md
+expect_fail "G3 拒绝不同意的委托" "明确「同意」" bash scripts/ai-gate.sh check t-denied-delegation g3
+mk_spec t-empty-delegation-source
+add_delegation docs/specs/active/t-empty-delegation-source/design.md
+sed -i 's/^- 条件委托来源：模拟对话/- 条件委托来源：/' docs/specs/active/t-empty-delegation-source/design.md
+expect_fail "G3 拒绝空来源的委托" "非空决策人和来源" bash scripts/ai-gate.sh check t-empty-delegation-source g3
 
 echo "== 4. 验证摘要必须有目标、真实检查和当前代码状态 =="
 mk_spec t-fake-hand
@@ -386,13 +425,20 @@ printf "CUSTOM_CHECK='test -f \"\$TARGET_FILE\"'\n" >harness/verify.conf
 expect_ok "真实 ai-verify 为指定 Spec 生成摘要" bash scripts/ai-verify.sh --spec t-real-verify src/export/service.ts
 file_has "真实验证摘要记入 PASS" docs/specs/active/t-real-verify/verification.md "- result: PASS"
 expect_ok "G4 接受真实生成的摘要" bash scripts/ai-gate.sh check t-real-verify g4
+cp docs/specs/active/t-real-verify/verification.md "$TMP/formal-summary"
+printf "QUICK_CHECK='test -f \"\$TARGET_FILE\"'\n" >>harness/verify.conf
+expect_ok "quick 执行真实检查" bash scripts/ai-verify.sh --quick --spec t-real-verify src/export/service.ts
+if cmp -s "$TMP/formal-summary" docs/specs/active/t-real-verify/verification.md; then ok_msg "quick 不覆盖正式摘要"; else ng_msg "quick 覆盖了正式摘要"; fi
 rm -f harness/verify.conf
+expect_fail "quick 无真实检查时拒绝" "未执行任何真实检查" bash scripts/ai-verify.sh --quick --spec t-real-verify src/export/service.ts
 
 GIT_SB="$TMP/git-state"
 mkdir -p "$GIT_SB/scripts" "$GIT_SB/docs/specs/active/demo"
 cp scripts/ai-state-id.sh "$GIT_SB/scripts/"
+cp scripts/ai-config.sh "$GIT_SB/scripts/"
 printf 'one\n' >"$GIT_SB/source.txt"
 printf 'two\n' >"$GIT_SB/other.txt"
+printf '{"name":"selftest"}\n' >"$GIT_SB/package.json"
 (
   cd "$GIT_SB" || exit 1
   git init -q && git add . && git -c user.name=selftest -c user.email=selftest@example.invalid commit -qm initial
@@ -429,6 +475,49 @@ metrics_before=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh source.txt)
 printf 'delivery result\n' >"$GIT_SB/docs/metrics.md"
 metrics_after=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh source.txt)
 if [ "$metrics_before" = "$metrics_after" ]; then ok_msg "交付度量不使代码指纹过期"; else ng_msg "交付度量错误地使代码指纹过期"; fi
+mkdir -p "$GIT_SB/docs/specs/active/one" "$GIT_SB/docs/specs/active/two" "$GIT_SB/docs/specs/active/three"
+printf '## 4. 影响面与涉及文件清单\n- 指纹范围确认：已核对验证命令及其脚本、配置、测试依赖\n- `source.txt`：本任务\n' >"$GIT_SB/docs/specs/active/one/design.md"
+printf '## 4. 影响面与涉及文件清单\n- 指纹范围确认：已核对验证命令及其脚本、配置、测试依赖\n- `other.txt`：另一任务\n' >"$GIT_SB/docs/specs/active/two/design.md"
+printf '## 4. 影响面与涉及文件清单\n- 指纹范围确认：已核对验证命令及其脚本、配置、测试依赖\n- `scripts/ai-config.sh`：第三个任务\n- `package.json`：第三个任务\n' >"$GIT_SB/docs/specs/active/three/design.md"
+base=$(cd "$GIT_SB" && git rev-parse HEAD)
+printf 'g3\tagent\t2026-10-20T00:00:00Z\t%s\n' "$base" >"$GIT_SB/docs/specs/active/one/.gates"
+printf 'g3\tagent\t2026-10-20T00:00:00Z\t%s\n' "$base" >"$GIT_SB/docs/specs/active/two/.gates"
+printf 'g3\tagent\t2026-10-20T00:00:00Z\t%s\n' "$base" >"$GIT_SB/docs/specs/active/three/.gates"
+scope_before=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh --spec one source.txt)
+printf 'other spec change\n' >>"$GIT_SB/other.txt"
+scope_other=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh --spec one source.txt)
+if [ "$scope_before" = "$scope_other" ]; then ok_msg "其他活跃 Spec 的文件改动不使本 Spec 过期"; else ng_msg "其他 Spec 的改动误使本 Spec 过期"; fi
+printf '\n# verification dependency changed\n' >>"$GIT_SB/scripts/ai-config.sh"
+scope_dependency=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh --spec one source.txt)
+if [ "$scope_other" != "$scope_dependency" ]; then ok_msg "其他 Spec 修改验证器依赖仍使本 Spec 过期"; else ng_msg "验证器依赖被错误豁免"; fi
+(cd "$GIT_SB" && git checkout -- scripts/ai-config.sh)
+printf '\n' >>"$GIT_SB/package.json"
+scope_toolchain=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh --spec one source.txt)
+if [ "$scope_other" != "$scope_toolchain" ]; then ok_msg "其他 Spec 修改工具链声明仍使本 Spec 过期"; else ng_msg "工具链声明被错误豁免"; fi
+(cd "$GIT_SB" && git checkout -- package.json)
+printf 'own change\n' >>"$GIT_SB/source.txt"
+scope_own=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh --spec one source.txt)
+if [ "$scope_other" != "$scope_own" ]; then ok_msg "本 Spec 文件改动使指纹过期"; else ng_msg "本 Spec 文件改动未使指纹过期"; fi
+sed -i 's/`source.txt`：本任务/`source.txt`、`other.txt`：本任务/' "$GIT_SB/docs/specs/active/one/design.md"
+scope_multi_before=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh --spec one source.txt)
+printf 'multi path change\n' >>"$GIT_SB/other.txt"
+scope_multi_after=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh --spec one source.txt)
+if [ "$scope_multi_before" != "$scope_multi_after" ]; then ok_msg "多反引号清单回退全仓指纹"; else ng_msg "多反引号清单漏掉第二个路径"; fi
+sed -i 's/`source.txt`、`other.txt`：本任务/`source.txt`：本任务/' "$GIT_SB/docs/specs/active/one/design.md"
+printf 'unclaimed\n' >"$GIT_SB/unclaimed.txt"
+scope_unclaimed=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh --spec one source.txt)
+if [ "$scope_own" != "$scope_unclaimed" ]; then ok_msg "未归属改动触发全仓保守指纹"; else ng_msg "未归属改动被 scoped 指纹忽略"; fi
+sed -i 's/`source.txt`/`*.txt`/' "$GIT_SB/docs/specs/active/one/design.md"
+scope_glob_before=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh --spec one source.txt)
+printf 'changed again\n' >>"$GIT_SB/other.txt"
+scope_glob_after=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh --spec one source.txt)
+if [ "$scope_glob_before" != "$scope_glob_after" ]; then ok_msg "通配清单回退全仓指纹"; else ng_msg "通配清单错误启用 scoped 指纹"; fi
+mkdir -p "$GIT_SB/docs/specs/active/legacy"
+printf '## 4. 影响面与涉及文件清单\n- source.txt：旧格式\n' >"$GIT_SB/docs/specs/active/legacy/design.md"
+legacy_before=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh --spec legacy source.txt)
+printf 'legacy unrelated\n' >>"$GIT_SB/other.txt"
+legacy_after=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh --spec legacy source.txt)
+if [ "$legacy_before" != "$legacy_after" ]; then ok_msg "旧 Spec 无精确清单时保守全仓"; else ng_msg "旧 Spec 被错误缩小指纹范围"; fi
 
 echo "== 5. 独立 CR 证据链（自己审自己不留痕 = 未审查） =="
 mk_spec t-selfreview
@@ -445,6 +534,10 @@ expect_fail "G5 拒绝 CR 轮次超上限" "上限" bash scripts/ai-gate.sh chec
 mk_spec t-nocr
 sed -i '/CR 轮次/d' docs/specs/active/t-nocr/review.md
 expect_fail "G5 拒绝缺少 CR 轮次" "CR 轮次" bash scripts/ai-gate.sh check t-nocr g5
+mk_spec t-stalereview
+for g in g1 g2 g3 g4; do bash scripts/ai-gate.sh pass t-stalereview "$g" >/dev/null || exit 1; done
+sed -i 's/^- 审查状态：.*/- 审查状态：old-state/' docs/specs/active/t-stalereview/review.md
+expect_fail "G5 拒绝与验证摘要不符的旧审查" "审查状态" bash scripts/ai-gate.sh check t-stalereview g5
 
 echo "== 6. Agent 记录与人工身份标记的本地防误操作 =="
 call_g6_agent() { bash scripts/ai-gate.sh pass t-good g6; }

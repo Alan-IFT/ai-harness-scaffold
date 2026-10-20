@@ -66,6 +66,15 @@ sha() {
   elif command -v shasum >/dev/null 2>&1; then shasum -a 256 "$1" | awk '{print $1}'
   else cksum "$1" | awk '{print $1"-"$2}'; fi
 }
+hash_text() {
+  if command -v sha256sum >/dev/null 2>&1; then sha256sum | awk '{print $1}'
+  elif command -v shasum >/dev/null 2>&1; then shasum -a 256 | awk '{print $1}'
+  else cksum | awk '{print $1 "-" $2}'; fi
+}
+delegation_fields() {
+  section_body "$DIR/design.md" "0." | sed 's/：/:/g' \
+    | grep -E '^[[:space:]]*-[[:space:]]*条件委托(决策人|来源|范围|结论):' || true
+}
 
 # --- 文本抽取：二级标题下、到下一个二级标题为止 ---
 section_body() {
@@ -96,6 +105,25 @@ field_ok() {         # $1=section 正文 $2=标签：冒号后必须有实质内
   [ -n "$val" ] || return 1
   case "$val" in '<'*|'{{'*|'['*|'__'*) return 1 ;; esac
   return 0
+}
+field_value() {
+  printf '%s\n' "$1" | sed 's/：/:/g' \
+    | sed -nE "s/^[[:space:]]*[-*][[:space:]]*$2[[:space:]]*:[[:space:]]*(.*)$/\1/p" \
+    | head -n 1 | sed -E 's/[[:space:]]+$//'
+}
+validate_delegation() {
+  local fields="$1" label count value
+  for label in 条件委托决策人 条件委托来源 条件委托范围 条件委托结论; do
+    count=$(printf '%s\n' "$fields" | grep -Ec "^[[:space:]]*[-*][[:space:]]*$label:" || true)
+    [ "$count" -eq 1 ] || return 1
+    field_ok "$fields" "$label" || return 1
+  done
+  for label in 条件委托决策人 条件委托来源; do
+    value=$(field_value "$fields" "$label")
+    case "$value" in ''|';'|'；'|无|不适用|待*|TODO*) return 1 ;; esac
+  done
+  [ "$(field_value "$fields" 条件委托范围)" = '仅 AC 全通过、G5 通过且无新增重大风险' ] || return 1
+  [ "$(field_value "$fields" 条件委托结论)" = '同意' ]
 }
 
 need_items() {       # $1=文件 $2=section 前缀 $3=最少项数 $4=说明
@@ -186,6 +214,19 @@ ck_g3() {
       || { say "象限$q 前置决策须写决策人、取舍与结论"; return 1; }
     printf '%s' "$decision" | grep -E '^[[:space:]]*-[[:space:]]*人工前置决策' | grep -qE '待确认|待定|待决|<[^>]+>|不适用' \
       && { say "象限$q 前置决策仍是占位或未完成"; return 1; }
+    local boundary
+    boundary=$(field_value "$(section_body "$f" "2.")" '边界样本')
+    field_ok "$(section_body "$f" "2.")" '边界样本' \
+      || { say "象限$q 设计须在 G3 列出边界样本，先检查非默认配置、极值与失败路径"; return 1; }
+    case "$boundary" in 无|不适用|待*|TODO*|没有|无边界*)
+      say "象限$q 的边界样本仍是占位词，须列具体输入或失败路径"; return 1 ;;
+    esac
+    local delegation
+    delegation=$(delegation_fields)
+    if [ -n "$delegation" ]; then
+      validate_delegation "$delegation" \
+        || { say "条件委托须有非空决策人和来源、限定范围及明确「同意」结论"; return 1; }
+    fi
   fi
   # 模块关联：引用的模块活文档必须存在且已在 00-INDEX 登记（选错模块 = 架构漂移）
   local mods m n=0
@@ -226,7 +267,7 @@ ck_g4() {
   [ "$chk" -ge 1 ] || { say "验证摘要声称 0 项检查（未验证 ≠ 通过）"; return 1; }
   [ -n "$target" ] && [ -f "$target" ] || { say "验证摘要缺少有效目标文件：$target"; return 1; }
   [ -n "$saved_state" ] || { say "验证摘要缺少代码状态指纹"; return 1; }
-  current_state=$(bash scripts/ai-state-id.sh "$target") || return 1
+  current_state=$(bash scripts/ai-state-id.sh --spec "$FEAT" "$target") || return 1
   [ "$saved_state" = "$current_state" ] || { say "验证摘要已过期：代码或 Git 暂存内容在验证后变化，请重新运行 ai-verify.sh"; return 1; }
   # 前置强注入：§1 必须写明注入的知识卡（或「无相关卡片」），引用的卡必须真实存在
   local inj ids id card ttl today lookup
@@ -252,7 +293,7 @@ ck_g4() {
 }
 
 ck_g5() {
-  local f="$DIR/review.md" nv rounds
+  local f="$DIR/review.md" nv rounds reviewed_state verified_state g3_format
   [ -f "$f" ] || { say "缺少 review.md：用独立上下文执行 .agents/skills/code-review.md 产出"; return 1; }
   nv=$(sed 's/：/:/g' <"$f")
   printf '%s\n' "$nv" | grep -q '^## 结论' || { say "review.md 缺少「## 结论」"; return 1; }
@@ -267,6 +308,14 @@ ck_g5() {
   [ -n "$rounds" ] || { say "review.md 缺少「CR 轮次」（格式：- **CR 轮次**：N / $CR_MAX_ROUNDS）"; return 1; }
   [ "$rounds" -ge 1 ] || { say "CR 轮次至少为 1"; return 1; }
   [ "$rounds" -le "$CR_MAX_ROUNDS" ] || { say "CR 修复已达 $rounds 轮 > 上限 $CR_MAX_ROUNDS：停下转人工，禁止继续自我修复"; return 1; }
+  # 新格式 G3 记录五列；旧 Spec 保持兼容，新审查须绑定被审代码状态。
+  g3_format=$(awk -F'\t' '$1=="g3" { n=NF } END { print n }' "$DIR/.gates" 2>/dev/null)
+  if [ "${g3_format:-0}" -ge 5 ]; then
+    reviewed_state=$(printf '%s\n' "$nv" | sed -nE 's/^[[:space:]]*[-*][[:space:]]*审查状态:[[:space:]]*([A-Za-z0-9-]+).*$/\1/p' | head -n 1)
+    verified_state=$(sed -n 's/^- state: //p' "$DIR/verification.md" | head -n 1)
+    [ -n "$verified_state" ] && [ "$reviewed_state" = "$verified_state" ] \
+      || { say "review.md 审查状态与当前 verification.md 不符，须重做独立审查"; return 1; }
+  fi
   return 0
 }
 
@@ -279,6 +328,7 @@ ck_g6() {
   [ -f "$DIR/verification.md" ] || { say "没有可交接验证摘要"; return 1; }
   ck_g4 || { say "G4 验证摘要已失效，先重新验证"; return 1; }
   [ -f "$DIR/review.md" ] || { say "没有 review.md"; return 1; }
+  ck_g5 || { say "G5 审查结论已失效，先更新独立审查"; return 1; }
   # Agent 记录自己执行的客观核验；②③把人作出的决定与执行动作分开留痕。
   [ -f "$a" ] || { say "缺少 acceptance.md：G6 核验与决策必须留痕"; return 1; }
   nv=$(sed 's/：/:/g' <"$a")
@@ -307,13 +357,30 @@ ck_g6() {
   printf '%s' "$nv" | grep -qE '结论:[[:space:]]*通过' || { say "acceptance.md 判定未写「结论：通过」"; return 1; }
   case "$(quadrant)" in
     ②|③)
+      local mode delegation
+      mode=$(printf '%s\n' "$nv" | sed -nE 's/^[[:space:]]*[-*][[:space:]]*验收方式:[[:space:]]*(.*)$/\1/p' | head -n 1)
       for label in 人工决策人 决策来源; do
         line=$(printf '%s\n' "$nv" | grep -E "^[[:space:]]*[-*][[:space:]]*$label[[:space:]]*:" | head -n 1)
         val=$(printf '%s' "$line" | sed -E 's/^[^:]*:[[:space:]]*//; s/[[:space:]]+$//')
         case "$val" in ''|'<'*|'__'*) miss="$miss $label" ;; esac
       done
       [ -z "$miss" ] || { say "acceptance.md 未填:$miss"; return 1; }
+      if [ "$mode" = '预授权委托' ]; then
+        delegation=$(delegation_fields)
+        validate_delegation "$delegation" \
+          || { say "G6 预授权委托缺少 G3 明确授权"; return 1; }
+        local recorded_delegation
+        recorded_delegation=$(awk -F'\t' '$1=="g3" { h=$5 } END { print h }' "$DIR/.gates")
+        [ -n "$recorded_delegation" ] && [ "$recorded_delegation" != none ] \
+          && [ "$recorded_delegation" = "$(printf '%s' "$delegation" | hash_text)" ] \
+          || { say "G6 委托与 G3 授权快照不一致；事后补写须重过 G3"; return 1; }
+        printf '%s\n' "$nv" | grep -qE '^[[:space:]]*[-*][[:space:]]*需人判断的风险 / 遗留:[[:space:]]*无[[:space:]]*$' \
+          || { say "G6 委托仍有需人判断的风险，须取得当次决定"; return 1; }
+        [ "$(field_value "$nv" 人工决定)" = '预先授权' ] \
+          || { say "G6 委托应记录预先授权，不能伪称当次人工决定"; return 1; }
+      else
       printf '%s' "$nv" | grep -qE '人工决定:[[:space:]]*通过' || { say "象限②③需要人的明确通过决定，Agent 不能代作决定"; return 1; }
+      fi
       ;;
     ①) ;;
     *) say "G6 缺少有效需求象限"; return 1 ;;
@@ -406,7 +473,15 @@ cmd_pass() {
     i=$((i+1))
   done
   if ! check_gate "$gate" >/dev/null 2>&1; then check_gate "$gate"; die "门禁校验未通过，拒绝推进 $gate"; fi
-  printf '%s\t%s\t%s\n' "$gate" "$by" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$DIR/.gates"
+  if [ "$gate" = g3 ]; then
+    local base="-" delegation="none" line
+    if git rev-parse --verify -q HEAD >/dev/null 2>&1; then base=$(git rev-parse HEAD); fi
+    line=$(delegation_fields)
+    [ -n "$line" ] && delegation=$(printf '%s' "$line" | hash_text)
+    printf '%s\t%s\t%s\t%s\t%s\n' "$gate" "$by" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$base" "$delegation" >> "$DIR/.gates"
+  else
+    printf '%s\t%s\t%s\n' "$gate" "$by" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$DIR/.gates"
+  fi
   ok "$FEAT 已通过 $gate（$(gate_name "$gate")，by $by）"
   say "   下一步：bash scripts/ai-gate.sh status $FEAT"
 }
@@ -489,6 +564,31 @@ cmd_status() {
   [ "$any" -eq 1 ] || { say ""; say "  当前无活跃 Spec。新建：bash scripts/ai-new-spec.sh <feat-name>"; }
 }
 
+# 只从 .gates 计算有证据的门间耗时；不猜需求起点或人工等待。
+gate_epoch() {
+  local stamp="$1"
+  date -u -d "$stamp" +%s 2>/dev/null \
+    || date -j -u -f '%Y-%m-%dT%H:%M:%SZ' "$stamp" +%s 2>/dev/null
+}
+cmd_metrics() {
+  local feat="${1:-}" d from to a b ea eb
+  [ -n "$feat" ] || die "用法：ai-gate.sh metrics <feat>"
+  d=$(feat_dir "$feat") || die "找不到 spec: $feat"
+  say "== $feat 门间耗时（来源：$d/.gates）=="
+  for pair in 'g3 g4' 'g4 g6' 'g5 g6'; do
+    read -r from to <<<"$pair"
+    a=$(awk -F'\t' -v g="$from" '$1==g { t=$3 } END { print t }' "$d/.gates" 2>/dev/null)
+    b=$(awk -F'\t' -v g="$to" '$1==g { t=$3 } END { print t }' "$d/.gates" 2>/dev/null)
+    ea=$(gate_epoch "$a"); eb=$(gate_epoch "$b")
+    if [ -n "$ea" ] && [ -n "$eb" ] && [ "$eb" -ge "$ea" ]; then
+      say "$from → $to: $((eb - ea)) 秒"
+    else
+      say "$from → $to: 未知"
+    fi
+  done
+  say "人工 / 外部等待：未知（除非另有带时间戳的证据）"
+}
+
 cmd_baseline() {
   [ -f "$REDLINES" ] || die "找不到 $REDLINES"
   [ -t 0 ] || die "红线基线需要在交互终端（TTY）确认；此检查只防误操作，不提供身份认证"
@@ -502,6 +602,7 @@ main() {
   [ $# -gt 0 ] && shift
   case "$cmd" in
     status)   cmd_status "${1:-}" ;;
+    metrics)  cmd_metrics "${1:-}" ;;
     check)    cmd_check "$@" ;;
     pass)     cmd_pass "$@" ;;
     reset)    cmd_reset "$@" ;;

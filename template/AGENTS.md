@@ -25,17 +25,17 @@
 | :-- | :-- | :-- | :-- | :-- |
 | G1 | 需求澄清 | 原始问题与四项必答、待确认清零、象限已定；①~③可行性达到 `FEASIBILITY_MIN`，④转人工 | 重做访谈 / 拆小范围 | Agent |
 | G2 | 验收标准 | AC 表有通过 / 不通过 / 量化证据 | G1 补需求 | Agent |
-| G3 | 方案设计 | 依赖序 + 文件与间接影响清单 + 检索依据 + 对抗自审；①可单步，②③有人前置决策 | G2 补 AC | Agent |
+| G3 | 方案设计 | 依赖序 + 文件与间接影响清单 + 检索依据 + 对抗自审；①可单步，②③有前置决策和边界样本 | G2 补 AC | Agent |
 | G4 | 实现完成 | tasks 全部 `[x]`、§1 知识检索与有效卡片、`verification.md` 对应当前代码且 PASS | G3 改设计 / 文件清单 | Agent |
 | G5 | 独立 CR | 独立上下文产出 `review.md`，关键问题 = 0，CR 轮次不超 `CR_MAX_ROUNDS` | G4 补实现 / 测试 | Agent（换上下文） |
-| G6 | 交付核验 | Agent 执行检查并记录证据；①可自动收尾，②③记录人的明确决定与来源 | G5 补 CR / 补决策 | Agent；关键判断由人做 |
+| G6 | 交付核验 | Agent 执行检查并记录证据；①可自动，②③凭当次决定或 G3 明确的条件委托 | G5 补 CR / 补决策 | Agent；关键判断由人做 |
 | G7 | 归档 | 已按 `archive-spec.md` 归档 | G6 补验收 | Agent |
 
 - 推进：`bash scripts/ai-gate.sh check <feat> <gate>` → 通过后 `bash scripts/ai-gate.sh pass <feat> <gate>`。
 - **④ 收尾**：G1 留下分析与人工移交结论后，把 Spec 移入 archive 并更新 `docs/INTAKE.md` 的决定；不计为交付，也不尝试 G2~G7。优先只用 INTAKE 记录这类想法，避免占用 active Spec。
 - **失败包络**：同一目标连续验证失败达到 `VERIFY_MAX_ATTEMPTS` 时停下，更新 WIP 并向人说明卡点；不要重复运行同一失败检查。
 - **门状态必须与代码同步**：回滚代码后跑 `bash scripts/ai-gate.sh reset <feat> <gate> --reason "..."`，让该门及之后的门失效；`--force` 跳过前置门会记入 `<spec>/.violations` 审计。
-- **G6 分工**：Agent 运行冒烟、核对 AC 并填写 `acceptance.md`；②③只向人呈现需判断的风险与结果，从交互中取得明确决定后记录来源，由 Agent 推进门禁。不让人填文档、跑机械命令或被动阅读全部材料。门禁无法认证对话身份；强制审批使用项目自己的权限机制。
+- **G6 分工**：Agent 运行冒烟、核对 AC 并填写 `acceptance.md`；②③默认由人决定，若 G3 有明确条件委托且 AC 全通过、G5 无阻塞、无新增重大风险，可由 Agent 按授权范围收尾；超出范围仍向人呈现判断点。不让人填文档或跑机械命令。门禁无法认证对话身份；强制审批使用项目自己的权限机制。
 - **红线不可自改**：`harness/redlines.conf` 只允许人类修改；本地基线漂移会阻断 pass，跨工作区仍需用 Git 审查变更。
 
 ## 3. 知识飞轮（让经验跨需求复用，而不是从零猜）
@@ -51,7 +51,7 @@
 
 ## 5. 防膨胀与验证口径 (Anti-Bloat & Verification)
 - **只读契约，不读实现**：跨模块只读目标模块的公共契约文件（`index.ts` / `types.ts` / 接口定义）。
-- **验证口径**：本地跑 `bash scripts/ai-verify.sh --spec <feat> <file>`；可入库摘要在当前 Spec 的 `verification.md`，详细日志留本机。G4 要求摘要与当前代码状态一致；代码内容或暂存状态变化后须重新验证，同一索引内容提交后指纹保持稳定。全量回归按项目 CI 配置执行。
+- **验证口径**：开发中可跑 `bash scripts/ai-verify.sh --quick --spec <feat> <file>`，需在 `harness/verify.conf` 配 `QUICK_CHECK`，它不生成 G4 摘要；G4 前跑不带 `--quick` 的正式验证。设计 §4 的精确路径清单经显式确认覆盖验证命令、脚本、配置与测试依赖后才可缩小指纹；无法安全判定时保守回退全仓。摘要在 `verification.md`，详细日志留本机；全量回归仍按 CI 配置执行。
 - **实时存盘**：每完成一个子步骤，立即更新 `tasks.md` 的 WIP 区（含「正在编辑的文件」）；每个 `[x]` 任务先验证再原子 commit。
 - **红 / 黄 / 绿卡**：🟢 绿＝单个 `[x]` 任务通过验证，可自动流转；🟡 黄＝同一目标连续失败达到 `VERIFY_MAX_ATTEMPTS` / 门禁互相冲突 / 需扩范围或改契约 → 停下说明并等人；🔴 红＝不可逆或高爆炸半径（删数据、`git push --force`、改 `redlines.conf`、②③的 G6 风险决定、发布上线）→ 必须人明确同意。
 - **参数缺省即拒**：部署、发布、批量、删除类命令必须显式指定环境与范围；没有"默认全量 / 默认所有用户"，不确定就报错退出。
@@ -67,7 +67,8 @@
 | 接手 / 恢复 | `bash scripts/ai-resume.sh [feat]` |
 | 阶段门状态 | `bash scripts/ai-gate.sh status` |
 | 校验 / 推进门 | `bash scripts/ai-gate.sh check\|pass <feat> <gate>` |
-| 增量验证 | `bash scripts/ai-verify.sh --spec <feat> <file>` |
+| 开发快检 / 正式验证 | `bash scripts/ai-verify.sh --quick --spec <feat> <file>` / 去掉 `--quick` |
+| 门间耗时 | `bash scripts/ai-gate.sh metrics <feat>` |
 | 新建 Spec | `bash scripts/ai-new-spec.sh <feat-name>` |
 | 体积体检 | `bash scripts/ai-check-bloat.sh` |
 | 门禁回退 | `bash scripts/ai-gate.sh reset <feat> <gate> --reason "..."` |
