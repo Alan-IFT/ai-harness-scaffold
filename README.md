@@ -6,6 +6,22 @@
 > 面向 Claude Code / OpenAI Codex / Cursor / OpenCode / DeepSeek 等任何能读 `AGENTS.md`、
 > 能跑 bash 的 AI 工具；不绑定某个 IDE 或云端平台。
 
+## 两种用法：对话主导（推荐）/ 命令行直接跑
+
+**推荐用法是对话主导**：在 AI 对话里说一句话，由 AI 侦察仓库、判断模块边界、合并已有文档、实测 verify 命令，遇到不确定性再回来问你。CLI 只是给它批量落盘的助手（也可完全不用，直接读 `template/`）。
+
+```
+# 新项目，交给 AI
+用 ai-harness-scaffold 这套规范初始化 ~/code/my-new-project
+
+# 老项目，交给 AI
+把 ~/code/legacy-project 接进 ai-harness-scaffold 流程，先给我冲突与改造建议，我确认后再动手
+```
+
+AI 按 `skill/SKILL.md` 的六步走：侦察 → 落模板 → 合并/归档 → 模块索引真实化 → 配 verify → Dry Run 体检 + 汇报；**不确定的地方列成清单问你，不替你拍板**。
+
+**命令行直接跑**适合：标准结构的项目、CI 里的重复初始化、你已清楚要什么的时候。
+
 ## 快速开始
 
 ```bash
