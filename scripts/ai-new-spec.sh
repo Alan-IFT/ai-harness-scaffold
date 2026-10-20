@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# ai-new-spec.sh — 从模板生成一整套新功能 Spec（requirements/design/tasks + reports）
+# ai-new-spec.sh — 从模板生成一整套新功能 Spec
+#   requirements.md / design.md / tasks.md / acceptance.md + reports/
 # 用法：bash scripts/ai-new-spec.sh <feat-name>
 # ==============================================================================
 set -u
@@ -31,7 +32,7 @@ fi
 mkdir -p "$TARGET_DIR/reports"
 TODAY=$(date +%Y-%m-%d)
 
-for file in requirements.md design.md tasks.md; do
+for file in requirements.md design.md tasks.md acceptance.md; do
   src="docs/specs/_templates/$file"
   if [ ! -f "$src" ]; then
     echo "❌ 错误: 模板缺失: $src"
@@ -43,13 +44,14 @@ for file in requirements.md design.md tasks.md; do
 done
 
 echo "✅ 已创建: $TARGET_DIR"
-echo "   - $TARGET_DIR/requirements.md"
-echo "   - $TARGET_DIR/design.md"
-echo "   - $TARGET_DIR/tasks.md"
-echo "   - $TARGET_DIR/reports/        (由 ai-verify.sh 自动写入验证报告)"
+echo "   - $TARGET_DIR/requirements.md  (含需求象限 + 可行性加权评分)"
+echo "   - $TARGET_DIR/design.md        (含 §0 模块关联)"
+echo "   - $TARGET_DIR/tasks.md         (含 §1 注入知识)"
+echo "   - $TARGET_DIR/acceptance.md    (G6 人工验收留痕)"
+echo "   - $TARGET_DIR/reports/         (由 ai-verify.sh 自动写入验证报告)"
 echo ""
 echo "下一步（见 @.agents/skills/new-spec.md）："
-echo "1. 访谈式澄清需求后填 requirements.md 的 §0 四项必答 + AC 表"
-echo "2. 写 design.md：依赖序实现、垂直切片、检查点、文件清单、对抗自审"
-echo "3. 写 tasks.md：3~6 个原子任务 + 上下文清单 + WIP 区"
+echo "1. 访谈式澄清需求：填 requirements.md 的 §0 四项必答 + 需求象限 + §6 可行性评分 + AC 表"
+echo "2. 写 design.md：先在 §0 选对模块（必须已在 00-INDEX 登记），再写依赖序/切片/检查点/文件清单/对抗自审"
+echo "3. 写 tasks.md：3~6 个原子任务 + 上下文清单（含注入知识）+ WIP 区"
 echo "4. bash scripts/ai-gate.sh check $FEAT_NAME g1  (然后 g2 / g3)；过门后停下等人工评审"

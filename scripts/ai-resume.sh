@@ -64,6 +64,19 @@ else
   echo "  (尚未初始化 Git 仓库；建议 git init，否则无法用 diff 接力)"
 fi
 
+# 5. 知识库（前置强注入 / 清理候选）
+echo -e "\n[5] 知识库（前置强注入 / 清理候选）"
+if [ -f scripts/ai-knowledge.sh ]; then
+  bash scripts/ai-knowledge.sh ttl || true
+else
+  echo "  (缺少 scripts/ai-knowledge.sh)"
+fi
+for spec in docs/specs/active/*/; do
+  [ -f "$spec/tasks.md" ] || continue
+  inj=$(grep -E '注入知识' "$spec/tasks.md" | head -n 1 || true)
+  [ -n "$inj" ] && echo "  ${spec%/} → $inj"
+done
+
 echo ""
 echo "=="
 echo "💡 [给当前 AI Agent 的接力指令]"

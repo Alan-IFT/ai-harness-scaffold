@@ -18,3 +18,6 @@ docs/specs/active/*/.attempts
 .DS_Store
 Thumbs.db
 *.log
+
+# 编辑器/工具临时锁文件
+.dsh-ops-update-*.lock

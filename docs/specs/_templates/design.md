@@ -1,9 +1,17 @@
 # 技术架构与接口设计 (Technical Design): {{FEATURE_NAME}}
 
 - **关联需求**: `requirements.md`（G1 / G2 已通过）
-- **关联活文档**: `@docs/architecture/modules/xxx.md`
 - **设计者**: （模型 / 人）
 - **状态**: Draft | Approved
+
+## 0. 模块关联（先确认改哪个模块、读哪份活文档）
+> G3 校验：引用的模块活文档必须存在，且已在 `@docs/architecture/00-INDEX.md` 登记；契约入口不得是占位符。
+> 选错模块 / 跨模块直连内部实现 = 架构漂移，先停下回 00-INDEX 选对模块再设计。
+
+- 主模块：<module> → `@docs/architecture/modules/<module>.md`
+- 涉及模块：无 / <module> → `@docs/architecture/modules/<module>.md`
+- 契约入口（只读）：`src/modules/<module>/index.ts`
+- 新增模块：先在 `00-INDEX.md` 登记一行，再回来过 G3
 
 ## 1. 架构变更与数据流 (Architecture & Data Flow)
 > 说明影响哪些模块 / 表 / 契约；用 Mermaid 描述核心调用链；写清数据由谁拥有。严禁写冗长散文。

@@ -24,6 +24,12 @@ BASELINE="harness/.redlines.baseline"
 FEAT=""
 DIR=""
 
+# 阈值唯一来源（人类可改，AI 不可自改）；文件缺失时用内置默认值
+CR_MAX_ROUNDS=4
+FEASIBILITY_MIN=60
+KNOWLEDGE_TTL_DAYS=180
+[ -f "$REDLINES" ] && . "$REDLINES" 2>/dev/null || true
+
 say() { printf '%s\n' "$*"; }
 die() { printf '❌ %s\n' "$*" >&2; exit 1; }
 ok()  { printf '✅ %s\n' "$*"; }
@@ -76,12 +82,14 @@ items() {
 }
 
 field_ok() {         # $1=section 正文 $2=标签：冒号后必须有实质内容且非占位符
-  local line val
-  line=$(printf '%s\n' "$1" | grep -E "^[[:space:]]*[-*][[:space:]]*$2[[:space:]]*[：:]" | head -n 1)
+  # 先把全角冒号归一化为半角：全角字符放进 [] 会被按字节拆开，导致空值被误判为已填
+  local line val nv
+  nv=$(printf '%s\n' "$1" | sed 's/：/:/g')
+  line=$(printf '%s\n' "$nv" | grep -E "^[[:space:]]*[-*][[:space:]]*$2[[:space:]]*:" | head -n 1)
   [ -n "$line" ] || return 1
-  val=$(printf '%s' "$line" | sed -E "s/^[^：:]*[：:]//" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')
+  val=$(printf '%s' "$line" | sed -E 's/^[^:]*:[[:space:]]*//; s/[[:space:]]+$//')
   [ -n "$val" ] || return 1
-  case "$val" in '<'*|'{{'*|'['*) return 1 ;; esac
+  case "$val" in '<'*|'{{'*|'['*|'__'*) return 1 ;; esac
   return 0
 }
 
@@ -107,6 +115,20 @@ ck_g1() {
   if section_body "$f" "4." | grep -qE '^[[:space:]]*[-*][[:space:]]*\[ \]'; then
     say "待确认问题未清零（「## 4.」仍有未勾选项）"; return 1
   fi
+  # 需求分级（象限）+ 可行性加权总分（需求侧质量前移）
+  local q total
+  q=$(grep -E '需求分级' "$f" | head -n 1)
+  [ -n "$q" ] || { say "requirements.md 缺少「需求分级（象限）」行（①~④ 之一 + 一句理由）"; return 1; }
+  field_ok "$q" "需求分级（象限）" || { say "需求分级未填（①直接做 / ②人机协同·风险侧 / ③人机协同·复杂度侧 / ④暂不支持）"; return 1; }
+  printf '%s' "$q" | grep -qE '[①②③④]' || { say "需求分级未选象限（①/②/③/④）"; return 1; }
+  case "$q" in *④*)
+    printf '%s' "$q" | grep -qE '人工接管|转人工|不进入' || { say "象限④（暂不支持）必须写明「人工接管 / 转人工 / 不进入 AI 流水线」"; return 1; } ;;
+  esac
+  field_ok "$(cat "$f")" "分级依据" || { say "分级依据未填：风险来自哪里、复杂度来自哪里"; return 1; }
+  total=$(grep -E '加权总分' "$f" | head -n 1 | sed -E 's/^[^：:]*[：:]//' | grep -oE '[0-9]+' | head -n 1)
+  [ -n "$total" ] || { say "requirements.md §6 缺少「加权总分」数字（0~100，≥60 才进入设计）"; return 1; }
+  [ "$total" -le 100 ] || { say "可行性加权总分不能超过 100（当前 $total）"; return 1; }
+  [ "$total" -ge "$FEASIBILITY_MIN" ] || { say "可行性加权总分 $total < $FEASIBILITY_MIN：先补需求、缩范围或拆小，不要硬做"; return 1; }
   return 0
 }
 
@@ -130,6 +152,20 @@ ck_g3() {
   need_items "$f" "4." 2 "影响面与文件清单" || return 1
   need_items "$f" "5." 1 "对抗自审" || return 1
   section_body "$f" "2." | grep -q '检查点' || { say "「实现顺序」里没写检查点（每 2~3 步一个）"; return 1; }
+  # 模块关联：引用的模块活文档必须存在且已在 00-INDEX 登记（选错模块 = 架构漂移）
+  local mods m n=0
+  mods=$(section_body "$f" "0." | grep -oE '@docs/architecture/modules/[A-Za-z0-9._-]+\.md' | sort -u)
+  [ -n "$mods" ] || { say "design.md 缺少「## 0. 模块关联」或未填模块活文档（@docs/architecture/modules/<module>.md）"; return 1; }
+  for m in $mods; do
+    m=${m#@}
+    [ -f "$m" ] || { say "引用的模块活文档不存在：$m（先按 00-INDEX 选对或新建模块）"; return 1; }
+    grep -qF "$m" docs/architecture/00-INDEX.md 2>/dev/null || { say "模块活文档未在 docs/architecture/00-INDEX.md 登记：$m"; return 1; }
+    n=$((n+1))
+  done
+  section_body "$f" "0." | grep -q '契约入口' || { say "「## 0. 模块关联」缺少「契约入口」行"; return 1; }
+  if section_body "$f" "0." | grep -E '契约入口' | grep -qE 'path/to/|<module>'; then
+    say "契约入口仍是模板占位（path/to/ 或 <module>）"; return 1
+  fi
   return 0
 }
 
@@ -150,30 +186,62 @@ ck_g4() {
   local chk
   chk=$(sed -nE 's/^# checks:[[:space:]]*([0-9]+).*/\1/p' "$latest" | head -n 1)
   { [ -n "$chk" ] && [ "$chk" -ge 1 ]; } || { say "报告声称 0 项检查（未验证 ≠ 通过）：$latest"; return 1; }
+  # 前置强注入：§1 必须写明注入的知识卡（或「无相关卡片」），引用的卡必须真实存在
+  local inj ids id
+  inj=$(section_body "$f" "1." | grep -E '^[[:space:]]*[-*][[:space:]]*注入知识' | head -n 1)
+  [ -n "$inj" ] || { say "tasks.md §1 缺少「注入知识」行（列 .knowledge 卡片 ID，或写「无相关卡片」）"; return 1; }
+  case "$inj" in *'无相关卡片'*) ;;
+  *)
+    ids=$(printf '%s' "$inj" | grep -oE 'K-[0-9]{4}' | sort -u)
+    [ -n "$ids" ] || { say "「注入知识」既没写卡片 ID（K-xxxx）也没写「无相关卡片」"; return 1; }
+    for id in $ids; do
+      grep -qF "$id" .knowledge/INDEX.md 2>/dev/null || { say "注入的知识卡 $id 不在 .knowledge/INDEX.md 中（先按 knowledge-distill 建卡）"; return 1; }
+    done ;;
+  esac
   return 0
 }
 
 ck_g5() {
-  local f="$DIR/review.md"
+  local f="$DIR/review.md" nv rounds
   [ -f "$f" ] || { say "缺少 review.md：用独立上下文执行 @.agents/skills/code-review.md 产出"; return 1; }
-  grep -q '^## 结论' "$f" || { say "review.md 缺少「## 结论」"; return 1; }
-  grep -qE '关键问题.*[：:][[:space:]]*(0|无)' "$f" || { say "关键问题未清零（结论写「关键问题（必须修）：0」）"; return 1; }
+  nv=$(sed 's/：/:/g' <"$f")
+  printf '%s\n' "$nv" | grep -q '^## 结论' || { say "review.md 缺少「## 结论」"; return 1; }
+  printf '%s' "$nv" | grep -qE '关键问题.*:[[:space:]]*(0|无)' || { say "关键问题未清零（结论写「关键问题（必须修）：0」）"; return 1; }
   grep -q '审查者' "$f" || { say "review.md 缺少「审查者」署名（独立上下文标识）"; return 1; }
   grep -q '审查者.*<独立上下文标识' "$f" && { say "review.md 的「审查者」仍是模板占位（去掉 <...> 填真实上下文标识）"; return 1; }
-  grep -qE '未参与实现.*[：:][[:space:]]*(是|yes)' "$f" || { say "review.md 未声明「未参与实现：是」（自己审自己不留痕 = 未审查）"; return 1; }
+  printf '%s' "$nv" | grep -qE '未参与实现.*:[[:space:]]*(是|yes)' || { say "review.md 未声明「未参与实现：是」（自己审自己不留痕 = 未审查）"; return 1; }
   { grep -q '判定' "$f" && grep -q '通过' "$f"; } || { say "review.md 判定未写「通过」"; return 1; }
   grep -qE '^[[:space:]]*[-*][[:space:]]*\[ \]' "$f" && { say "review.md 仍有未勾选项"; return 1; }
+  # CR 修复包络：轮次必须记录且不超过 CR_MAX_ROUNDS（触顶转人工）
+  rounds=$(printf '%s' "$nv" | grep -E 'CR 轮次' | head -n 1 | grep -oE '[0-9]+' | head -n 1)
+  [ -n "$rounds" ] || { say "review.md 缺少「CR 轮次」（格式：- **CR 轮次**：N / $CR_MAX_ROUNDS）"; return 1; }
+  [ "$rounds" -ge 1 ] || { say "CR 轮次至少为 1"; return 1; }
+  [ "$rounds" -le "$CR_MAX_ROUNDS" ] || { say "CR 修复已达 $rounds 轮 > 上限 $CR_MAX_ROUNDS：停下转人工，禁止继续自我修复"; return 1; }
   return 0
 }
 
 ck_g6() {
-  local i g
+  local i g a="$DIR/acceptance.md" nv line val miss=""
   for i in 1 2 3 4 5; do
     g="g$i"
     { [ -f "$DIR/.gates" ] && grep -qE "^$g[[:space:]]" "$DIR/.gates"; } || { say "前置门 $g 未通过"; return 1; }
   done
   [ -n "$(ls -1t "$DIR"/reports/verify-*.log 2>/dev/null | head -n 1)" ] || { say "没有验证报告"; return 1; }
   [ -f "$DIR/review.md" ] || { say "没有 review.md"; return 1; }
+  # 人工验收必须留痕（acceptance.md），否则「人看过了」无法审计
+  [ -f "$a" ] || { say "缺少 acceptance.md：人工验收必须在磁盘留痕（模板 docs/specs/_templates/acceptance.md）"; return 1; }
+  nv=$(sed 's/：/:/g' <"$a")
+  for label in 验收人 测试环境; do
+    line=$(printf '%s\n' "$nv" | grep -E "^[[:space:]]*[-*][[:space:]]*$label[[:space:]]*:" | head -n 1)
+    val=$(printf '%s' "$line" | sed -E 's/^[^:]*:[[:space:]]*//; s/[[:space:]]+$//')
+    case "$val" in ''|'<'*|'__'*) miss="$miss $label" ;; esac
+  done
+  [ -z "$miss" ] || { say "acceptance.md 未填:$miss"; return 1; }
+  printf '%s' "$nv" | grep -qE '冒烟或 E2E 证据:[[:space:]]*[^<[:space:]]' || { say "acceptance.md 缺少冒烟 / E2E 证据（客观信号，不是「人看过了」）"; return 1; }
+  for p in 'requirements\.md' 'design\.md' '重要代码' 'verify-'; do
+    grep -qE "^[[:space:]]*-[[:space:]]*\[[xX]\].*$p" "$a" || { say "acceptance.md 四类材料未全部勾选（缺 $p）"; return 1; }
+  done
+  printf '%s' "$nv" | grep -qE '结论:[[:space:]]*通过' || { say "acceptance.md 判定未写「结论：通过」"; return 1; }
   return 0
 }
 
