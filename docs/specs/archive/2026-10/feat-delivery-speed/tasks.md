@@ -1,7 +1,7 @@
 # 原子执行队列与跨工具接力棒：feat-delivery-speed
 
-- 需求文档：docs/specs/active/feat-delivery-speed/requirements.md
-- 设计文档：docs/specs/active/feat-delivery-speed/design.md
+- 需求文档：requirements.md（本归档目录）
+- 设计文档：design.md（本归档目录）
 - 阶段：只以 bash scripts/ai-gate.sh status feat-delivery-speed 为准；不要在此维护副本。
 
 ## 0. 阶段门
@@ -25,12 +25,13 @@ G4 后收尾：正式验证、独立 CR、G6 核验与归档；不作为 G4 的�
 
 ## 3. 发现但不碰
 - 完整自检已扩大到 121 项；正式检查耗时 137 秒，超过当前 120 秒提醒线。分层 quick 缩短开发循环，完整检查的运行耗时留待取得更多大仓库样本后单独优化。
+- 归档时更新 `docs/INTAKE.md` 链接使原 G4 指纹过期，本次额外正式验证 137 秒。后续应把此类流程链接更新前移至最后一次正式验证，或单独设计流程文档的指纹边界。
 
 ## 4. Current WIP & Handoff Scratchpad
-- 当前任务：正式验证与 G4 已通过，等待独立 CR 和 G5。
+- 当前任务：G1~G7 已记录，交付结果由 维护者 决定通过；归档状态已重新正式验证。
 - 前置依赖 / 并行关系：按顺序处理共享门禁脚本。
 - 已完成的小步：G1~G3 已按审查后的需求和设计重过；quick 与安装样本已通过；独立审查指出的指纹漏依赖、清单多路径和委托边界已补反例。
-- 正在编辑的文件：template/scripts/ai-gate.sh、ai-state-id.sh、ai-verify.sh、harness-selftest.sh、相关模板和指南。
+- 正在编辑的文件：无；源码已提交，归档记录待最后提交。
 - 已排除的死胡同：无。
-- 上次验证与未验证改动：完整自检 121/121；正式验证 PASS、1 项检查、137 秒；以 verification.md 的 state 为准。此后仅修改 Spec 过程记录，未改代码。
-- 下一步立即执行的唯一动作：取得独立 CR 结论，记录 review.md 并检查 G5。
+- 上次验证与未验证改动：归档后正式验证 PASS、1 项检查、完整自检 121/121、137 秒；G4 对最终状态复核通过，以 verification.md 的新 state 为准。
+- 下一步立即执行的唯一动作：提交归档记录。

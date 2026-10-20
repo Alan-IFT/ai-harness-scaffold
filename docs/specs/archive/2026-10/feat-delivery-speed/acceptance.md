@@ -7,7 +7,7 @@
 - 核验执行者：Codex Agent
 - 核验时间：2026-10-20
 - 测试环境：Windows，本仓库工作区，Git Bash 由 PowerShell 调用
-- 冒烟或 E2E 证据：`bash scripts/ai-verify.sh --quick --spec feat-delivery-speed template/scripts/ai-gate.sh` PASS（1 项，0 秒，未覆盖正式摘要）；`bash scripts/ai-verify.sh --spec feat-delivery-speed template/scripts/ai-gate.sh` PASS（1 项，内含自检 121/121，137 秒），见 verification.md
+- 冒烟或 E2E 证据：`bash scripts/ai-verify.sh --quick --spec feat-delivery-speed template/scripts/ai-gate.sh` PASS（1 项，0 秒，未覆盖正式摘要）；`bash scripts/ai-verify.sh --spec feat-delivery-speed template/scripts/ai-gate.sh` 在实现提交及归档索引更新后各 PASS 一次（每次 1 项，内含自检 121/121，各 137 秒），最终摘要见 verification.md。
 
 ## 1. 核验摘要
 - 对照 AC 的检查结果：AC-01 至 AC-06 逐项通过；依据如下

@@ -5,7 +5,7 @@
 - **审查时间**：2026-10-20
 - **审查范围**：本 Spec 暂存 diff、requirements.md AC-01~AC-06、design.md §4、当前 verification.md 与 G3/G4 门记录
 - **CR 轮次**：2 / 4
-- 审查状态：a8ec7cfc23aed1cf1ff3e6bab635b2d300910b6414b7527d6fe7b5f42a62c9a7
+- 审查状态：8b25393e38b0247ddff972b74b8246ba5e7350a204a6f8aad5ef1d8b5cece155
 
 ## 结论
 - 关键问题（必须修）：0
@@ -32,3 +32,4 @@
 ## 验证证据
 - 独立审查者未参与实现，且其环境无法启动 Bash；他核对了正式摘要、门记录、暂存 diff 和 `git diff --cached --check`，没有声称独立复跑测试。
 - 实现侧执行 `bash scripts/harness-selftest.sh` → 121/121；`bash scripts/ai-verify.sh --spec feat-delivery-speed template/scripts/ai-gate.sh` → PASS、checks=1、state 如上，137 秒。
+- 归档入口链接更新后实现侧重新正式验证；独立审查者复核归档 diff 无源码变化、G4 对新 state 通过，代码阻塞项仍为 0。
