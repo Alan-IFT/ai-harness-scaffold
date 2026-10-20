@@ -6,19 +6,30 @@
 > 面向 Claude Code / OpenAI Codex / Cursor / OpenCode / DeepSeek 等任何能读 `AGENTS.md`、
 > 能跑 bash 的 AI 工具；不绑定某个 IDE 或云端平台。
 
+## 一句话使用：先安装技能一次
+
+```bash
+bash bin/ai-harness install-skill --host codex
+bash bin/ai-harness install-skill --host claude
+```
+
+安装器分别在 Codex 和 Claude Code 的用户技能目录生成薄入口，均指向本仓库的 `skill/SKILL.md`；流程正文仍只维护这一份。安装仅更新宿主和来源都匹配的本工具入口；无归属记录的旧 DSH 安装也会拒绝自动覆盖，由 Agent 核对后迁移。移动本仓库后需移除原来的本工具薄入口，再从新位置安装。
+
+以后在任一宿主打开目标项目，直接说：**「把这个老项目接入 ai-harness 脚手架」**。若当前上下文无法确定目标项目，再补一个路径。也可显式调用 Codex 的 `$ai-harness-scaffold` 或 Claude Code 的 `/ai-harness-scaffold`。Agent 会完成摸底、只读预演、冲突合并、一个模块试点和验证；只把必须由维护者决定的架构、权限或阈值问题交回来。
+
 ## 两种用法：对话主导（推荐）/ 命令行直接跑
 
-**推荐用法是对话主导**：在 AI 对话里说一句话，由 AI 侦察仓库、判断模块边界、合并已有文档、实测 verify 命令，遇到不确定性再回来问你。CLI 只是给它批量落盘的助手（也可完全不用，直接读 `template/`）。
+**推荐用法是对话主导**：由 AI 侦察仓库、判断模块边界、合并已有文档、实测 verify 命令，遇到真正需要维护者取舍的问题再回来问你。CLI 是批量落盘的助手，技能负责发现和编排。
 
 ```
 # 新项目，交给 AI
 用 ai-harness-scaffold 这套规范初始化 ~/code/my-new-project
 
 # 老项目，交给 AI
-把 ~/code/legacy-project 接进 ai-harness-scaffold 流程，先给我冲突与改造建议，我确认后再动手
+把 ~/code/legacy-project 接入 ai-harness 脚手架
 ```
 
-AI 按 `skill/SKILL.md` 的六步走；老项目的分阶段接入和试点见 `template/.agents/skills/retrofit-legacy.md`。模块扫描只生成候选清单，不自动建立一批空模块文档；**不确定的边界列成清单确认**。
+AI 从 `skill/SKILL.md` 定位共享流程；老项目的分阶段接入和试点见 `template/.agents/skills/retrofit-legacy.md`。模块扫描只生成候选清单，不自动建立一批空模块文档；**不确定的边界列成清单确认**。
 
 **命令行直接跑**适合：标准结构的项目、CI 里的重复初始化、你已清楚要什么的时候。
 
@@ -35,8 +46,8 @@ bash bin/ai-harness retrofit ../legacy-project
 # 体检
 bash bin/ai-harness doctor ../legacy-project
 
-# 装成 DSH skill（可选）
-bash bin/ai-harness install-skill
+# 旧 DSH 技能安装（可选，保持兼容）
+bash bin/ai-harness install-skill --host dsh
 ```
 
 装好后，在新项目里开场跑：
@@ -67,7 +78,7 @@ G6 由 Agent 执行冒烟和 AC 核对，并把命令、环境、结果写入 `a
 ai-harness init     <dir> [--no-git] [--dry-run] [--force]
 ai-harness retrofit <dir> [--no-git] [--skip-doctor] [--dry-run]
 ai-harness doctor   <dir>
-ai-harness install-skill [--dest DIR]
+ai-harness install-skill [--host dsh|codex|claude] [--dest DIR]
 ai-harness version | help
 ```
 
@@ -76,7 +87,7 @@ ai-harness version | help
 ```
 bin/ai-harness     # CLI：复制 / 冲突隔离 / 栈探测 / 模块扫描 / 体检 / 装 skill
 template/          # 要被复制进目标项目的全部内容（唯一真相源）
-skill/SKILL.md     # DSH skill：机械步骤交给 CLI，判断步骤（模块边界、契约、verify 命令）交给 agent
+skill/SKILL.md     # 共享技能入口：宿主薄入口指向这里，机械步骤交给 CLI，判断步骤交给 Agent
 ```
 
 ## 本仓库自用

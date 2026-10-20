@@ -4,7 +4,7 @@
 #   bash bin/ai-harness init     <dir> [--no-git] [--dry-run] [--force]
 #   bash bin/ai-harness retrofit <dir> [--dry-run] [--no-git] [--skip-doctor]
 #   bash bin/ai-harness doctor   <dir>
-#   bash bin/ai-harness install-skill [--dest DIR]
+#   bash bin/ai-harness install-skill [--host dsh|codex|claude] [--dest DIR]
 #   bash bin/ai-harness version | help
 #
 # 设计原则：
@@ -42,8 +42,8 @@ ai-harness v$VERSION — 跨工具防膨胀 AI 辅助开发脚手架
       扫描代码树生成模块索引桩（标注待人工确认）。
   ai-harness doctor   <dir>
       体检：上下文体积、知识卡一致性、门禁自检、当前门状态、verify 配置。
-  ai-harness install-skill [--dest DIR]
-      把本工具装成 DSH skill（默认 \$DSH_HOME/skills 或 ~/.dsh/skills）。
+  ai-harness install-skill [--host dsh|codex|claude] [--dest DIR]
+      安装可发现的技能入口；默认 DSH，Codex/Claude 使用指向本仓库的薄入口。
   ai-harness version | help
 
 退出码: 0 成功；1 参数/状态错误；doctor 发现问题时非 0。
@@ -51,7 +51,26 @@ EOF
 }
 
 need_dir() { [ -n "${1:-}" ] || die "缺少目标目录参数（见 ai-harness help）"; }
-is_git_repo() { [ -d "$1/.git" ]; }
+ensure_git_repo() { # <dir>; only initialize after Git explicitly reports no repository
+  local tgt=$1 result current
+  if result=$(LC_ALL=C git -C "$tgt" rev-parse --is-inside-work-tree 2>&1); then
+    [ "$result" = true ] || die "目标不在普通 Git 工作区，拒绝初始化: $tgt"
+    return 0
+  fi
+  case "$result" in
+    *"not a git repository"*) ;;
+    *) die "无法判定目标 Git 归属，拒绝初始化: $tgt ($result)" ;;
+  esac
+  current=$(cd "$tgt" && pwd -P) || die "无法解析目标目录: $tgt"
+  while :; do
+    [ ! -e "$current/.git" ] && [ ! -L "$current/.git" ] \
+      || die "祖先目录存在 Git 标记但 Git 无法识别，拒绝初始化: $current"
+    [ "$current" = / ] && break
+    current=$(dirname "$current")
+  done
+  git -C "$tgt" init -b main >/dev/null || die "Git 初始化失败: $tgt"
+  info "git 仓库已初始化（main）"
+}
 
 write_version() { # <dir> <mode>
   mkdir -p "$1/.ai-harness"
@@ -220,7 +239,7 @@ cmd_init() {
   if [ "$DRY" -eq 0 ]; then
     write_version "$tgt" init
     ( cd "$tgt" && bash scripts/ai-gate.sh status >/dev/null 2>&1 || true )   # 首次记录红线基线
-    if [ "$NOGIT" -eq 0 ] && ! is_git_repo "$tgt"; then git -C "$tgt" init -b main >/dev/null && info "git 仓库已初始化（main）"; fi
+    if [ "$NOGIT" -eq 0 ]; then ensure_git_repo "$tgt"; fi
   fi
   say ""
   say "✅ 完成：+$COPIED 个新文件，$SKIPPED 个同内容。"
@@ -256,7 +275,7 @@ cmd_retrofit() {
     rewrite_allowed_dirs "$tgt" "$stack"
     gen_module_index "$tgt" "$stack" "$fresh"
     ( cd "$tgt" && bash scripts/ai-gate.sh status >/dev/null 2>&1 || true )
-    if [ "$NOGIT" -eq 0 ] && ! is_git_repo "$tgt"; then git -C "$tgt" init -b main >/dev/null && info "git 仓库已初始化（main）"; fi
+    if [ "$NOGIT" -eq 0 ]; then ensure_git_repo "$tgt"; fi
   else
     gen_module_index "$tgt" "$stack" "$fresh"
   fi
@@ -294,27 +313,69 @@ doctor_core() { # <dir>
 cmd_doctor() { need_dir "${1:-}"; [ -d "$1" ] || die "目标不存在: $1"; doctor_core "${1:-}"; }
 
 cmd_install_skill() {
-  local dest="" a
+  local dest="" host="dsh"
   while [ $# -gt 0 ]; do
     case $1 in
-      --dest) shift; dest=${1:-} ;;
-      --dest=*) dest=${1#--dest=} ;;
+      --dest) shift; [ $# -gt 0 ] || die "--dest 缺少目录"; dest="$1" ;;
+      --dest=*) dest=${1#--dest=}; [ -n "$dest" ] || die "--dest 缺少目录" ;;
+      --host) shift; [ $# -gt 0 ] || die "--host 缺少名称"; host="$1" ;;
+      --host=*) host=${1#--host=} ;;
       -*) die "未知参数: $1" ;;
       *) dest=$1 ;;
     esac
     shift
   done
-  [ -n "$dest" ] || dest="${DSH_HOME:-$HOME/.dsh}/skills/ai-harness-scaffold"
+  case "$host" in
+    dsh)    [ -n "$dest" ] || dest="${DSH_HOME:-$HOME/.dsh}/skills/ai-harness-scaffold" ;;
+    codex)  [ -n "$dest" ] || dest="${CODEX_HOME:-$HOME/.codex}/skills/ai-harness-scaffold" ;;
+    claude) [ -n "$dest" ] || dest="$HOME/.claude/skills/ai-harness-scaffold" ;;
+    *) die "未知技能宿主: $host（可选 dsh / codex / claude）" ;;
+  esac
   [ -f "$ROOT/skill/SKILL.md" ] || die "缺少 skill/SKILL.md"
-  if [ -d "$dest" ] && [ -f "$dest/.ai-harness-skill" ]; then rm -rf "$dest"; fi
-  mkdir -p "$dest"
-  cp -R "$ROOT/skill/." "$dest/"
-  cp -R "$ROOT/bin" "$ROOT/template" "$dest/"
-  find "$dest" -name '.dsh-ops-update-*.lock' -delete 2>/dev/null || true
-  cp "$ROOT/README.md" "$dest/README.md" 2>/dev/null || true
-  : > "$dest/.ai-harness-skill"
-  say "✅ 已安装 DSH skill: $dest"
-  say "   skill 入口: $dest/SKILL.md；CLI: bash \"$dest/bin/ai-harness\" help"
+  [ -L "$dest" ] && die "技能目录是符号链接，拒绝覆盖: $dest"
+  if [ -e "$dest" ]; then
+    [ -d "$dest" ] && [ -f "$dest/.ai-harness-skill" ] && [ ! -L "$dest/.ai-harness-skill" ] \
+      || die "技能目录已有非本工具管理的内容，拒绝覆盖: $dest"
+    grep -Fxq "host=$host" "$dest/.ai-harness-skill" \
+      && grep -Fxq "source=$ROOT" "$dest/.ai-harness-skill" \
+      || die "技能目录由其他宿主或来源管理，拒绝覆盖: $dest"
+    [ -L "$dest/SKILL.md" ] && die "技能入口是符号链接，拒绝覆盖: $dest/SKILL.md"
+    [ -e "$dest/SKILL.md" ] && [ ! -f "$dest/SKILL.md" ] \
+      && die "技能入口不是普通文件，拒绝覆盖: $dest/SKILL.md"
+    if [ "$host" = dsh ] && [ -n "$(find "$dest" -type l -print -quit)" ]; then
+      die "DSH 技能目录含符号链接，拒绝覆盖: $dest"
+    fi
+  fi
+  mkdir -p "$dest" || die "无法创建技能目录: $dest"
+  if [ "$host" = dsh ]; then
+    cp -R "$ROOT/skill/." "$dest/" || die "复制 DSH 技能正文失败: $dest"
+    cp -R "$ROOT/bin" "$ROOT/template" "$dest/" || die "复制 DSH CLI 或模板失败: $dest"
+    cp "$ROOT/README.md" "$dest/README.md" || die "复制 DSH README 失败: $dest"
+    printf 'host=dsh\nsource=%s\n' "$ROOT" > "$dest/.ai-harness-skill" || die "写入技能归属记录失败: $dest"
+    say "✅ 已安装 DSH skill: $dest"
+    say "   skill 入口: $dest/SKILL.md；CLI: bash \"$dest/bin/ai-harness\" help"
+    return 0
+  fi
+  local source_skill="$ROOT/skill/SKILL.md"
+  if command -v cygpath >/dev/null 2>&1; then
+    source_skill=$(cygpath -m "$source_skill") || die "无法转换共享技能路径"
+  fi
+  cat > "$dest/SKILL.md" <<EOF
+---
+name: ai-harness-scaffold
+description: 给已有项目渐进接入 ai-harness 跨 IDE 开发脚手架，或初始化新项目。用户说“把这个老项目接入脚手架”时使用。
+---
+
+# ai-harness-scaffold 薄入口
+
+共享技能唯一来源：$source_skill
+
+先读取上述共享技能，并以其所在仓库为脚手架来源；再按该技能处理用户当前指定的目标项目。若源文件不存在，停止并告知用户重新安装。本入口不复制接入流程或项目状态。
+EOF
+  [ $? -eq 0 ] || die "写入 $host 技能入口失败: $dest/SKILL.md"
+  printf 'host=%s\nsource=%s\n' "$host" "$ROOT" > "$dest/.ai-harness-skill" || die "写入技能归属记录失败: $dest"
+  say "✅ 已安装 $host 薄技能入口: $dest"
+  say "   共享流程: $source_skill"
 }
 
 case "${1:-help}" in

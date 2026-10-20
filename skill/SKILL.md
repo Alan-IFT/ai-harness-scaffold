@@ -1,90 +1,15 @@
 ---
 name: ai-harness-scaffold
-description: 用「跨工具防膨胀 AI 辅助开发脚手架」初始化新项目，或给已有老项目 retrofit 同一套规范（项目内需求入口、AGENTS.md、Spec 与 G1~G7 阶段门、影响面核对、增量验证、独立 CR、知识卡飞轮、交付反馈）。当用户说「按这个规范初始化项目」「给老项目接入这套 AI 开发流程」「用脚手架管理开发」时使用。AI 负责侦察仓库、判断模块边界与契约入口、编写项目规则与验证命令；文件复制可调用随附 CLI。
-version: 1.1.0
-user-invocable: true
+description: 给已有代码项目渐进接入 ai-harness 跨 IDE 开发脚手架，或初始化新项目。用户说“把这个老项目接入脚手架”“用这套规范管理开发”等话时使用；先摸底、保护原文件，再由 AI 完成安装和验证。
+version: 1.2.0
 ---
 
-# ai-harness-scaffold — 初始化 / 改造 / 体检
+# ai-harness-scaffold
 
-**主导者是你，不是脚本。** 用户说一句话（「用这套规范初始化 <dir>」或「把 <dir> 接进这套流程」），你负责侦察、判断、编写、验证；CLI 只是可选的「批量复制助手」，它的输出是**建议**，不是结论。
+以本技能文件定位共享仓库：若同目录有 `bin/ai-harness`，该目录就是仓库根；否则取本文件的上一级目录。确认 `bin/ai-harness` 和 `template/.agents/skills/retrofit-legacy.md` 存在；缺失时停止并报告路径，不凭记忆重建流程。
 
-老项目先读随附的 `template/.agents/skills/retrofit-legacy.md`，按试点模块渐进接入。目录结构复杂、规则或 CI 有冲突时先完成只读侦察并列出具体合并建议；只有产品语义、权限边界等必须由人决定的选择才暂停。目标目录有未提交改动时保留原状，先识别其归属。
+用户一句话指定老项目路径时，读取共享的 `template/.agents/skills/retrofit-legacy.md` 并执行其中的渐进接入；新项目则读仓库 `README.md` 的 init 流程。目标项目路径不明确时，先从当前项目上下文定位；只有多个候选且无法判定时才询问。
 
-## Step 0：接手前先把三个事实说给用户（30 秒）
+老项目先只读侦察 Git 状态、现有规则与 CI，再运行 `bash <仓库根>/bin/ai-harness retrofit <目标> --dry-run --no-git`。核对预演计划后由 AI 继续运行 `retrofit <目标> --skip-doctor --no-git`，逐项合并 `.ai-harness/suggested/`；只为一个真实试点模块写活文档、配置真实验证命令并运行体检。不要覆盖已有文件、清理未提交改动、补造历史 Spec，或把目录候选当作模块事实。
 
-1. **目标路径与模式**：空目录（或只有 `.git`）→ 新模式；已有代码/文档 → 接入模式。
-2. **技术栈与规模**：读 `README`、顶层目录、构建文件（package.json / pyproject.toml / go.mod / pom.xml / Cargo.toml）+ 顶层目录数量估算模块数；**不通读实现代码**。
-3. **已有同类文件**：`AGENTS.md` / `CLAUDE.md` / `docs/architecture/` / `.cursorignore` / 已有 CI 配置是否已存在——这决定了后面是合并不是覆盖。
-
-说清楚后直接开始，不需要用户再确认（除非命中上面「停下来」的条件）。
-
-## Step 1：拿到模板文件（两种方式，任选）
-
-- **方式 A（推荐用于标准项目）**：用 CLI 批量落盘，再按需修改
-  ```bash
-  bash "<skill-base-dir>/bin/ai-harness" version                      # 先确认可用
-  bash "<skill-base-dir>/bin/ai-harness" init <dir> --no-git         # 新项目
-  bash "<skill-base-dir>/bin/ai-harness" retrofit <dir> --skip-doctor # 老项目（永不覆盖）
-  ```
-  要看计划先加 `--dry-run`；**不要**对非空目录用 `init --force`。
-- **方式 B（复杂/非标准项目）**：直接读 `<skill-base-dir>/template/` 下的文件，按项目实际结构调整后再写。模板里这些是**机制文件**（必须落地）：`AGENTS.md`、`MEMORY.md`、`docs/INTAKE.md`、`scripts/*.sh`、`harness/redlines.conf`、`.agents/skills/*.md`、`docs/specs/_templates/*`；这些是**示例文件**（按需重建）：`docs/architecture/*`、`.knowledge/*`、`CLAUDE.md` / `.cursorrules` 等入口别名。
-
-无论哪种方式，CLI 输出都如实转述给用户（`+新增 / =同内容 / →冲突建议 / ↳managed block`）。
-
-## Step 2：合并而不是覆盖（判断工作）
-
-看 `<dir>/.ai-harness/suggested/` 与已有文件：
-
-- 已有 `AGENTS.md`：**不要整体替换**。只并入机制段落（门禁表 G1~G7、失败包络、红黄绿卡、验证口径、上下文分层），保留项目专属规则，并按目标项目 `harness/redlines.conf` 的 `AGENTS_MAX_LINES` 体检；超了就拆到 `docs/architecture/modules/`。
-- 已有 `harness/redlines.conf`：保留项目现有数值；核对模板脚本要求的配置键，缺键时由维护者按项目需要补齐，不能依赖脚本中的隐含默认值。`template/harness/redlines.conf` 只是新项目初始样本，不是所有项目共享的运行时配置。
-- 已有 `docs/architecture/00-INDEX.md`：把模板表格行并入既有表格，保留用户已有模块行；**老项目的索引不要被脚本生成的候选行污染**。
-- 已有 `.gitignore` / `.cursorignore`：用 managed block 追加，不重复追加。
-- 过时、重复、被取代的旧材料 → 移入 `docs/specs/archive/`（或项目既有归档目录），**不留两份真相**；删除前在汇报里列清单。
-- 合并完成后可删 `.ai-harness/suggested/` 中已处理完的文件并说明。
-
-## Step 3：把模块索引变成真的
-
-新项目先从 `template/docs/architecture/` 起步；老项目看 `retrofit` 生成的 `.ai-harness/suggested/module-candidates.md`，只为试点模块写活文档。你要做：
-
-1. 只读侦察：`README`、顶层目录、构建文件、CI 配置，确认模块边界；**不要**通读实现代码。
-2. 每个模块文档填：职责与边界、**对外公共契约入口**（只读，如 `index.ts` / `types.py` / 导出头文件）、核心数据结构、本模块专属红线。
-3. 不论候选模块有多少，都先完成一个试点；后续仅在变更触及时补文档，不生成空文档。
-4. 00-INDEX 的每一行都必须指向真实存在的模块文档与代码路径。
-5. 不确定的模块边界先列证据与建议；确实影响写权限或公共契约的待决选择再问用户。
-
-## Step 4：配真实 verify 命令
-
-新项目参考 `harness/verify.conf.example`；老项目看 `retrofit` 探测生成的 `harness/verify.conf` 的 `CUSTOM_CHECK`（可能为空）。核对它：
-
-- Node/TS：`npx --no-install tsc --noEmit` 或 eslint / vitest related；
-- Python：`ruff check "$TARGET_FILE"` 或 `pytest <对应测试>`；
-- Go：`gofmt -l "$TARGET_FILE" | (! grep .)` 或 `go vet <包>`；
-- 其它：写一条能在秒级内对该文件给出真实结论的命令。
-
-然后**实际验证一次**：有活跃 Spec 时挑一个源码文件跑 `bash scripts/ai-verify.sh --spec <feat> <file>`，确认 `docs/specs/active/<feat>/verification.md` 中 result 为 PASS 且 checks≥1。没有真实检查时脚本会失败，这是设计（未验证 ≠ 通过），不要用假命令绕过。
-
-## Step 5：空需求 Dry Run + 体检
-
-```bash
-cd <dir>
-bash scripts/harness-selftest.sh      # 门禁自检，应全绿
-bash scripts/ai-check-bloat.sh        # 🟢 Context Budget OK
-bash scripts/ai-gate.sh status        # 🔒 红线基线一致
-```
-
-再跑一条真实小需求验证流程可用：`bash scripts/ai-new-spec.sh feat-dryrun`，只填到能通过 `ai-gate.sh check feat-dryrun g1 g2` 为止（不要写业务代码），确认门禁会「该拒的拒、该过的过」，然后删掉该 spec 目录。
-
-## Step 6：汇报 + 交接
-
-给用户：① 模式（init/retrofit）与目标路径；② 新增/跳过/冲突数；③ 已确认的试点模块与仍待决的边界、验证命令或合并点；④ doctor 结果；⑤ 下一步建议。对已确认的机械步骤继续完成，不把候选目录当模块事实。
-
-若中途停下（信息不足 / 命中「停下来」条件），也要给出**已完成的哪几步 + 卡在哪 + 需要用户回答的具体问题**，让下次会话能直接接着做。
-
-## 硬约束
-
-- 不覆盖老项目已有文件；不改用户的业务代码；不自动 git push。
-- **CLI 只是工具**：它的判断（技术栈探测、模块候选、`ALLOWED_WRITE_DIRS`）在复杂项目里可能不准，以你的侦察结论为准，必要时手写替代。
-- 不把模板里的示例模块/示例红线留成「真相」——要么替换，要么归档。
-- `harness/redlines.conf` 只允许人类修改；你只能建议。
-- 归档优先于删除；确实要删时先说明影响。
+用户负责架构、权限和阈值等真正需要人的取舍；AI 负责运行命令、编写项目文档和验证。项目内 `AGENTS.md`、Spec、活文档与 Git 是后续 Claude Code / Codex 接力状态。最后报告已接入内容、实际验证、冲突处理及尚需决定的事项。
