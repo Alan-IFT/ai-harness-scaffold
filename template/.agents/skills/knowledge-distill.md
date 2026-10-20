@@ -19,10 +19,11 @@
 - **不重复**：`.knowledge/INDEX.md` 里已有同结论就更新旧卡的复核日期与置信度，不新建。
 
 ## Step 3: 写卡（`K-XXXX.md`，四位数递增）
-1. 复制 `@docs/specs/_templates/knowledge-card.md` 到 `.knowledge/cards/K-0001.md`。
+1. 复制 `docs/specs/_templates/knowledge-card.md` 到 `.knowledge/cards/K-0001.md`。
 2. 必填：类型、模块（与 `00-INDEX.md` 模块名一致）、置信度、创建日期、最近复核、**复核期限**（默认 `最近复核 + KNOWLEDGE_TTL_DAYS` 天，见 `harness/redlines.conf`）、标签。
 3. 置信度口径：真实验证过 0.8~1.0；有强证据的推断 0.5~0.7；未验证但值得记 0.4 以下，并标 `#待验证`。
 4. `statement` 写「触发条件 → 结论 → 证据来源」，2~5 行，不贴大段代码。
+5. 若结论依赖具体代码路径，填「关联路径」（逗号分隔）；代码改动后 `ai-knowledge.sh impact <path...>` 会提示复核。跨模块的通用结论不必硬填路径。
 
 ## Step 4: 登记索引
 在 `.knowledge/INDEX.md` 末尾加一行：`| K-0001 | 踩坑记录 | export | 0.7 | 2027-04-17 | 0 | 一句话结论 |`。
@@ -30,7 +31,7 @@
 
 ## Step 5: 验证与注入闭环
 1. `bash scripts/ai-knowledge.sh check` 必须通过（索引与卡片一一对应、字段合法）。
-2. 下一个 spec 的 `tasks.md` §1「注入知识」必须列出本卡 ID（或明确「无相关卡片」），G4 会校验引用真实存在。
+2. 下一个 spec 先用 `bash scripts/ai-knowledge.sh suggest <module>` 找候选，在 `tasks.md` §1 记录模块、候选与取舍；「注入知识」列出采用的 ID（或写「无相关卡片」）。G4 会校验引用存在、未过期且不标 `#待验证`。
 3. 被注入后如果 Agent 报告「与代码不符」，在卡上加 `#待验证` 并把置信度降 0.1；由 `gc-memory` 决定改写或删除。
 
 ## 反模式（出现即停手）

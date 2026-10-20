@@ -1,2 +1,5 @@
 .dsh-ops-update-*.lock
 .ai-harness/
+docs/specs/active/*/reports/
+docs/specs/active/*/.attempts
+harness/.redlines.baseline

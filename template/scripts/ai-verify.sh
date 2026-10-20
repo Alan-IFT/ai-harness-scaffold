@@ -3,23 +3,57 @@
 # ai-verify.sh — 增量极速验证（本地可信的最低门槛）
 # 设计原则：未验证 ≠ 通过。没有任何真实检查被执行时，本脚本必须失败。
 #
-# 用法：bash scripts/ai-verify.sh <file_path>
+# 用法：bash scripts/ai-verify.sh --spec <feature> <file_path>
+# 无活跃 Spec 时可只传文件；恰好一个活跃 Spec 时兼容旧用法。
 # 自动探测（工具已安装才跑）：ESLint / tsc / Vitest；ruff / pytest；go vet / go test
 # 自定义：harness/verify.conf 里写  CUSTOM_CHECK="<命令，可用 $TARGET_FILE>"
 # ==============================================================================
 set -u
 
+SPEC_NAME=""
+if [ "${1:-}" = "--spec" ]; then
+  SPEC_NAME="${2:-}"
+  shift 2
+  case "$SPEC_NAME" in ''|.|..|*[!A-Za-z0-9._-]*) echo "❌ 无效 Spec 名称: $SPEC_NAME" >&2; exit 1 ;; esac
+fi
 TARGET_FILE="${1:-}"
 if [ -z "$TARGET_FILE" ]; then
   echo "❌ 错误: 请指定要验证的文件路径！"
-  echo "👉 用法: bash scripts/ai-verify.sh <file_path>"
+  echo "👉 用法: bash scripts/ai-verify.sh --spec <feature> <file_path>"
   exit 1
 fi
-if [ ! -e "$TARGET_FILE" ]; then
+if [ ! -f "$TARGET_FILE" ]; then
   echo "❌ 错误: 文件不存在: $TARGET_FILE"
   exit 1
 fi
+case "$TARGET_FILE" in
+  /*|../*|*/../*|[A-Za-z]:/*|[A-Za-z]:\\*)
+    echo "❌ 请使用项目内的相对文件路径，确保验证摘要能跨工作区复用: $TARGET_FILE" >&2
+    exit 1 ;;
+esac
 export TARGET_FILE
+
+# 验证前确定归属，避免多任务时把结果写错 Spec。
+REPORT_DIR=""; SPEC_DIR=""
+if [ -n "$SPEC_NAME" ]; then
+  SPEC_DIR="docs/specs/active/$SPEC_NAME"
+  [ -d "$SPEC_DIR" ] || { echo "❌ 找不到活跃 Spec: $SPEC_NAME" >&2; exit 1; }
+elif [ -d docs/specs/active ]; then
+  count=0; only=""
+  while IFS= read -r d; do
+    [ -n "$d" ] || continue
+    count=$((count + 1)); only="$d"
+  done < <(find docs/specs/active -mindepth 1 -maxdepth 1 -type d 2>/dev/null)
+  if [ "$count" -gt 1 ]; then
+    echo "❌ 有 $count 个活跃 Spec，请显式指定 --spec <feature>" >&2
+    exit 1
+  fi
+  if [ "$count" -eq 1 ]; then
+    SPEC_DIR="$only"; SPEC_NAME="$(basename "$only")"
+    echo "ℹ️  已关联唯一活跃 Spec: $SPEC_NAME（建议显式传 --spec）"
+  fi
+fi
+[ -n "$SPEC_DIR" ] && REPORT_DIR="$SPEC_DIR/reports"
 
 # --- 红线预算（harness/redlines.conf 是唯一阈值来源）---
 VERIFY_MAX_SECONDS=120
@@ -73,7 +107,7 @@ if [ -f package.json ]; then
     has_dep typescript && [ -x node_modules/.bin/tsc ] \
       && run_check "TypeScript 增量类型检查" node_modules/.bin/tsc --noEmit --incremental
     has_dep vitest && [ -x node_modules/.bin/vitest ] \
-      && run_check "Vitest 关联单测" node_modules/.bin/vitest related "$TARGET_FILE" --run --passWithNoTests
+      && run_check "Vitest 关联单测" node_modules/.bin/vitest related "$TARGET_FILE" --run
   fi
 fi
 
@@ -119,22 +153,10 @@ if [ "$CHECKS" -eq 0 ]; then
   echo "   接入方式（任一）："
   echo "   1) 装好项目工具链后重跑（自动探测 ESLint/tsc/Vitest、ruff/pytest、go vet/test）"
   echo "   2) 在 harness/verify.conf 写：CUSTOM_CHECK=\"<你的命令，可用 \$TARGET_FILE>\""
-  rm -f "$LOG"
-  exit 1
+  FAIL=1
 fi
 
 RESULT=PASS; [ "$FAIL" -ne 0 ] && RESULT=FAIL
-
-# --- 关联唯一活跃 spec：报告与失败计数都落在这里 ---
-REPORT_DIR=""; SPEC_DIR=""
-if [ -d docs/specs/active ]; then
-  count=0; only=""
-  while IFS= read -r d; do
-    [ -n "$d" ] || continue
-    count=$((count + 1)); only="$d"
-  done < <(find docs/specs/active -mindepth 1 -maxdepth 1 -type d 2>/dev/null)
-  if [ "$count" -eq 1 ] && [ -n "$only" ]; then SPEC_DIR="$only"; REPORT_DIR="$only/reports"; fi
-fi
 
 if [ "$FAIL" -ne 0 ]; then
   echo ""
@@ -164,7 +186,7 @@ fi
 
 if [ -n "$REPORT_DIR" ]; then
   mkdir -p "$REPORT_DIR"
-  OUT="$REPORT_DIR/verify-$(date +%Y%m%d-%H%M%S).log"
+  OUT="$REPORT_DIR/verify-$(date +%Y%m%d-%H%M%S)-$$.log"
   {
     echo "# verify: ai-verify.sh"
     echo "# target: $TARGET_FILE"
@@ -173,8 +195,24 @@ if [ -n "$REPORT_DIR" ]; then
     redact <"$LOG"
   } >"$OUT"
   echo "📄 验证报告: $OUT"
+  STATE_ID=$(bash scripts/ai-state-id.sh "$TARGET_FILE") || { rm -f "$LOG"; exit 1; }
+  SUMMARY="$SPEC_DIR/verification.md"
+  {
+    echo "# 增量验证摘要（随项目文档和 Git 交接）"
+    echo ""
+    echo "- spec: $SPEC_NAME"
+    echo "- target: $TARGET_FILE"
+    echo "- result: $RESULT"
+    echo "- checks: $CHECKS"
+    echo "- state: $STATE_ID"
+    echo "- command: bash scripts/ai-verify.sh --spec $SPEC_NAME $TARGET_FILE"
+    echo "- verified_at_utc: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    echo ""
+    echo "详细输出仅在本地 reports/；代码或提交变化后重新验证。"
+  } >"$SUMMARY"
+  echo "📝 可交接摘要: $SUMMARY"
 else
-  echo "ℹ️  未关联到唯一活跃 spec，报告未落盘（不影响本次结论）"
+  echo "ℹ️  未关联活跃 Spec，本次验证不生成接力摘要"
 fi
 rm -f "$LOG"
 

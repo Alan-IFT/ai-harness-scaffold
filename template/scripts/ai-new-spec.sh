@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # ai-new-spec.sh — 从模板生成一整套新功能 Spec
-#   requirements.md / design.md / tasks.md / acceptance.md + reports/
+#   requirements.md / design.md / tasks.md / acceptance.md / verification.md + reports/
 # 用法：bash scripts/ai-new-spec.sh <feat-name>
 # ==============================================================================
 set -u
@@ -13,7 +13,7 @@ if [ -z "$FEAT_NAME" ]; then
   exit 1
 fi
 case "$FEAT_NAME" in
-  *[!A-Za-z0-9._-]*)
+  .|..|*[!A-Za-z0-9._-]*)
     echo "❌ 错误: 功能名只允许字母/数字/点/下划线/连字符: $FEAT_NAME"
     exit 1
     ;;
@@ -24,16 +24,17 @@ if [ -d "$TARGET_DIR" ]; then
   echo "⚠️  目录已存在，未覆盖: $TARGET_DIR"
   exit 1
 fi
-if [ ! -d docs/specs/_templates ]; then
-  echo "❌ 错误: 找不到 docs/specs/_templates/（请在仓库根目录运行）"
+TEMPLATE_DIR="${AI_HARNESS_TEMPLATE_DIR:-docs/specs/_templates}"
+if [ ! -d "$TEMPLATE_DIR" ]; then
+  echo "❌ 错误: 找不到 Spec 模板目录: $TEMPLATE_DIR（请在仓库根目录运行）"
   exit 1
 fi
 
 mkdir -p "$TARGET_DIR/reports"
 TODAY=$(date +%Y-%m-%d)
 
-for file in requirements.md design.md tasks.md acceptance.md; do
-  src="docs/specs/_templates/$file"
+for file in requirements.md design.md tasks.md acceptance.md verification.md; do
+  src="$TEMPLATE_DIR/$file"
   if [ ! -f "$src" ]; then
     echo "❌ 错误: 模板缺失: $src"
     exit 1
@@ -47,11 +48,12 @@ echo "✅ 已创建: $TARGET_DIR"
 echo "   - $TARGET_DIR/requirements.md  (含需求象限 + 可行性加权评分)"
 echo "   - $TARGET_DIR/design.md        (含 §0 模块关联)"
 echo "   - $TARGET_DIR/tasks.md         (含 §1 注入知识)"
-echo "   - $TARGET_DIR/acceptance.md    (G6 人工验收留痕)"
+echo "   - $TARGET_DIR/acceptance.md    (G6 核验证据与风险决定留痕)"
+echo "   - $TARGET_DIR/verification.md  (跨 IDE 可交接的验证摘要)"
 echo "   - $TARGET_DIR/reports/         (由 ai-verify.sh 自动写入验证报告)"
 echo ""
-echo "下一步（见 @.agents/skills/new-spec.md）："
-echo "1. 访谈式澄清需求：填 requirements.md 的 §0 四项必答 + 需求象限 + §6 可行性评分 + AC 表"
+echo "下一步（见 .agents/skills/new-spec.md）："
+echo "1. 保留原始问题；访谈式澄清 §0 四项必答、需求象限、①~③可行性评分与 AC 表；④转人工"
 echo "2. 写 design.md：先在 §0 选对模块（必须已在 00-INDEX 登记），再写依赖序/切片/检查点/文件清单/对抗自审"
 echo "3. 写 tasks.md：3~6 个原子任务 + 上下文清单（含注入知识）+ WIP 区"
-echo "4. bash scripts/ai-gate.sh check $FEAT_NAME g1  (然后 g2 / g3)；过门后停下等人工评审"
+echo "4. bash scripts/ai-gate.sh check $FEAT_NAME g1；①~③继续 g2/g3，②③编码前记录人的前置决策"

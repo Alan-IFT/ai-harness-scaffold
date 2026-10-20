@@ -6,13 +6,14 @@
 ```bash
 bash scripts/ai-check-bloat.sh     # AGENTS / MEMORY / active spec 体积
 bash scripts/ai-knowledge.sh check # 知识卡与索引是否一致
+bash scripts/ai-knowledge.sh impact <本次变更路径...> # 关联代码变更后提示复核
 bash scripts/ai-knowledge.sh ttl   # 列出生效的「清理候选」（复核期限已过）
 bash scripts/ai-gate.sh status     # 门禁 / 审计 / 红线基线
 ```
 
 ## Step 1: TTL 与证据复核（记忆会过期）
-逐条过 `@MEMORY.md` 与 `.knowledge/cards/*.md`，命中任一条就处理：
-- **复核日期过期**（MEMORY 默认 90 天；知识卡看「复核期限」）→ 重新验证；验证不了就删或标 `#待验证`。
+逐条过 `MEMORY.md` 与 `.knowledge/cards/*.md`，命中任一条就处理：
+- **复核日期过期**（MEMORY 默认 180 天；知识卡看「复核期限」）→ 重新验证；验证不了就删或标 `#待验证`。
 - **状态=待验证 且超过两周** → 要么验证，要么删；不许长期挂着"可能对"的结论。
 - **与代码冲突** → 以代码为准，删除或改写该条，并在能定位到来源 spec 的 WIP 里补一行 `knowledge_feedback`。
 - **置信度 <0.5 且无证据路径** → 删。
@@ -26,7 +27,7 @@ bash scripts/ai-gate.sh status     # 门禁 / 审计 / 红线基线
 - 长期引用次数为 0 的卡不是"坏卡"——但同类 5 条以上时合并成 1 条，保持信噪比。
 
 ## Step 2: 下沉为确定性检查（能写代码就不要写文档）
-扫描 `@MEMORY.md`、知识卡与模块文档里的"红线规则"：
+扫描 `MEMORY.md`、知识卡与模块文档里的"红线规则"：
 - 能由 ESLint / 类型约束 / 单测 / 架构测试拦截的，写规则、写测试。
 - **写完立刻从文档里删掉该条**——代码检查是 100% 确定性的守卫，不需要再花 Token 复述。
 

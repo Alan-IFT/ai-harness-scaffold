@@ -26,4 +26,4 @@ last_updated: 2026-10-19
 ## 4. 本模块专属红线 (Module-Specific Guardrails)
 1. 任何密码与密钥比对必须使用恒定时间比较函数（`crypto.timingSafeEqual`），防止时序攻击。
 2. 严禁在任何日志中打印明文 Token 或 `totp_secret`。
-3. 修改本模块任何文件后，必须运行：`bash scripts/ai-verify.sh <修改的文件路径>`。
+3. 修改本模块任何文件后，必须运行：`bash scripts/ai-verify.sh --spec <当前功能名> <修改的文件路径>`。

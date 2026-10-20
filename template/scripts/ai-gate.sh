@@ -12,7 +12,7 @@
 #   bash scripts/ai-gate.sh reset <feat> <gate> [--reason "why"]  # 回退：使该门及之后的门失效
 #
 # 约定：
-#   - <gate> 取 g1~g7；g6 是人工验收门，必须在交互终端（TTY）由人类执行。
+#   - <gate> 取 g1~g7；G6 的客观核验由 Agent 执行，②③另需人的明确决定及来源。
 #   - 门禁状态写在 <spec>/.gates，由本脚本维护；手改它不会让 check 通过。
 #   - 校验只是"最低机械门槛"，不能替代人工判断。
 # ==============================================================================
@@ -42,13 +42,20 @@ audit_ev() {   # $1=事件类型 $2=说明；写入 <spec>/.violations（随 spe
 gate_name() {
   case "$1" in
     g1) printf '需求澄清' ;; g2) printf '验收标准' ;; g3) printf '方案设计' ;;
-    g4) printf '实现完成' ;; g5) printf '独立CR'   ;; g6) printf '人工验收' ;;
+    g4) printf '实现完成' ;; g5) printf '独立CR'   ;; g6) printf '交付核验' ;;
     g7) printf '归档'     ;; *)  printf '%s' "$1" ;;
   esac
 }
 
+quadrant() { # 当前 Spec 的需求象限；只读取字段行，避免把说明文字当作决定
+  local line
+  line=$(grep -E '^[[:space:]]*-[[:space:]]*需求分级（象限）' "$DIR/requirements.md" 2>/dev/null | head -n 1)
+  printf '%s' "$line" | grep -oE '[①②③④]' | head -n 1
+}
+
 feat_dir() {          # active 优先，其次 archive/YYYY-MM/<feat>
   local f="$1" d
+  case "$f" in ''|.|..|*[!A-Za-z0-9._-]*) return 1 ;; esac
   [ -d "$SPEC_ROOT/active/$f" ] && { printf '%s' "$SPEC_ROOT/active/$f"; return 0; }
   d=$(find "$SPEC_ROOT/archive" -mindepth 2 -maxdepth 2 -type d -name "$f" 2>/dev/null | head -n 1)
   [ -n "$d" ] && { printf '%s' "$d"; return 0; }
@@ -112,11 +119,12 @@ ck_g1() {
     field_ok "$body" "$label" || missing="$missing $label"
   done
   [ -z "$missing" ] || { say "四项必答未填:$missing"; return 1; }
+  field_ok "$(cat "$f")" '原始问题 / 原话' || { say "原始问题 / 原话未填：保留提出者的表达或链接需求入口"; return 1; }
   if section_body "$f" "4." | grep -qE '^[[:space:]]*[-*][[:space:]]*\[ \]'; then
     say "待确认问题未清零（「## 4.」仍有未勾选项）"; return 1
   fi
   # 需求分级（象限）+ 可行性加权总分（需求侧质量前移）
-  local q total
+  local q total calculated score_error
   q=$(grep -E '需求分级' "$f" | head -n 1)
   [ -n "$q" ] || { say "requirements.md 缺少「需求分级（象限）」行（①~④ 之一 + 一句理由）"; return 1; }
   field_ok "$q" "需求分级（象限）" || { say "需求分级未填（①直接做 / ②人机协同·风险侧 / ③人机协同·复杂度侧 / ④暂不支持）"; return 1; }
@@ -125,10 +133,25 @@ ck_g1() {
     printf '%s' "$q" | grep -qE '人工接管|转人工|不进入' || { say "象限④（暂不支持）必须写明「人工接管 / 转人工 / 不进入 AI 流水线」"; return 1; } ;;
   esac
   field_ok "$(cat "$f")" "分级依据" || { say "分级依据未填：风险来自哪里、复杂度来自哪里"; return 1; }
-  total=$(grep -E '加权总分' "$f" | head -n 1 | sed -E 's/^[^：:]*[：:]//' | grep -oE '[0-9]+' | head -n 1)
-  [ -n "$total" ] || { say "requirements.md §6 缺少「加权总分」数字（0~100，≥60 才进入设计）"; return 1; }
-  [ "$total" -le 100 ] || { say "可行性加权总分不能超过 100（当前 $total）"; return 1; }
-  [ "$total" -ge "$FEASIBILITY_MIN" ] || { say "可行性加权总分 $total < $FEASIBILITY_MIN：先补需求、缩范围或拆小，不要硬做"; return 1; }
+  [ "$(quadrant)" = '④' ] && return 0 # ④完成分类与人工移交，不为进入开发凑可行性分
+  total=$(section_body "$f" "6." | sed 's/：/:/g' | sed -nE 's/^[[:space:]]*-[[:space:]]*加权总分:[[:space:]]*([0-9]+([.][0-9]+)?)[[:space:]]*\/[[:space:]]*100[[:space:]]*$/\1/p' | head -n 1)
+  [ -n "$total" ] || { say "requirements.md §6 缺少有效的「- 加权总分：N / 100」字段"; return 1; }
+  calculated=$(section_body "$f" "6." | awk -F'|' '
+    function trim(s) { gsub(/^[[:space:]]+|[[:space:]]+$/, "", s); return s }
+    /^\|/ {
+      name=trim($2); weight=trim($3); score=trim($4); points=trim($5)
+      if (name=="维度" || name ~ /^:/ || name ~ /合计/) next
+      n++
+      expected=(n<=2 ? 20 : n<=4 ? 15 : 10)
+      if (weight !~ /^[0-9]+$/ || weight+0 != expected || score !~ /^[0-9]+([.][0-9]+)?$/ || points !~ /^[0-9]+([.][0-9]+)?$/) bad=1
+      if (score+0 < 0 || score+0 > 10 || score+0 <= 3) bad=1
+      if ((points+0)-(weight*score/10) > 0.01 || (weight*score/10)-(points+0) > 0.01) bad=1
+      sum+=weight*score/10
+    }
+    END { if (n!=7 || bad) exit 1; printf "%.2f", sum }
+  ') || { say "可行性表必须有 7 个有效评分，权重/加权分需一致，且单项得分不得低于 4"; return 1; }
+  awk -v declared="$total" -v actual="$calculated" -v minimum="$FEASIBILITY_MIN" 'BEGIN { exit ((declared-actual > .01 || actual-declared > .01 || declared > 100 || declared < minimum) ? 1 : 0) }' \
+    || { say "可行性总分 $total 与表格计算值 $calculated 不符，或低于门槛 $FEASIBILITY_MIN"; return 1; }
   return 0
 }
 
@@ -145,17 +168,31 @@ ck_g2() {
 }
 
 ck_g3() {
-  local f="$DIR/design.md"
+  local f="$DIR/design.md" q steps
   [ -f "$f" ] || { say "缺少 $f"; return 1; }
   grep -q 'path/to/' "$f" && { say "design.md 仍是模板占位路径（path/to/...），先替换成真实文件"; return 1; }
-  need_items "$f" "2." 2 "实现顺序（按依赖图自底向上，至少 2 步）" || return 1
+  q=$(quadrant)
+  steps=2; [ "$q" = '①' ] && steps=1
+  need_items "$f" "2." "$steps" "实现顺序（①可单步，其余至少 2 步）" || return 1
   need_items "$f" "4." 2 "影响面与文件清单" || return 1
   need_items "$f" "5." 1 "对抗自审" || return 1
-  section_body "$f" "2." | grep -q '检查点' || { say "「实现顺序」里没写检查点（每 2~3 步一个）"; return 1; }
+  [ "$q" = '①' ] || section_body "$f" "2." | grep -q '检查点' || { say "「实现顺序」里没写检查点（每 2~3 步一个）"; return 1; }
+  local scope decision
+  scope=$(section_body "$f" "4.")
+  field_ok "$scope" '间接消费者 / 副作用' || { say "影响面缺少间接消费者 / 副作用（无也需写依据）"; return 1; }
+  field_ok "$scope" '检索依据' || { say "影响面缺少检索依据（搜索路径、符号或调用方）"; return 1; }
+  if [ "$q" = '②' ] || [ "$q" = '③' ]; then
+    decision=$(section_body "$f" "0.")
+    field_ok "$decision" '人工前置决策' || { say "象限$q 缺少人工前置决策"; return 1; }
+    printf '%s' "$decision" | grep -E '^[[:space:]]*-[[:space:]]*人工前置决策' | grep -qE '决策人.+结论' \
+      || { say "象限$q 前置决策须写决策人、取舍与结论"; return 1; }
+    printf '%s' "$decision" | grep -E '^[[:space:]]*-[[:space:]]*人工前置决策' | grep -qE '待确认|待定|待决|<[^>]+>|不适用' \
+      && { say "象限$q 前置决策仍是占位或未完成"; return 1; }
+  fi
   # 模块关联：引用的模块活文档必须存在且已在 00-INDEX 登记（选错模块 = 架构漂移）
   local mods m n=0
-  mods=$(section_body "$f" "0." | grep -oE '@docs/architecture/modules/[A-Za-z0-9._-]+\.md' | sort -u)
-  [ -n "$mods" ] || { say "design.md 缺少「## 0. 模块关联」或未填模块活文档（@docs/architecture/modules/<module>.md）"; return 1; }
+  mods=$(section_body "$f" "0." | grep -oE '@?docs/architecture/modules/[A-Za-z0-9._-]+\.md' | sort -u)
+  [ -n "$mods" ] || { say "design.md 缺少「## 0. 模块关联」或未填模块活文档（docs/architecture/modules/<module>.md）"; return 1; }
   for m in $mods; do
     m=${m#@}
     [ -f "$m" ] || { say "引用的模块活文档不存在：$m（先按 00-INDEX 选对或新建模块）"; return 1; }
@@ -170,7 +207,7 @@ ck_g3() {
 }
 
 ck_g4() {
-  local f="$DIR/tasks.md" open done latest
+  local f="$DIR/tasks.md" open done summary result chk target spec saved_state current_state
   [ -f "$f" ] || { say "缺少 $f"; return 1; }
   grep -q 'path/to/' "$f" && { say "tasks.md 仍含模板占位路径（path/to/...）"; return 1; }
   open=$(grep -cE '^[[:space:]]*[-*][[:space:]]*\[ \]' "$f" || true)
@@ -178,16 +215,25 @@ ck_g4() {
   open=$(printf '%s' "$open" | tr -d ' '); done=$(printf '%s' "$done" | tr -d ' ')
   [ "$open" -eq 0 ] || { say "还有 $open 个任务未完成"; return 1; }
   [ "$done" -ge 1 ] || { say "没有任何已完成任务"; return 1; }
-  latest=$(ls -1t "$DIR"/reports/verify-*.log 2>/dev/null | head -n 1)
-  [ -n "$latest" ] || { say "没有增量验证报告，先跑 bash scripts/ai-verify.sh <file>"; return 1; }
-  grep -q '^# result: PASS' "$latest" || { say "最近一次验证未通过：$latest"; return 1; }
-  grep -qE '^# verify:[[:space:]]*ai-verify\.sh' "$latest" || { say "最近报告不是 ai-verify.sh 产出的（手写报告不算验证）：$latest"; return 1; }
-  grep -qE '^# target:[[:space:]]*[^[:space:]]' "$latest" || { say "验证报告缺少 # target 行，无法认定验证对象：$latest"; return 1; }
-  local chk
-  chk=$(sed -nE 's/^# checks:[[:space:]]*([0-9]+).*/\1/p' "$latest" | head -n 1)
-  { [ -n "$chk" ] && [ "$chk" -ge 1 ]; } || { say "报告声称 0 项检查（未验证 ≠ 通过）：$latest"; return 1; }
+  summary="$DIR/verification.md"
+  [ -f "$summary" ] || { say "没有可交接验证摘要：先跑 bash scripts/ai-verify.sh --spec $FEAT <file>"; return 1; }
+  spec=$(sed -n 's/^- spec: //p' "$summary" | head -n 1)
+  target=$(sed -n 's/^- target: //p' "$summary" | head -n 1)
+  result=$(sed -n 's/^- result: //p' "$summary" | head -n 1)
+  chk=$(sed -n 's/^- checks: //p' "$summary" | head -n 1)
+  saved_state=$(sed -n 's/^- state: //p' "$summary" | head -n 1)
+  [ "$spec" = "$FEAT" ] || { say "验证摘要的 Spec 不匹配：$spec"; return 1; }
+  [ "$result" = PASS ] || { say "最近一次验证未通过：$summary"; return 1; }
+  case "$chk" in ''|*[!0-9]*) say "验证摘要的 checks 无效"; return 1 ;; esac
+  [ "$chk" -ge 1 ] || { say "验证摘要声称 0 项检查（未验证 ≠ 通过）"; return 1; }
+  [ -n "$target" ] && [ -f "$target" ] || { say "验证摘要缺少有效目标文件：$target"; return 1; }
+  [ -n "$saved_state" ] || { say "验证摘要缺少代码状态指纹"; return 1; }
+  current_state=$(bash scripts/ai-state-id.sh "$target") || return 1
+  [ "$saved_state" = "$current_state" ] || { say "验证摘要已过期：代码或提交在验证后变化，请重新运行 ai-verify.sh"; return 1; }
   # 前置强注入：§1 必须写明注入的知识卡（或「无相关卡片」），引用的卡必须真实存在
-  local inj ids id
+  local inj ids id card ttl today lookup
+  lookup=$(section_body "$f" "1.")
+  field_ok "$lookup" '知识检索' || { say "tasks.md §1 缺少知识检索依据（模块、候选与取舍）"; return 1; }
   inj=$(section_body "$f" "1." | grep -E '^[[:space:]]*[-*][[:space:]]*注入知识' | head -n 1)
   [ -n "$inj" ] || { say "tasks.md §1 缺少「注入知识」行（列 .knowledge 卡片 ID，或写「无相关卡片」）"; return 1; }
   case "$inj" in *'无相关卡片'*) ;;
@@ -196,6 +242,12 @@ ck_g4() {
     [ -n "$ids" ] || { say "「注入知识」既没写卡片 ID（K-xxxx）也没写「无相关卡片」"; return 1; }
     for id in $ids; do
       grep -qF "$id" .knowledge/INDEX.md 2>/dev/null || { say "注入的知识卡 $id 不在 .knowledge/INDEX.md 中（先按 knowledge-distill 建卡）"; return 1; }
+      card=".knowledge/cards/$id.md"
+      [ -f "$card" ] || { say "注入的知识卡 $id 文件不存在"; return 1; }
+      ttl=$(sed -nE 's/^[[:space:]]*-[[:space:]]*\*\*复核期限\*\*[[:space:]]*(：|:)[[:space:]]*([0-9]{4}-[0-9]{2}-[0-9]{2}).*/\2/p' "$card" | head -n 1)
+      today=$(date +%Y-%m-%d)
+      [ -n "$ttl" ] && [[ "$ttl" > "$today" || "$ttl" = "$today" ]] || { say "注入的知识卡 $id 已过复核期限或期限缺失"; return 1; }
+      grep -q '#待验证' "$card" && { say "注入的知识卡 $id 标记为待验证，先复核"; return 1; }
     done ;;
   esac
   return 0
@@ -203,7 +255,7 @@ ck_g4() {
 
 ck_g5() {
   local f="$DIR/review.md" nv rounds
-  [ -f "$f" ] || { say "缺少 review.md：用独立上下文执行 @.agents/skills/code-review.md 产出"; return 1; }
+  [ -f "$f" ] || { say "缺少 review.md：用独立上下文执行 .agents/skills/code-review.md 产出"; return 1; }
   nv=$(sed 's/：/:/g' <"$f")
   printf '%s\n' "$nv" | grep -q '^## 结论' || { say "review.md 缺少「## 结论」"; return 1; }
   printf '%s' "$nv" | grep -qE '关键问题.*:[[:space:]]*(0|无)' || { say "关键问题未清零（结论写「关键问题（必须修）：0」）"; return 1; }
@@ -221,27 +273,53 @@ ck_g5() {
 }
 
 ck_g6() {
-  local i g a="$DIR/acceptance.md" nv line val miss=""
+  local i g a="$DIR/acceptance.md" nv line val miss="" ac ac_ids
   for i in 1 2 3 4 5; do
     g="g$i"
     { [ -f "$DIR/.gates" ] && grep -qE "^$g[[:space:]]" "$DIR/.gates"; } || { say "前置门 $g 未通过"; return 1; }
   done
-  [ -n "$(ls -1t "$DIR"/reports/verify-*.log 2>/dev/null | head -n 1)" ] || { say "没有验证报告"; return 1; }
+  [ -f "$DIR/verification.md" ] || { say "没有可交接验证摘要"; return 1; }
+  ck_g4 || { say "G4 验证摘要已失效，先重新验证"; return 1; }
   [ -f "$DIR/review.md" ] || { say "没有 review.md"; return 1; }
-  # 人工验收必须留痕（acceptance.md），否则「人看过了」无法审计
-  [ -f "$a" ] || { say "缺少 acceptance.md：人工验收必须在磁盘留痕（模板 docs/specs/_templates/acceptance.md）"; return 1; }
+  # Agent 记录自己执行的客观核验；②③把人作出的决定与执行动作分开留痕。
+  [ -f "$a" ] || { say "缺少 acceptance.md：G6 核验与决策必须留痕"; return 1; }
   nv=$(sed 's/：/:/g' <"$a")
-  for label in 验收人 测试环境; do
+  for label in 核验执行者 测试环境; do
     line=$(printf '%s\n' "$nv" | grep -E "^[[:space:]]*[-*][[:space:]]*$label[[:space:]]*:" | head -n 1)
     val=$(printf '%s' "$line" | sed -E 's/^[^:]*:[[:space:]]*//; s/[[:space:]]+$//')
     case "$val" in ''|'<'*|'__'*) miss="$miss $label" ;; esac
   done
   [ -z "$miss" ] || { say "acceptance.md 未填:$miss"; return 1; }
-  printf '%s' "$nv" | grep -qE '冒烟或 E2E 证据:[[:space:]]*[^<[:space:]]' || { say "acceptance.md 缺少冒烟 / E2E 证据（客观信号，不是「人看过了」）"; return 1; }
-  for p in 'requirements\.md' 'design\.md' '重要代码' 'verify-'; do
-    grep -qE "^[[:space:]]*-[[:space:]]*\[[xX]\].*$p" "$a" || { say "acceptance.md 四类材料未全部勾选（缺 $p）"; return 1; }
-  done
+  line=$(printf '%s\n' "$nv" | grep -E '^[[:space:]]*[-*][[:space:]]*冒烟或 E2E 证据:' | head -n 1)
+  val=$(printf '%s' "$line" | sed -E 's/^[^:]*:[[:space:]]*//; s/[[:space:]]+$//')
+  case "$val" in ''|'<'*|*未执行*|*未检查*|*待填写*|*失败*|*不通过*) say "acceptance.md 缺少已通过的冒烟 / E2E 客观证据"; return 1 ;; esac
+  printf '%s' "$val" | grep -Eq '通过|PASS|成功|0 失败' || { say "acceptance.md 冒烟 / E2E 证据缺少通过结果"; return 1; }
+  line=$(printf '%s\n' "$nv" | grep -E '^[[:space:]]*[-*][[:space:]]*对照 AC 的检查结果:' | head -n 1)
+  val=$(printf '%s' "$line" | sed -E 's/^[^:]*:[[:space:]]*//; s/[[:space:]]+$//')
+  case "$val" in ''|'<'*|*未执行*|*未检查*|*待填写*|*失败*|*不通过*) say "acceptance.md 缺少已完成的 AC 核验摘要"; return 1 ;; esac
+  printf '%s' "$val" | grep -Eq '通过|PASS|成功' || { say "acceptance.md AC 核验摘要缺少通过结果"; return 1; }
+  ac_ids=$(awk -F'|' '{ id=$2; gsub(/^[ \t]+|[ \t]+$/, "", id); if (id ~ /^AC-[A-Za-z0-9_-]+$/) print id }' "$DIR/requirements.md" | sort -u)
+  [ -n "$ac_ids" ] || { say "requirements.md 缺少可逐项核验的 AC 编号"; return 1; }
+  while IFS= read -r ac; do
+    [ -n "$ac" ] || continue
+    line=$(printf '%s\n' "$nv" | grep -E "^[[:space:]]*[-*][[:space:]]*$ac:[[:space:]]*通过" | head -n 1)
+    [ -n "$line" ] || { say "acceptance.md 缺少 $ac 的通过证据"; return 1; }
+    case "$line" in *未执行*|*未检查*|*失败*|*不通过*) say "acceptance.md 的 $ac 仍有未通过项"; return 1 ;; esac
+  done <<<"$ac_ids"
   printf '%s' "$nv" | grep -qE '结论:[[:space:]]*通过' || { say "acceptance.md 判定未写「结论：通过」"; return 1; }
+  case "$(quadrant)" in
+    ②|③)
+      for label in 人工决策人 决策来源; do
+        line=$(printf '%s\n' "$nv" | grep -E "^[[:space:]]*[-*][[:space:]]*$label[[:space:]]*:" | head -n 1)
+        val=$(printf '%s' "$line" | sed -E 's/^[^:]*:[[:space:]]*//; s/[[:space:]]+$//')
+        case "$val" in ''|'<'*|'__'*) miss="$miss $label" ;; esac
+      done
+      [ -z "$miss" ] || { say "acceptance.md 未填:$miss"; return 1; }
+      printf '%s' "$nv" | grep -qE '人工决定:[[:space:]]*通过' || { say "象限②③需要人的明确通过决定，Agent 不能代作决定"; return 1; }
+      ;;
+    ①) ;;
+    *) say "G6 缺少有效需求象限"; return 1 ;;
+  esac
   return 0
 }
 
@@ -253,6 +331,9 @@ ck_g7() {
 }
 
 check_gate() {
+  if [ "$1" != g1 ] && [ "$(quadrant)" = '④' ]; then
+    say "象限④只做分析与人工移交，不进入 G2~G7 自动开发流程"; return 1
+  fi
   case "$1" in
     g1) ck_g1 ;; g2) ck_g2 ;; g3) ck_g3 ;; g4) ck_g4 ;;
     g5) ck_g5 ;; g6) ck_g6 ;; g7) ck_g7 ;;
@@ -309,12 +390,8 @@ cmd_pass() {
   done
   case " g1 g2 g3 g4 g5 g6 g7 " in *" $gate "*) ;; *) die "未知门 $gate（可选 g1~g7）" ;; esac
   DIR=$(feat_dir "$FEAT") || die "找不到 spec: $FEAT（先 bash scripts/ai-new-spec.sh $FEAT）"
-  if [ "$gate" = "g6" ] && [ "$by" != "human" ]; then
-    audit_ev "g6-denied" "agent 尝试推进人工验收门"
-    die "G6 是人工验收门，必须由人类执行：bash scripts/ai-gate.sh pass $FEAT g6 --by human"
-  fi
   if [ "$by" = "human" ] && [ ! -t 0 ]; then
-    die "人工门需要在交互终端（TTY）执行，当前环境无法确认真人操作"
+    die "人工门需要在交互终端（TTY）执行；此检查只防误操作，不提供身份认证"
   fi
   guard_redlines || exit 1
   local n i
@@ -379,6 +456,10 @@ render_spec() {
   if [ -f "$DIR/.violations" ]; then
     say "   🧾 审计事件：$(wc -l <"$DIR/.violations" | tr -d ' ') 条（$DIR/.violations）"
   fi
+  if [ "$(quadrant)" = '④' ] && [ -f "$DIR/.gates" ] && grep -qE '^g1[[:space:]]' "$DIR/.gates"; then
+    say "   ↪ 已分类为④：记录人工移交，在 docs/INTAKE.md 留决定并将 Spec 移入 archive；不进入 G2~G7。"
+    return 0
+  fi
   [ -z "$next" ] && { say "   🎉 全部门已通过，可收尾归档。"; return 0; }
   if out=$(check_gate "$next" 2>&1); then
     say "   下一门：$next（$(gate_name "$next")）"
@@ -412,7 +493,7 @@ cmd_status() {
 
 cmd_baseline() {
   [ -f "$REDLINES" ] || die "找不到 $REDLINES"
-  [ -t 0 ] || die "红线基线只能由人类在交互终端（TTY）确认；当前环境无法确认真人操作"
+  [ -t 0 ] || die "红线基线需要在交互终端（TTY）确认；此检查只防误操作，不提供身份认证"
   sha "$REDLINES" > "$BASELINE"
   ok "已记录红线基线：$(sha "$REDLINES" | cut -c1-12)…"
   say "   含义：确认「harness/redlines.conf 的本次变更是人类有意为之」。"

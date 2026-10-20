@@ -5,6 +5,12 @@
 # ==============================================================================
 set -u
 
+FEATURE="${1:-}"
+case "$FEATURE" in .|..|*[!A-Za-z0-9._-]*) echo "❌ 无效功能名；仅允许字母、数字、点、下划线和连字符" >&2; exit 1 ;; esac
+if [ -n "$FEATURE" ] && [ ! -d "docs/specs/active/$FEATURE" ]; then
+  echo "❌ 找不到活跃 Spec: $FEATURE" >&2; exit 1
+fi
+
 echo "=="
 echo "🔄 AI HARNESS: CROSS-TOOL HANDOFF & RESUME SNAPSHOT (跨工具接力快照)"
 echo "=="
@@ -16,7 +22,7 @@ bash scripts/ai-check-bloat.sh || true
 # 1. 阶段门（下一门 + 阻断原因 + 红线基线）
 echo -e "\n[1] 阶段门状态"
 if [ -f scripts/ai-gate.sh ]; then
-  bash scripts/ai-gate.sh status || true
+  bash scripts/ai-gate.sh status "$FEATURE" || true
 else
   echo "  (缺少 scripts/ai-gate.sh)"
 fi
@@ -27,6 +33,7 @@ if [ -d docs/specs/active ]; then
   found=0
   for spec in docs/specs/active/*/; do
     [ -d "$spec" ] || continue
+    [ -z "$FEATURE" ] || [ "$(basename "$spec")" = "$FEATURE" ] || continue
     found=1
     spec=${spec%/}
     echo "  📂 $spec"
@@ -34,12 +41,17 @@ if [ -d docs/specs/active ]; then
       echo "  --- 当前未完成任务 ---"
       grep -E '^- \[ \]|<<< CURRENT' "$spec/tasks.md" | head -n 4 || true
       echo "  --- WIP 交接区（上一位 Agent 留下的）---"
-      sed -n '/Current WIP/,$p' "$spec/tasks.md" | head -n 20 || true
+      sed -n '/^## 4\./,$p' "$spec/tasks.md" || true
     fi
-    latest=$(ls -1t "$spec"/reports/verify-*.log 2>/dev/null | head -n 1)
-    if [ -n "$latest" ]; then
-      echo "  --- 上次增量验证 ---"
-      grep -E '^# (result|verify|target|checks)' "$latest" 2>/dev/null | sed 's/^/  /' || true
+    if [ -f "$spec/verification.md" ]; then
+      echo "  --- 可交接验证摘要 ---"
+      grep -E '^- (spec|target|result|checks|state|command|verified_at_utc):' "$spec/verification.md" | sed 's/^/  /' || true
+      target=$(sed -n 's/^- target: //p' "$spec/verification.md" | head -n 1)
+      saved=$(sed -n 's/^- state: //p' "$spec/verification.md" | head -n 1)
+      if [ -f "$target" ] && [ -n "$saved" ]; then
+        current=$(bash scripts/ai-state-id.sh "$target" 2>/dev/null || true)
+        [ "$current" = "$saved" ] || echo "  ⚠️  验证摘要已过期：代码或提交在验证后变化"
+      fi
     fi
     if [ -f "$spec/.attempts" ]; then
       echo "  🟡 连续验证失败：$(tr -dc '0-9' <"$spec/.attempts") 次（触顶必须停下等人）"
@@ -73,6 +85,7 @@ else
 fi
 for spec in docs/specs/active/*/; do
   [ -f "$spec/tasks.md" ] || continue
+  [ -z "$FEATURE" ] || [ "$(basename "$spec")" = "$FEATURE" ] || continue
   inj=$(grep -E '注入知识' "$spec/tasks.md" | head -n 1 || true)
   [ -n "$inj" ] && echo "  ${spec%/} → $inj"
 done
@@ -82,7 +95,7 @@ echo "=="
 echo "💡 [给当前 AI Agent 的接力指令]"
 echo "1. 先看 [1] 的「下一门」：门禁未过，不要开始编码。"
 echo "2. 有未提交改动 → 先 git diff 看懂上一步；结合 [2] 的 WIP 区继续，严禁推倒重写已通过验证的代码。"
-echo "3. 按任务的代码路径读 @docs/architecture/00-INDEX.md，只加载命中的那 1 篇模块活文档。"
-echo "4. 本地只跑 bash scripts/ai-verify.sh <file>；全量测试交给 CI，不要把全量输出拉进上下文。"
+echo "3. 按任务的代码路径读 docs/architecture/00-INDEX.md 和相关模块活文档。"
+echo "4. 本地跑 bash scripts/ai-verify.sh --spec <feat> <file>；摘要写入 verification.md，详细日志留本机。"
 echo "5. G6 是人工验收门：到点就停下等人，不要自己 pass。"
 echo "=="

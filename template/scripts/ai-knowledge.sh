@@ -9,6 +9,8 @@
 #   bash scripts/ai-knowledge.sh check   # 索引与卡片一一对应、字段合法（异常 exit 1）
 #   bash scripts/ai-knowledge.sh ttl     # 列出复核期限已过的「清理候选」（只提醒，不失败）
 #   bash scripts/ai-knowledge.sh list    # 列出全部卡片
+#   bash scripts/ai-knowledge.sh suggest <module> # 列出该模块仍有效的候选卡，人工判断相关性
+#   bash scripts/ai-knowledge.sh impact <path...> # 代码路径变化后提示关联卡片复核
 # 阈值：保鲜天数来自 harness/redlines.conf 的 KNOWLEDGE_TTL_DAYS。
 # ==============================================================================
 set -u
@@ -89,13 +91,60 @@ cmd_list() {
   done
 }
 
+card_current() { # $1=文件；有效期内且未标待验证
+  local ttl today
+  ttl=$(field "$1" 复核期限); today=$(date +%Y-%m-%d)
+  [ -n "$ttl" ] && [[ "$ttl" > "$today" || "$ttl" = "$today" ]] && ! grep -q '#待验证' "$1"
+}
+
+cmd_suggest() { # 按模块给候选，不声称关键词相似就是相关
+  local module="${1:-}" f id n=0
+  [ -n "$module" ] || die "用法：ai-knowledge.sh suggest <module>"
+  say "== $module 模块可复核的知识候选 =="
+  for f in "$CARDS"/K-*.md; do
+    [ -f "$f" ] || continue
+    [ "$(field "$f" 模块)" = "$module" ] || continue
+    card_current "$f" || continue
+    id=$(basename "$f" .md)
+    printf '  %s  %s\n' "$id" "$(head -n 1 "$f" | sed 's/^# //')"
+    n=$((n+1))
+  done
+  [ "$n" -gt 0 ] || say "  无有效候选；仍须检查模块活文档和真实代码"
+}
+
+cmd_impact() { # 关联路径是提醒线索，不代替代码影响分析
+  [ "$#" -gt 0 ] || die "用法：ai-knowledge.sh impact <changed-path...>"
+  local f id paths prefix changed hit n=0
+  for f in "$CARDS"/K-*.md; do
+    [ -f "$f" ] || continue
+    paths=$(field "$f" 关联路径)
+    [ -n "$paths" ] || continue
+    hit=0
+    while IFS= read -r prefix; do
+      prefix=$(printf '%s' "$prefix" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//; s#/$##')
+      [ -n "$prefix" ] || continue
+      for changed in "$@"; do
+        case "$changed" in "$prefix"|"$prefix"/*) hit=1 ;; esac
+      done
+    done < <(printf '%s\n' "$paths" | tr ',' '\n')
+    if [ "$hit" -eq 1 ]; then
+      id=$(basename "$f" .md)
+      say "  ⚠️  $id 关联路径命中，使用前复核：$paths"
+      n=$((n+1))
+    fi
+  done
+  [ "$n" -gt 0 ] || say "无关联路径命中；仍需人工检查间接消费者"
+}
+
 main() {
   case "${1:-}" in
     check) cmd_check ;;
     ttl)   cmd_ttl ;;
     list)  cmd_list ;;
+    suggest) shift; cmd_suggest "$@" ;;
+    impact) shift; cmd_impact "$@" ;;
     ""|-h|--help|help) sed -n '3,17p' "$0" | sed 's/^# \{0,1\}//' ;;
-    *) die "未知命令 $1（可用：check / ttl / list）" ;;
+    *) die "未知命令 $1（可用：check / ttl / list / suggest / impact）" ;;
   esac
 }
 

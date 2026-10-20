@@ -22,7 +22,7 @@ check_lines() {
   lines=$(wc -l <"$file" | tr -d ' ')
   if [ "$lines" -gt "$limit" ]; then
     echo "⚠️  [防膨胀告警] $file 当前 $lines 行，超过硬上限 $limit 行。"
-    echo "    处理：先按 @.agents/skills/gc-memory.md 做减法；确需放宽先改 harness/redlines.conf 并重跑 baseline。"
+    echo "    处理：先按 .agents/skills/gc-memory.md 做减法；确需放宽先改 harness/redlines.conf 并重跑 baseline。"
     STATUS=1
   fi
 }
@@ -34,7 +34,7 @@ if [ -d docs/specs/active ]; then
   ACTIVE_COUNT=$(find docs/specs/active -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
   if [ "$ACTIVE_COUNT" -gt "$ACTIVE_SPECS_LIMIT" ]; then
     echo "⚠️  [防膨胀告警] docs/specs/active/ 积压 $ACTIVE_COUNT 个功能未归档（上限 $ACTIVE_SPECS_LIMIT）。"
-    echo "    处理：按 @.agents/skills/archive-spec.md 归档已完成功能。"
+    echo "    处理：按 .agents/skills/archive-spec.md 归档已完成功能。"
     STATUS=1
   fi
 fi

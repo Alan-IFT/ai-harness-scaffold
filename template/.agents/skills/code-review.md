@@ -1,13 +1,13 @@
 # Skill: 独立代码审查 (Independent Code Review — 运动员与裁判分离)
 
-**触发时机**：G4 实现完成后、G6 人工验收前（每个 feature 至少 1 次）；或对任意一段准备合入的 diff 做审查。
+**触发时机**：G4 实现完成后、G6 交付核验前（每个 feature 至少 1 次）；或对任意一段准备合入的 diff 做审查。
 **核心原则**：写代码的上下文不审查自己的代码。审查者只拿"产物 + 契约 + 验收标准"，不拿实现者的自述。
 
 ## Step 0: 只准备这四类输入（不要多给）
 1. `requirements.md` 的验收标准（AC 表）与 `design.md` 的文件清单、实现顺序。
 2. 本次 diff（`git diff <base>...HEAD` 或 `git diff` 的工作区改动）+ 变更文件全文。
 3. 被调用模块的公共契约（`index.ts` / `types.ts` / 接口定义），**不读**其内部实现。
-4. 验证报告摘要（`reports/verify-*.log` 的 result 与失败片段），**不读**全量测试输出。
+4. 当前 Spec 的 `verification.md`；若在同一工作区且需要诊断，再读本地 `reports/` 的失败片段，**不读**全量测试输出。
 
 **明确不提供给审查者的**：实现者的解释、自我评价、"已完成"的承诺、以及"这次改动很小"之类的前提。
 
@@ -67,7 +67,7 @@
 | UID 取自登录态 | ✅ / ❌ / 不适用 | `文件:行` |
 
 ## 验证证据（只放命令与结果摘要，不贴全文）
-- `bash scripts/ai-verify.sh <file>` → result / 失败摘要
+- `bash scripts/ai-verify.sh --spec <feat> <file>` → `verification.md` 的 result / checks / state
 ```
 
 ## Step 4: 审查者的纪律

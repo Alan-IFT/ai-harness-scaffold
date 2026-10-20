@@ -1,0 +1,4 @@
+reset	2026-10-20T10:18:03Z	feat-flow-closure	回退 g1 及之后（移除 3 条）：更新原始问题与影响面
+reset	2026-10-20T10:23:28Z	feat-flow-closure	回退 g4 及之后（移除 1 条）：象限④收尾路径与自检补充
+reset	2026-10-20T14:35:39Z	feat-flow-closure	回退 g1 及之后（移除 5 条）：用户调整G6分工：交互确认风险决策，Agent执行验证与记录
+reset	2026-10-20T14:49:11Z	feat-flow-closure	回退 g3 及之后（移除 2 条）：修复提交前后G4状态指纹与归档循环
