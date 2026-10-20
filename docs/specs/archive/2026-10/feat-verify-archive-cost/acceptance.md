@@ -8,22 +8,22 @@
 - 核验执行者：Codex Agent
 - 核验时间：2026-10-20
 - 测试环境：Windows，本仓库工作区，PowerShell 调用 Git Bash
-- 冒烟或 E2E 证据：`bash scripts/ai-verify.sh --spec feat-verify-archive-cost template/scripts/ai-verify.sh` → PASS，完整自检 126/126、失败 0、145 秒；`bash scripts/ai-gate.sh check feat-verify-archive-cost g4` 与 `g5` 均通过；`bash scripts/ai-gate.sh status feat-delivery-speed` 返回已归档目录和 G1～G7 全通过。详细本机日志见 `reports/verify-20261020-103949-1012.log`。
+- 冒烟或 E2E 证据：`bash scripts/ai-verify.sh --spec feat-verify-archive-cost template/scripts/ai-verify.sh` → PASS，完整自检 126/126、145 秒；`bash scripts/ai-gate.sh check feat-verify-archive-cost g4` 与 `g5` 均通过；`bash scripts/ai-gate.sh status feat-delivery-speed` 返回已归档目录和 G1～G7 全通过。详细本机日志见 `reports/verify-20261020-103949-1012.log`。
 
 ## 1. 核验摘要
 - 对照 AC 的检查结果：AC-01～AC-04 逐项通过；依据如下。
 - AC-01：通过；同一 Windows + Git Bash 环境各一次分段计时，基线约 140 秒/121 项，G6 顺序试验约 139 秒/123 项；样本及断言数不同，不能认定净提速。试验代码与反例已撤回，结论及限制写在 design.md 和 verification.md。
-- AC-02：通过；最终正式自检 126/126、失败 0，包含原 121 项与 5 项新边界断言；`harness/redlines.conf` 的 120 秒提醒线未修改。145 秒触发提醒但门禁 PASS。
+- AC-02：通过；最终正式自检 126/126，包含原 121 项与 5 项新边界断言；`harness/redlines.conf` 的 120 秒提醒线未修改。145 秒触发提醒但门禁 PASS。
 - AC-03：通过；模板与本仓库 `docs/INTAKE.md` 只存稳定 ID；`ai-new-spec.sh` 拒绝重用已归档 ID；归档指南将知识卡、路线图等非流程文件前移到最后正式 G4 前，正式验证拒绝流程目标。已归档 `feat-delivery-speed` 以 ID 查询到 `docs/specs/archive/2026-10/feat-delivery-speed` 与完整门状态。
 - AC-04：通过；根脚本仍为薄转发，`ai-gate.sh` 的 G4/G5 检查通过，完整自检兼容原有 121 项和新增负例；本 Spec 的摘要状态与当前代码一致。
-- 需人判断的风险 / 遗留：完整自检没有可靠净提速，最终 145 秒仍超过 120 秒提醒线；改进的是归档时正常路径无需因入口、知识卡、路线图或流程目标变化而重跑正式验证。已有手工重复 ID 未自动修复。请判断是否接受本次结果。
+- 需人判断的风险 / 遗留：完整自检没有可靠净提速，最终 145 秒仍超过 120 秒提醒线；改进的是归档时正常路径无需因入口、知识卡、路线图或流程目标变化而重跑正式验证。已有手工重复 ID 未自动修复。维护者 已知悉并接受本次结果。
 
 ## 2. 决策与结论
 - 验收方式：当次人工决定
-- 人工决策人：维护者（待决定）
-- 人工决定：待决定
-- 决策来源：待本会话当次结果决定
-- 结论：待决定
+- 人工决策人：维护者
+- 人工决定：通过
+- 决策来源：本会话 2026-10-20；维护者 回复「接受，G6 通过（推荐）」。Agent 记录，维护者 未执行命令或填写文档。
+- 结论：通过
 - 遗留 / 后续：完整自检成本仍需未来另立性能任务，有更多同口径样本后再考虑并发或减少进程启动；本 Spec 不调高提醒线。
 
 ## 3. 交付与回访（可在发布后补记）
