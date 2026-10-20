@@ -9,6 +9,7 @@
 #   bash scripts/ai-gate.sh check <feat> <gate>            # 只校验，不推进
 #   bash scripts/ai-gate.sh pass  <feat> <gate> [--by human]   # 校验通过后记录
 #   bash scripts/ai-gate.sh baseline                       # 人类确认红线后记录基线
+#   bash scripts/ai-gate.sh reset <feat> <gate> [--reason "why"]  # 回退：使该门及之后的门失效
 #
 # 约定：
 #   - <gate> 取 g1~g7；g6 是人工验收门，必须在交互终端（TTY）由人类执行。
@@ -26,6 +27,11 @@ DIR=""
 say() { printf '%s\n' "$*"; }
 die() { printf '❌ %s\n' "$*" >&2; exit 1; }
 ok()  { printf '✅ %s\n' "$*"; }
+
+audit_ev() {   # $1=事件类型 $2=说明；写入 <spec>/.violations（随 spec 入库的审计流水）
+  [ -n "${DIR:-}" ] && [ -d "$DIR" ] || return 0
+  printf '%s\t%s\t%s\t%s\n' "$1" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${FEAT:-?}" "${2:-}" >>"$DIR/.violations"
+}
 
 gate_name() {
   case "$1" in
@@ -139,6 +145,11 @@ ck_g4() {
   latest=$(ls -1t "$DIR"/reports/verify-*.log 2>/dev/null | head -n 1)
   [ -n "$latest" ] || { say "没有增量验证报告，先跑 bash scripts/ai-verify.sh <file>"; return 1; }
   grep -q '^# result: PASS' "$latest" || { say "最近一次验证未通过：$latest"; return 1; }
+  grep -qE '^# verify:[[:space:]]*ai-verify\.sh' "$latest" || { say "最近报告不是 ai-verify.sh 产出的（手写报告不算验证）：$latest"; return 1; }
+  grep -qE '^# target:[[:space:]]*[^[:space:]]' "$latest" || { say "验证报告缺少 # target 行，无法认定验证对象：$latest"; return 1; }
+  local chk
+  chk=$(sed -nE 's/^# checks:[[:space:]]*([0-9]+).*/\1/p' "$latest" | head -n 1)
+  { [ -n "$chk" ] && [ "$chk" -ge 1 ]; } || { say "报告声称 0 项检查（未验证 ≠ 通过）：$latest"; return 1; }
   return 0
 }
 
@@ -147,6 +158,9 @@ ck_g5() {
   [ -f "$f" ] || { say "缺少 review.md：用独立上下文执行 @.agents/skills/code-review.md 产出"; return 1; }
   grep -q '^## 结论' "$f" || { say "review.md 缺少「## 结论」"; return 1; }
   grep -qE '关键问题.*[：:][[:space:]]*(0|无)' "$f" || { say "关键问题未清零（结论写「关键问题（必须修）：0」）"; return 1; }
+  grep -q '审查者' "$f" || { say "review.md 缺少「审查者」署名（独立上下文标识）"; return 1; }
+  grep -q '审查者.*<独立上下文标识' "$f" && { say "review.md 的「审查者」仍是模板占位（去掉 <...> 填真实上下文标识）"; return 1; }
+  grep -qE '未参与实现.*[：:][[:space:]]*(是|yes)' "$f" || { say "review.md 未声明「未参与实现：是」（自己审自己不留痕 = 未审查）"; return 1; }
   { grep -q '判定' "$f" && grep -q '通过' "$f"; } || { say "review.md 判定未写「通过」"; return 1; }
   grep -qE '^[[:space:]]*[-*][[:space:]]*\[ \]' "$f" && { say "review.md 仍有未勾选项"; return 1; }
   return 0
@@ -196,7 +210,7 @@ ensure_baseline() {
 guard_redlines() {
   case "$(redline_state)" in
     drift)
-      say "🚫 红线配置已变更（harness/redlines.conf 与基线不符）。"
+      say "🚫 红线配置已变更（漂移）（harness/redlines.conf 与基线不符）。"
       say "   若确属人类有意修改，请在交互终端执行：bash scripts/ai-gate.sh baseline"
       return 1 ;;
     unbaselined) ensure_baseline ;;
@@ -228,6 +242,7 @@ cmd_pass() {
   case " g1 g2 g3 g4 g5 g6 g7 " in *" $gate "*) ;; *) die "未知门 $gate（可选 g1~g7）" ;; esac
   DIR=$(feat_dir "$FEAT") || die "找不到 spec: $FEAT（先 bash scripts/ai-new-spec.sh $FEAT）"
   if [ "$gate" = "g6" ] && [ "$by" != "human" ]; then
+    audit_ev "g6-denied" "agent 尝试推进人工验收门"
     die "G6 是人工验收门，必须由人类执行：bash scripts/ai-gate.sh pass $FEAT g6 --by human"
   fi
   if [ "$by" = "human" ] && [ ! -t 0 ]; then
@@ -238,13 +253,43 @@ cmd_pass() {
   n=${gate#g}; i=1
   while [ "$i" -lt "$n" ]; do
     if ! { [ -f "$DIR/.gates" ] && grep -qE "^g$i[[:space:]]" "$DIR/.gates"; }; then
-      if [ "$force" -eq 1 ]; then say "⚠️  --force：跳过未通过的前置门 g$i"; else die "前置门 g$i 未通过（先 pass g$i）"; fi
+      if [ "$force" -eq 1 ]; then
+        say "⚠️  --force：跳过未通过的前置门 g$i（已记入 .violations 审计）"
+        audit_ev "force-skip" "跳过未通过的前置门 g$i"
+      else
+        die "前置门 g$i 未通过（先 pass g$i）"
+      fi
     fi
     i=$((i+1))
   done
   if ! check_gate "$gate" >/dev/null 2>&1; then check_gate "$gate"; die "门禁校验未通过，拒绝推进 $gate"; fi
   printf '%s\t%s\t%s\n' "$gate" "$by" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$DIR/.gates"
   ok "$FEAT 已通过 $gate（$(gate_name "$gate")，by $by）"
+  say "   下一步：bash scripts/ai-gate.sh status $FEAT"
+}
+
+cmd_reset() {   # 回退：使 <gate> 及之后的门失效（需求/设计变更、代码回滚后必须执行）
+  [ $# -ge 2 ] || die "用法：ai-gate.sh reset <feat> <gate> [--reason \"why\"]"
+  FEAT="$1"; local gate; gate=$(printf '%s' "$2" | tr 'A-Z' 'a-z'); shift 2
+  local reason=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --reason) reason="${2:-}"; shift 2 ;;
+      *) die "未知参数 $1" ;;
+    esac
+  done
+  case " g1 g2 g3 g4 g5 g6 g7 " in *" $gate "*) ;; *) die "未知门 $gate（可选 g1~g7）" ;; esac
+  DIR=$(feat_dir "$FEAT") || die "找不到 spec: $FEAT"
+  [ -f "$DIR/.gates" ] || die "$FEAT 没有任何门记录，无需回退"
+  local n removed
+  n=${gate#g}
+  removed=$(awk -F'\t' -v n="$n" '$1 ~ /^g[0-9]+$/ && substr($1,2)+0 >= n' "$DIR/.gates" | wc -l | tr -d ' ')
+  [ "$removed" -gt 0 ] || die "$FEAT 的 $gate 及之后没有已通过的门记录（无需回退）"
+  awk -F'\t' -v n="$n" '$1 !~ /^g[0-9]+$/ || substr($1,2)+0 < n' "$DIR/.gates" > "$DIR/.gates.tmp"
+  mv "$DIR/.gates.tmp" "$DIR/.gates"
+  audit_ev "reset" "回退 $gate 及之后（移除 $removed 条）：${reason:-未说明原因}"
+  ok "$FEAT 已回退：$gate 及之后的 $removed 条门记录失效"
+  say "   含义：需求 / 设计 / 代码已变更，必须重新逐门校验并 pass。"
   say "   下一步：bash scripts/ai-gate.sh status $FEAT"
 }
 
@@ -263,6 +308,9 @@ render_spec() {
       [ -z "$next" ] && next="$g"
     fi
   done
+  if [ -f "$DIR/.violations" ]; then
+    say "   🧾 审计事件：$(wc -l <"$DIR/.violations" | tr -d ' ') 条（$DIR/.violations）"
+  fi
   [ -z "$next" ] && { say "   🎉 全部门已通过，可收尾归档。"; return 0; }
   if out=$(check_gate "$next" 2>&1); then
     say "   下一门：$next（$(gate_name "$next")）"
@@ -309,9 +357,10 @@ main() {
     status)   cmd_status "${1:-}" ;;
     check)    cmd_check "$@" ;;
     pass)     cmd_pass "$@" ;;
+    reset)    cmd_reset "$@" ;;
     baseline) cmd_baseline ;;
-    -h|--help|help) sed -n '3,16p' "$0" | sed 's/^# \{0,1\}//' ;;
-    *) die "未知命令 $cmd（可用：status / check / pass / baseline）" ;;
+    -h|--help|help) sed -n '3,17p' "$0" | sed 's/^# \{0,1\}//' ;;
+    *) die "未知命令 $cmd（可用：status / check / pass / reset / baseline）" ;;
   esac
 }
 

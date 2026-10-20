@@ -5,15 +5,17 @@
 - **当前阶段**: 以 `bash scripts/ai-gate.sh status {{FEATURE_NAME}}` 为准。`docs/specs/active/{{FEATURE_NAME}}/.gates` 由脚本维护，**禁止手改**。
 
 ## 0. 阶段门（G1~G7）
-| 门 | 通过条件 | 推进方式 |
-| :-- | :-- | :-- |
-| G1 需求澄清 | 四项必答非空、待确认问题清零 | `bash scripts/ai-gate.sh pass {{FEATURE_NAME}} g1` |
-| G2 验收标准 | AC 表有通过 / 不通过 / 量化证据 | `pass g2` |
-| G3 方案设计 | 依赖序 + 文件清单 + 对抗自审 + 检查点 | `pass g3` |
-| G4 实现完成 | 任务全 `[x]` 且最近一次增量验证 PASS | `pass g4` |
-| G5 独立 CR | 独立上下文产出 `review.md`，关键问题 = 0 | `pass g5` |
-| G6 人工验收 | 人类读需求 / 设计 / 重要代码 / 验收报告 | **人工交互终端** `pass g6 --by human` |
-| G7 归档 | 按 `@.agents/skills/archive-spec.md` 归档 | `pass g7` |
+| 门 | 通过条件 | 失败回到 | 推进方式 |
+| :-- | :-- | :-- | :-- |
+| G1 需求澄清 | 四项必答非空、待确认问题清零 | 重做访谈（需求侧） | `bash scripts/ai-gate.sh pass {{FEATURE_NAME}} g1` |
+| G2 验收标准 | AC 表有通过 / 不通过 / 量化证据 | G1 补需求 | `pass g2` |
+| G3 方案设计 | 依赖序 + 文件清单 + 对抗自审 + 检查点 | G2 补 AC | `pass g3` |
+| G4 实现完成 | 任务全 `[x]` 且最近一次增量验证 PASS | G3 改设计 / 文件清单 | `pass g4` |
+| G5 独立 CR | 独立上下文产出 `review.md`，关键问题 = 0 | G4 补实现 / 测试 | `pass g5` |
+| G6 人工验收 | 人类读需求 / 设计 / 重要代码 / 验收报告 | G5 补 CR | **人工交互终端** `pass g6 --by human` |
+| G7 归档 | 按 `@.agents/skills/archive-spec.md` 归档 | G6 补验收 | `pass g7` |
+
+> 同一门连续 3 次不过：更新 WIP 后停下问人，禁止第 4 次硬闯。回滚代码后用 `bash scripts/ai-gate.sh reset {{FEATURE_NAME}} <gate> --reason "..."` 让该门及后续门失效。
 
 ## 1. 上下文清单（开工前先填，避免乱读）
 - **必读**：`requirements.md`、`design.md`、本文件、目标模块活文档（1 篇）

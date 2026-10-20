@@ -39,7 +39,13 @@ if [ -d docs/specs/active ]; then
     latest=$(ls -1t "$spec"/reports/verify-*.log 2>/dev/null | head -n 1)
     if [ -n "$latest" ]; then
       echo "  --- 上次增量验证 ---"
-      grep -E '^# (result|verify)' "$latest" 2>/dev/null | sed 's/^/  /' || true
+      grep -E '^# (result|verify|target|checks)' "$latest" 2>/dev/null | sed 's/^/  /' || true
+    fi
+    if [ -f "$spec/.attempts" ]; then
+      echo "  🟡 连续验证失败：$(tr -dc '0-9' <"$spec/.attempts") 次（触顶必须停下等人）"
+    fi
+    if [ -f "$spec/.violations" ]; then
+      echo "  🧾 审计事件：$(wc -l <"$spec/.violations" | tr -d ' ') 条（$spec/.violations）"
     fi
   done
   [ "$found" -eq 1 ] || echo "  当前无活跃 Spec。新建：bash scripts/ai-new-spec.sh <feat-name>"

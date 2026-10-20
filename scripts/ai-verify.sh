@@ -25,6 +25,8 @@ export TARGET_FILE
 VERIFY_MAX_SECONDS=120
 [ -f harness/redlines.conf ] && . harness/redlines.conf 2>/dev/null || true
 case "${VERIFY_MAX_SECONDS:-}" in ''|*[!0-9]*) VERIFY_MAX_SECONDS=120 ;; esac
+VERIFY_MAX_ATTEMPTS=${VERIFY_MAX_ATTEMPTS:-3}
+case "${VERIFY_MAX_ATTEMPTS:-}" in ''|*[!0-9]*) VERIFY_MAX_ATTEMPTS=3 ;; esac
 
 START_TIME=$(date +%s)
 LOG=$(mktemp "${TMPDIR:-/tmp}/ai-verify-XXXXXX.log" 2>/dev/null || printf '/tmp/ai-verify-%s.log' "$$")
@@ -46,6 +48,17 @@ run_check() {   # $1=显示名；其余=要执行的命令
     printf '     ❌ %s (%ss, exit %s)\n' "$name" "$((t1 - t0))" "$rc"
     FAIL=1
   fi
+}
+
+# 报告落盘前脱敏：token / secret / password / key 等一律 [REDACTED]（跨 BSD/GNU sed）
+redact() {
+  sed -E \
+    -e 's/([Tt]oken|[Ss]ecret|[Pp]assword|[Pp]asswd|api[_-]?[Kk]ey|access[_-]?[Kk]ey|private[_-]?[Kk]ey|[Aa]uthorization|[Bb]earer)([[:space:]]*[:=][[:space:]]*)[^[:space:]",;]+/\1\2[REDACTED]/g' \
+    -e 's/([Tt]oken|[Ss]ecret|[Pp]assword|[Pp]asswd|api[_-]?[Kk]ey|access[_-]?[Kk]ey|private[_-]?[Kk]ey|[Aa]uthorization|[Bb]earer)([[:space:]]*[:=][[:space:]]*")[^"]+"/\1\2[REDACTED]"/g' \
+    -e 's#://[^/[:space:]]*:[^@/[:space:]]*@#://[REDACTED]@#g' \
+    -e 's/-----BEGIN [A-Z ]*PRIVATE KEY-----.*/-----BEGIN PRIVATE KEY----- [REDACTED]/' \
+    -e 's/(ghp_|gho_|github_pat_)[A-Za-z0-9_]{10,}/\1[REDACTED]/g' \
+    -e 's/AKIA[0-9A-Z]{16}/AKIA[REDACTED]/g'
 }
 
 has_dep() { grep -q "\"$1\"" package.json 2>/dev/null; }
@@ -112,31 +125,52 @@ fi
 
 RESULT=PASS; [ "$FAIL" -ne 0 ] && RESULT=FAIL
 
-if [ "$FAIL" -ne 0 ]; then
-  echo ""
-  echo "   失败摘要（日志末尾 20 行）："
-  tail -n 20 "$LOG" | sed 's/^/   /'
-fi
-
-# --- 报告落盘：只落到唯一活跃 spec 的 reports/，AI 只读摘要不读全文 ---
-REPORT_DIR=""
+# --- 关联唯一活跃 spec：报告与失败计数都落在这里 ---
+REPORT_DIR=""; SPEC_DIR=""
 if [ -d docs/specs/active ]; then
   count=0; only=""
   while IFS= read -r d; do
     [ -n "$d" ] || continue
     count=$((count + 1)); only="$d"
   done < <(find docs/specs/active -mindepth 1 -maxdepth 1 -type d 2>/dev/null)
-  [ "$count" -eq 1 ] && REPORT_DIR="$only/reports"
+  if [ "$count" -eq 1 ] && [ -n "$only" ]; then SPEC_DIR="$only"; REPORT_DIR="$only/reports"; fi
+fi
+
+if [ "$FAIL" -ne 0 ]; then
+  echo ""
+  echo "   失败摘要（日志末尾 20 行，已脱敏）："
+  tail -n 20 "$LOG" | redact | sed 's/^/   /'
+fi
+
+# --- 成本包络：同一目标连续失败计数（触顶=黄卡，必须停下等人，不硬闯） ---
+if [ -n "$SPEC_DIR" ]; then
+  ATT="$SPEC_DIR/.attempts"
+  if [ "$RESULT" = FAIL ]; then
+    n=0
+    [ -f "$ATT" ] && n=$(tr -dc '0-9' <"$ATT" 2>/dev/null | head -c 4)
+    [ -n "$n" ] || n=0
+    n=$((n + 1))
+    printf '%s\n' "$n" >"$ATT"
+    if [ "$n" -ge "$VERIFY_MAX_ATTEMPTS" ]; then
+      echo ""
+      echo "🟡 [黄卡] 同一目标已连续失败 $n 次（上限 ${VERIFY_MAX_ATTEMPTS}）：停止第 $((n + 1)) 次硬闯。"
+      echo "   请把 WIP 区更新为「已尝试方案 + 卡点 + 下一个疑点」后向人说明；"
+      echo "   若判断是方向错误：回退到最近一次通过验证的提交，并同步 ai-gate.sh reset 相关门。"
+    fi
+  else
+    rm -f "$ATT"
+  fi
 fi
 
 if [ -n "$REPORT_DIR" ]; then
   mkdir -p "$REPORT_DIR"
   OUT="$REPORT_DIR/verify-$(date +%Y%m%d-%H%M%S).log"
   {
-    echo "# verify: $TARGET_FILE"
+    echo "# verify: ai-verify.sh"
+    echo "# target: $TARGET_FILE"
     echo "# result: $RESULT"
     echo "# checks: $CHECKS  failed: $FAIL  duration: ${DUR}s"
-    cat "$LOG"
+    redact <"$LOG"
   } >"$OUT"
   echo "📄 验证报告: $OUT"
 else
