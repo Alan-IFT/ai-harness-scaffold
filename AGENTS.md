@@ -4,7 +4,7 @@
 
 ## 接手
 
-1. 在仓库根目录运行 `bash scripts/ai-resume.sh [feat]`，读 `MEMORY.md`、当前 `docs/specs/active/<feat>/tasks.md` 与 `verification.md`，再看 `git status` / `git diff`。
+1. 主 Agent 在仓库根目录运行 `bash scripts/ai-resume.sh owner [feat]`；限定任务运行 `worker <feat> <task-id>`；独立审查运行 `review <feat> <base-ref>`。按角色读取原件；主 Agent 再读 `MEMORY.md`、当前 Spec 的 `tasks.md` 与 `verification.md`、`git status` / `git diff`。
 2. 从 `docs/architecture/00-INDEX.md` 找到要改的部分。CLI、模板脚本、项目指南是不同模块；跨模块修改按需读多篇。
 3. 项目状态保存在 Git 与上述项目文件中。`CLAUDE.md` 只导入本文件，换 IDE 不依赖宿主记忆。
 
@@ -21,7 +21,9 @@
 
 | 用途 | 命令 |
 | :-- | :-- |
-| 恢复现场 | `bash scripts/ai-resume.sh [feat]` |
+| 主 Agent 恢复现场 | `bash scripts/ai-resume.sh owner [feat]` |
+| 限定任务接手 | `bash scripts/ai-resume.sh worker <feat> <task-id>` |
+| 独立审查接手 | `bash scripts/ai-resume.sh review <feat> <base-ref>` |
 | 新建 Spec | `bash scripts/ai-new-spec.sh <feat>` |
 | 门禁状态 | `bash scripts/ai-gate.sh status [feat]` |
 | 增量验证 | `bash scripts/ai-verify.sh --spec <feat> <file>` |

@@ -67,6 +67,6 @@
 - **正在编辑的文件**（下一个 Agent 必须**重新读**这些文件，不要凭记忆）：
   - 
 - **已排除的死胡同 / 错误方案 (勿重复踩坑)**: 无
-- **上次验证与未验证改动**: 看 `verification.md`；G4 前若代码内容变化，重跑正式验证。`ai-resume.sh` 会提示摘要是否过期。
+- **上次验证与未验证改动**: 看 `verification.md`；G4 前若代码内容变化，重跑正式验证。`ai-resume.sh owner <feat>` 会提示摘要是否过期；G5 用 `review <feat> <base-ref>` 检查审查证据。
 - **下一步立即执行的唯一动作 (Next Immediate Action)**：按照 `design.md` 第 3.2 节定义接口类型并跑验证脚本。
 - **knowledge_feedback**（若 `MEMORY.md` / 知识卡 / 模块活文档与代码不符，记在这里，GC 时降权）：

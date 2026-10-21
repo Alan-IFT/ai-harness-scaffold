@@ -466,7 +466,46 @@ printf '# Metrics\n' >docs/metrics.md
 expect_fail "正式验证拒绝归档时会更新的度量目标" "流程文件" bash scripts/ai-verify.sh --spec t-good ./docs/metrics.md
 expect_fail "验证拒绝重复分隔符绕过流程目标限制" "规范化项目路径" bash scripts/ai-verify.sh --spec t-good docs//metrics.md
 expect_fail "验证拒绝中间点目录绕过流程目标限制" "规范化项目路径" bash scripts/ai-verify.sh --spec t-good docs/./specs/active/t-good/requirements.md
-expect_out "指定 Spec 的接手快照显示验证摘要" "可交接验证摘要" bash scripts/ai-resume.sh t-good
+expect_out "owner 接手快照显示验证摘要" "可交接验证摘要" bash scripts/ai-resume.sh owner t-good
+expect_fail "旧式接手命令给迁移提示" "旧式" bash scripts/ai-resume.sh t-good
+expect_fail "接手命令必须指定角色" "用法" bash scripts/ai-resume.sh
+expect_fail "接手拒绝未知角色" "未知角色" bash scripts/ai-resume.sh observer t-good
+mk_spec t-worker
+cat >docs/specs/active/t-worker/tasks.md <<'MD'
+## 2. 原子任务序列
+- [ ] **Task 1：限定文件**
+  - 涉及文件：`src/export/service.ts`
+  - 对应设计：design.md §2
+- [ ] **Task 2：另一个任务**
+  - 涉及文件：`src/export/other.ts`
+
+## 4. WIP
+- 本段不属于 Task 2。
+MD
+expect_out "worker 只输出指定任务" "限定文件" bash scripts/ai-resume.sh worker t-worker 1
+worker_out=$(bash scripts/ai-resume.sh worker t-worker 1)
+if printf '%s' "$worker_out" | grep -q '另一个任务'; then ng_msg "worker 混入其他任务"; else ok_msg "worker 未混入其他任务"; fi
+expect_fail "worker 拒绝缺失 Task" "找不到 Task" bash scripts/ai-resume.sh worker t-worker 9
+mk_spec t-worker-no-boundary
+cat >docs/specs/active/t-worker-no-boundary/tasks.md <<'MD'
+## 2. 原子任务序列
+- [ ] **Task 1：缺少文件边界**
+  - 对应设计：design.md §2
+MD
+expect_fail "worker 拒绝缺失任务边界" "涉及文件" bash scripts/ai-resume.sh worker t-worker-no-boundary 1
+cat >docs/specs/active/t-worker-no-boundary/tasks.md <<'MD'
+## 2. 原子任务序列
+- [ ] Task 1: 旧式普通标题
+  - 涉及文件：`src/export/service.ts`
+MD
+expect_out "worker 接受旧 Spec 的普通 Task 标题" "旧式普通标题" bash scripts/ai-resume.sh worker t-worker-no-boundary 1
+mk_spec t-worker-collision
+cat >docs/specs/active/t-worker-collision/tasks.md <<'MD'
+## 2. 原子任务序列
+- [ ] Task 2: follow Task 1: migration
+  - 涉及文件：`src/export/other.ts`
+MD
+expect_fail "worker 不把标题正文的 Task 1 当成任务编号" "找不到 Task 1" bash scripts/ai-resume.sh worker t-worker-collision 1
 mk_spec t-real-verify
 printf "CUSTOM_CHECK='test -f \"\$TARGET_FILE\"'\n" >harness/verify.conf
 expect_ok "真实 ai-verify 为指定 Spec 生成摘要" bash scripts/ai-verify.sh --spec t-real-verify src/export/service.ts
@@ -565,6 +604,44 @@ legacy_before=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh --spec legacy source
 printf 'legacy unrelated\n' >>"$GIT_SB/other.txt"
 legacy_after=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh --spec legacy source.txt)
 if [ "$legacy_before" != "$legacy_after" ]; then ok_msg "旧 Spec 无精确清单时保守全仓"; else ng_msg "旧 Spec 被错误缩小指纹范围"; fi
+
+RESUME_SB="$TMP/resume-review"
+mkdir -p "$RESUME_SB/scripts" "$RESUME_SB/docs/specs/active/demo"
+cp "$ROOT/scripts/ai-resume.sh" "$ROOT/scripts/ai-state-id.sh" "$RESUME_SB/scripts/"
+printf 'initial\n' >"$RESUME_SB/source.txt"
+printf '原始需求与 AC\n' >"$RESUME_SB/docs/specs/active/demo/requirements.md"
+printf '## 4. 影响面\n' >"$RESUME_SB/docs/specs/active/demo/design.md"
+printf '## 2. Task 1\n' >"$RESUME_SB/docs/specs/active/demo/tasks.md"
+(
+  cd "$RESUME_SB" || exit 1
+  git init -q && git add scripts source.txt && git -c user.name=selftest -c user.email=selftest@example.invalid commit -qm initial
+)
+review_base=$(cd "$RESUME_SB" && git rev-parse HEAD)
+printf 'changed\n' >>"$RESUME_SB/source.txt"
+review_state=$(cd "$RESUME_SB" && bash scripts/ai-state-id.sh --spec demo source.txt)
+cat >"$RESUME_SB/docs/specs/active/demo/verification.md" <<MD
+- target: source.txt
+- result: PASS
+- state: $review_state
+MD
+expect_fail "review 拒绝无效基准" "无法解析基准" bash -c 'cd "$1" && bash scripts/ai-resume.sh review demo missing-ref' _ "$RESUME_SB"
+empty_tree=$(cd "$RESUME_SB" && git hash-object -t tree /dev/null)
+unrelated_base=$(cd "$RESUME_SB" && printf 'unrelated\n' | git -c user.name=selftest -c user.email=selftest@example.invalid commit-tree "$empty_tree")
+expect_fail "review 拒绝无共同历史的基准" "不是当前 HEAD 的祖先" bash -c 'cd "$1" && bash scripts/ai-resume.sh review demo "$2"' _ "$RESUME_SB" "$unrelated_base"
+expect_out "review 给出原始证据与完整 diff 命令" "git diff $review_base...HEAD" bash -c 'cd "$1" && bash scripts/ai-resume.sh review demo "$2"' _ "$RESUME_SB" "$review_base"
+rm "$RESUME_SB/docs/specs/active/demo/requirements.md"
+expect_fail "review 拒绝缺失原始需求" "缺少审查原件" bash -c 'cd "$1" && bash scripts/ai-resume.sh review demo "$2"' _ "$RESUME_SB" "$review_base"
+printf '原始需求与 AC\n' >"$RESUME_SB/docs/specs/active/demo/requirements.md"
+printf 'stale\n' >>"$RESUME_SB/source.txt"
+expect_fail "review 拒绝过期验证摘要" "过期" bash -c 'cd "$1" && bash scripts/ai-resume.sh review demo "$2"' _ "$RESUME_SB" "$review_base"
+(
+  cd "$RESUME_SB" || exit 1
+  git checkout -- source.txt
+  review_state=$(bash scripts/ai-state-id.sh --spec demo source.txt)
+  sed -i "s/^- state: .*/- state: $review_state/" docs/specs/active/demo/verification.md
+  git add . && git -c user.name=selftest -c user.email=selftest@example.invalid commit -qm no-diff
+)
+expect_fail "review 拒绝空 diff" "没有可审查的变更" bash -c 'cd "$1" && bash scripts/ai-resume.sh review demo HEAD' _ "$RESUME_SB"
 
 echo "== 5. 独立 CR 证据链（自己审自己不留痕 = 未审查） =="
 mk_spec t-selfreview

@@ -53,7 +53,7 @@ bash bin/ai-harness install-skill --host dsh
 装好后，在新项目里开场跑：
 
 ```bash
-bash scripts/ai-resume.sh        # 接手快照：门状态、WIP、知识库、git 残局
+bash scripts/ai-resume.sh owner  # 主 Agent 接手快照：门状态、WIP、知识库、git 残局
 bash scripts/ai-gate.sh status   # G1~G7 阶段门
 ```
 
@@ -95,7 +95,7 @@ skill/SKILL.md     # 共享技能入口：宿主薄入口指向这里，机械�
 根目录也按这套流程开发：`AGENTS.md`、`docs/specs/`、`MEMORY.md` 与 Git 保存状态；根目录 `scripts/` 只转发到 `template/scripts/`，机制仍只维护一份。根目录的项目专属阈值与验证命令在 `harness/`。
 
 ```bash
-bash scripts/ai-resume.sh
+bash scripts/ai-resume.sh owner
 bash scripts/ai-gate.sh status
 bash scripts/harness-selftest.sh
 ```
@@ -119,7 +119,9 @@ bash scripts/harness-selftest.sh
 本地 `reports/` 保存详细验证日志，`verification.md` 保存可入库的摘要。
 
 ```bash
-bash scripts/ai-resume.sh feat-example
+bash scripts/ai-resume.sh owner feat-example
+bash scripts/ai-resume.sh worker feat-example 2          # 只接 Task 2
+bash scripts/ai-resume.sh review feat-example HEAD~1      # G5：改为本次变更前的实际提交
 bash scripts/ai-verify.sh --quick --spec feat-example src/example.ts  # 需配置 QUICK_CHECK；不生成 G4 摘要
 bash scripts/ai-verify.sh --spec feat-example src/example.ts
 bash scripts/ai-gate.sh status feat-example
@@ -127,6 +129,7 @@ bash scripts/ai-gate.sh metrics feat-example
 ```
 
 换 IDE 且使用同一工作区，可直接接手未提交改动；换 worktree 或电脑时，须用 Git 提交或补丁传递未提交代码。
+接手命令必须显式选择 `owner`、`worker` 或 `review`；旧式 `ai-resume.sh [feat]` 会报错并提示新用法。worker 读取指定任务的项目原件；review 独立读取需求、完整相关 diff 与验证摘要，不接收实现者的自评作为审查依据。
 没有 Git 时摘要只能检测目标文件本身的变化，因此完整的跨工作区接力应使用 Git。
 G4 只认不带 `--quick` 的正式验证摘要。设计 §4 逐条列精确文件路径（含测试、配置和依赖），并显式确认验证命令及其间接依赖后，新 Spec 才可依据 G3 基准提交隔离其他活跃 Spec 的改动；任一清单条目含多个路径、旧 Spec 无基准、清单不完整或存在未归属改动时保守回退全仓。任意 `CUSTOM_CHECK` 的依赖不能由脚本自动推断，无法确认时保持全仓指纹。修改相关代码或暂存后请重验；相同索引内容提交后指纹保持稳定。TTY 和本地红线哈希只防误操作；
 需要强制人工审批时，用目标项目自己的外部权限机制。

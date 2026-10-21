@@ -1,15 +1,100 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # ai-resume.sh — 跨工具接盘快照
-# 输出：上下文体检 → 阶段门 → 活跃 spec 与断点 → 未提交改动 → 接力指令
+# 用法：owner [feat] | worker <feat> <task-id> | review <feat> <base-ref>
+# owner 保留完整接手；worker 和 review 只给各自需要的项目入口。
 # ==============================================================================
 set -u
 
-FEATURE="${1:-}"
-case "$FEATURE" in .|..|*[!A-Za-z0-9._-]*) echo "❌ 无效功能名；仅允许字母、数字、点、下划线和连字符" >&2; exit 1 ;; esac
-if [ -n "$FEATURE" ] && [ ! -d "docs/specs/active/$FEATURE" ]; then
-  echo "❌ 找不到活跃 Spec: $FEATURE" >&2; exit 1
-fi
+usage() {
+  cat <<'EOF'
+用法：
+  bash scripts/ai-resume.sh owner [feat]
+  bash scripts/ai-resume.sh worker <feat> <task-id>
+  bash scripts/ai-resume.sh review <feat> <base-ref>
+旧式 ai-resume.sh [feat] 已移除；请显式选择角色。
+EOF
+}
+
+fail() { echo "❌ $*" >&2; usage >&2; exit 2; }
+valid_feat() {
+  case "$1" in ''|.|..|*[!A-Za-z0-9._-]*) return 1 ;; esac
+  [ -d "docs/specs/active/$1" ]
+}
+
+ROLE="${1:-}"
+case "$ROLE" in
+  -h|--help) usage; exit 0 ;;
+  owner)
+    [ "$#" -le 2 ] || fail "owner 只接受可选的 Spec ID"
+    FEATURE="${2:-}"
+    if [ -n "$FEATURE" ]; then valid_feat "$FEATURE" || fail "找不到活跃 Spec 或 ID 无效：$FEATURE"; fi
+    ;;
+  worker)
+    [ "$#" -eq 3 ] || fail "worker 需要活跃 Spec ID 和 Task 编号"
+    FEATURE=$2
+    TASK=$3
+    valid_feat "$FEATURE" || fail "找不到活跃 Spec 或 ID 无效：$FEATURE"
+    case "$TASK" in ''|0|0*|*[!0-9]*) fail "Task 编号必须是正整数" ;; esac
+    task_file="docs/specs/active/$FEATURE/tasks.md"
+    [ -f "$task_file" ] || fail "缺少任务原件：$task_file"
+    task_body=$(awk -v task="$TASK" '
+      /^## / { if (found) exit }
+      /^- \[[ xX]\] (\*\*)?Task / {
+        if (found) exit
+        title=$0
+        sub(/^- \[[ xX]\] (\*\*)?Task /, "", title)
+        if (match(title,/^[0-9]+/)) {
+          number=substr(title,RSTART,RLENGTH)
+          suffix=substr(title,RLENGTH+1,1)
+          if (number == task && suffix ~ /[：: ]/) found=1
+        }
+      }
+      found { print }
+    ' "$task_file")
+    [ -n "$task_body" ] || fail "tasks.md 中找不到 Task $TASK"
+    printf '%s\n' "$task_body" | grep -qE '涉及文件.*`[^\`]+`' || fail "Task $TASK 缺少明确的涉及文件"
+    printf '%s\n' "$task_body" | grep -q 'path/to/' && fail "Task $TASK 的涉及文件仍是占位路径"
+    echo "== worker 接手：$FEATURE / Task $TASK =="
+    echo "必读原件：AGENTS.md；$task_file 的本任务与 §4 WIP；相关 requirements.md §2/§3 和 design.md 对应章节。"
+    echo "任务边界（以下来自 $task_file）："
+    printf '%s\n' "$task_body"
+    echo "变更前核对：git status --short；只读本任务涉及文件的 diff。需要扩范围时回到设计与门禁。"
+    exit 0
+    ;;
+  review)
+    [ "$#" -eq 3 ] || fail "review 需要活跃 Spec ID 和本次变更的基准提交"
+    FEATURE=$2
+    BASE=$3
+    valid_feat "$FEATURE" || fail "找不到活跃 Spec 或 ID 无效：$FEATURE"
+    case "$BASE" in ''|-*) fail "无效基准提交：$BASE" ;; esac
+    git rev-parse --is-inside-work-tree >/dev/null 2>&1 || fail "review 需要 Git 仓库与可核验的完整 diff"
+    git rev-parse --verify "$BASE^{commit}" >/dev/null 2>&1 || fail "无法解析基准提交：$BASE"
+    git merge-base --is-ancestor "$BASE" HEAD >/dev/null 2>&1 || fail "基准提交不是当前 HEAD 的祖先；请提供本需求开始前的提交"
+    git diff --name-only "$BASE"...HEAD >/dev/null 2>&1 || fail "无法读取从基准到 HEAD 的完整提交 diff"
+    spec_dir="docs/specs/active/$FEATURE"
+    for file in requirements.md design.md tasks.md verification.md; do
+      [ -f "$spec_dir/$file" ] || fail "缺少审查原件：$spec_dir/$file"
+    done
+    grep -qE '^- result: PASS$' "$spec_dir/verification.md" || fail "verification.md 尚无 G4 PASS；先完成正式验证"
+    grep -qE '^- state: [^[:space:]]+' "$spec_dir/verification.md" || fail "verification.md 缺少可核验状态"
+    target=$(sed -n 's/^- target: //p' "$spec_dir/verification.md" | head -n 1)
+    saved=$(sed -n 's/^- state: //p' "$spec_dir/verification.md" | head -n 1)
+    [ -n "$target" ] && [ -f "$target" ] || fail "verification.md 的目标文件不存在；先完成正式验证"
+    current=$(bash scripts/ai-state-id.sh --spec "$FEATURE" "$target" 2>/dev/null) || fail "无法核对验证摘要状态"
+    [ "$current" = "$saved" ] || fail "verification.md 已过期；先重新正式验证"
+    changed=$({ git diff --name-only "$BASE"...HEAD; git diff --name-only; git diff --cached --name-only; git ls-files --others --exclude-standard; } | sort -u)
+    [ -n "$changed" ] || fail "从 $BASE 到当前没有可审查的变更；请提供正确基准"
+    echo "== review 接手：$FEATURE =="
+    echo "独立审查必读：$spec_dir/requirements.md（原话、§2.3、AC）、design.md（覆盖矩阵、文件清单）、tasks.md（追溯）、verification.md，以及 .agents/skills/code-review.md。"
+    echo "基准：$BASE；读取完整提交 diff：git diff $BASE...HEAD；另核对 git diff、git diff --cached 与未跟踪文件全文。"
+    echo "变更路径（核对归属与相关契约）："
+    printf '%s\n' "$changed"
+    echo "不使用实现者自述代替原件；此接手输出不代表 G5 已通过。"
+    exit 0
+    ;;
+  *) fail "未知角色或旧式调用：$ROLE" ;;
+esac
 
 echo "=="
 echo "🔄 AI HARNESS: CROSS-TOOL HANDOFF & RESUME SNAPSHOT (跨工具接力快照)"

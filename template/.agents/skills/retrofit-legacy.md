@@ -22,7 +22,7 @@
 
 1. 对首个真实小需求建 Spec，写清 AC、风险、影响文件与回滚办法，再按 G1~G7 执行。旧代码未覆盖到的模块不要求先补文档。
    先按象限分流：④停在分析移交；①低风险小改动可写单步设计；②③在编码前记录人的风险或架构决定。对旧项目特别核对后台任务、数据同步、配置、权限和跨仓库消费者。
-2. 实际运行 `ai-verify.sh --spec <feat> <file>`、`harness-selftest.sh`、`ai-check-bloat.sh` 和既有 CI。确认零检查不会被当作通过、跨 IDE 可通过 `ai-resume.sh <feat>` 接力。
+2. 实际运行 `ai-verify.sh --spec <feat> <file>`、`harness-selftest.sh`、`ai-check-bloat.sh` 和既有 CI。确认零检查不会被当作通过、跨 IDE 可通过 `ai-resume.sh owner <feat>` 接力。
 3. 只在下一次变更触及新模块时补该模块文档。多 Agent 并行时在各自 `tasks.md` 写清依赖、文件归属和集成检查点；避免并发编辑同一文件。
 4. 每次归档只保留当前活文档和可复用结论；历史过程留在归档。发现文档与代码冲突时先核代码，再修文档，不追加第二份真相。
 
