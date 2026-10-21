@@ -193,9 +193,96 @@ ck_g2() {
   return 0
 }
 
+trace_enabled() {
+  grep -Eq '追溯版本(：|:)[[:space:]]*1' "$DIR/design.md" 2>/dev/null
+}
+
+trace_requirement_ids() {
+  local req="$DIR/requirements.md"
+  { grep -E '^[[:space:]]*[-*][[:space:]]*(\*\*)?(REQ|ERR)-[0-9]+' "$req" | grep -oE '(REQ|ERR)-[0-9]+'; awk -F'|' '{ id=$2; gsub(/^[[:space:]]+|[[:space:]]+$/, "", id); if (id ~ /^AC-[0-9]+$/) print id }' "$req"; } | sort -u
+}
+
+ck_trace_g3() {
+  local matrix ids id rows
+  matrix=$(awk '/^### 1[.]1 /{inside=1;next} /^## /{inside=0} inside' "$DIR/design.md")
+  [ -n "$matrix" ] || { say "新 Spec 缺少 design.md §1.1 需求覆盖矩阵"; return 1; }
+  ids=$(trace_requirement_ids)
+  [ -n "$ids" ] || { say "新 Spec 缺少可追溯的 REQ/ERR/AC 编号"; return 1; }
+  rows=$(printf '%s\n' "$matrix" | awk -F'|' '
+    { id=$2; gsub(/^[[:space:]]+|[[:space:]]+$/, "", id);
+      if (id ~ /^(REQ|ERR|AC)-[0-9]+$/) {
+        for(i=3;i<=5;i++) {
+          cell=$i; gsub(/^[[:space:]]+|[[:space:]]+$/, "", cell)
+          if (cell=="" || cell ~ /原文关键短句|接口或|待填|TODO|<[^>]+>/) bad=1
+        }
+        print id
+      }
+    }
+    END { if (bad) exit 2 }
+  ') || { say "需求覆盖矩阵有空单元格或模板占位"; return 1; }
+  while IFS= read -r id; do
+    [ -n "$id" ] || continue
+    printf '%s\n' "$rows" | grep -qxF "$id" || { say "需求覆盖矩阵遗漏 $id"; return 1; }
+  done <<<"$ids"
+  while IFS= read -r id; do
+    [ -n "$id" ] || continue
+    printf '%s\n' "$ids" | grep -qxF "$id" || { say "需求覆盖矩阵有无来源编号 $id"; return 1; }
+  done <<<"$rows"
+  return 0
+}
+
+ck_trace_g4() {
+  local ids sections
+  [ -f "$DIR/tasks.md" ] || return 1
+  grep -Eq '追溯版本(：|:)[[:space:]]*1' "$DIR/tasks.md" || { say "新 Spec 的 tasks.md 缺少追溯版本标记"; return 1; }
+  ids=$(trace_requirement_ids | tr '\n' ' ')
+  sections=$(awk '/^#{2,6}[[:space:]]+[0-9]+([.][0-9]+)*[.]?([[:space:]]|$)/ { id=$2; sub(/[.]$/, "", id); print id }' "$DIR/design.md" | tr '\n' ' ')
+  [ -n "$ids" ] && [ -n "$sections" ] || { say "任务追溯缺少需求编号或设计章节"; return 1; }
+  awk -v ids="$ids" -v sections="$sections" '
+    BEGIN {
+      n=split(ids,a," "); for(i=1;i<=n;i++) if(a[i]!="") required[a[i]]=1
+      n=split(sections,a," "); for(i=1;i<=n;i++) if(a[i]!="") section[a[i]]=1
+    }
+    function check_task(    s,id,ref,count) {
+      if (!seen) return
+      if (req=="" || design=="") { bad=1; return }
+      s=req; count=0
+      while (match(s,/(REQ|ERR|AC)-[0-9]+/)) {
+        id=substr(s,RSTART,RLENGTH); count++
+        if (!(id in required)) { print "任务引用不存在的需求编号 " id >"/dev/stderr"; bad=1 }
+        covered[id]=1; s=substr(s,RSTART+RLENGTH)
+      }
+      if (!count) bad=1
+      s=design; count=0
+      while (match(s,/§[0-9]+([.][0-9]+)*/)) {
+        ref=substr(s,RSTART,RLENGTH); sub(/^§/, "", ref); count++
+        if (!(ref in section)) { print "任务引用不存在的设计章节 §" ref >"/dev/stderr"; bad=1 }
+        s=substr(s,RSTART+RLENGTH)
+      }
+      if (!count) bad=1
+    }
+    /^[[:space:]]*-[[:space:]]*\[[xX]\].*Task/ {
+      check_task(); seen=1; design=""; req=""; next
+    }
+    seen && /对应设计/ { design=$0 }
+    seen && /对应需求[[:space:]]*\/[[:space:]]*验收/ { req=$0 }
+    END {
+      check_task()
+      if (!seen) bad=1
+      for (id in required) if (!(id in covered)) {
+        print "需求编号未被任务承接 " id >"/dev/stderr"; bad=1
+      }
+      exit bad
+    }
+  ' "$DIR/tasks.md" || { say "新 Spec 的任务与需求编号或设计章节不一致"; return 1; }
+}
+
 ck_g3() {
   local f="$DIR/design.md" q steps
   [ -f "$f" ] || { say "缺少 $f"; return 1; }
+  if { grep -q '^### 2[.]3 语义敏感原文锚点' "$DIR/requirements.md" || grep -Eq '追溯版本(：|:)[[:space:]]*1' "$DIR/tasks.md"; } && ! trace_enabled; then
+    say "新 Spec 缺少 design.md 的追溯版本标记"; return 1
+  fi
   grep -q 'path/to/' "$f" && { say "design.md 仍是模板占位路径（path/to/...），先替换成真实文件"; return 1; }
   q=$(quadrant)
   steps=2; [ "$q" = '①' ] && steps=1
@@ -242,18 +329,23 @@ ck_g3() {
   if section_body "$f" "0." | grep -E '契约入口' | grep -qE 'path/to/|<module>'; then
     say "契约入口仍是模板占位（path/to/ 或 <module>）"; return 1
   fi
+  if [ "$q" != '①' ] && trace_enabled; then ck_trace_g3 || return 1; fi
   return 0
 }
 
 ck_g4() {
   local f="$DIR/tasks.md" open done summary result chk target spec saved_state current_state
   [ -f "$f" ] || { say "缺少 $f"; return 1; }
+  if grep -Eq '追溯版本(：|:)[[:space:]]*1' "$f" && ! trace_enabled; then
+    say "tasks.md 已启用追溯，但 design.md 缺少追溯版本标记"; return 1
+  fi
   grep -q 'path/to/' "$f" && { say "tasks.md 仍含模板占位路径（path/to/...）"; return 1; }
   open=$(grep -cE '^[[:space:]]*[-*][[:space:]]*\[ \]' "$f" || true)
   done=$(grep -cE '^[[:space:]]*[-*][[:space:]]*\[[xX]\]' "$f" || true)
   open=$(printf '%s' "$open" | tr -d ' '); done=$(printf '%s' "$done" | tr -d ' ')
   [ "$open" -eq 0 ] || { say "还有 $open 个任务未完成"; return 1; }
   [ "$done" -ge 1 ] || { say "没有任何已完成任务"; return 1; }
+  if [ "$(quadrant)" != '①' ] && trace_enabled; then ck_trace_g4 || return 1; fi
   summary="$DIR/verification.md"
   [ -f "$summary" ] || { say "没有可交接验证摘要：先跑 bash scripts/ai-verify.sh --spec $FEAT <file>"; return 1; }
   spec=$(sed -n 's/^- spec: //p' "$summary" | head -n 1)
@@ -315,6 +407,11 @@ ck_g5() {
     verified_state=$(sed -n 's/^- state: //p' "$DIR/verification.md" | head -n 1)
     [ -n "$verified_state" ] && [ "$reviewed_state" = "$verified_state" ] \
       || { say "review.md 审查状态与当前 verification.md 不符，须重做独立审查"; return 1; }
+  fi
+  if trace_enabled; then
+    for label in 需求追溯核对 知识检索 'AI 协作文件审查' 审查范围限制; do
+      field_ok "$nv" "$label" || { say "新 Spec 的 review.md 缺少「$label」结论与证据"; return 1; }
+    done
   fi
   return 0
 }

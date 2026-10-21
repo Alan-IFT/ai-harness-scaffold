@@ -1,0 +1,1 @@
+reset	2026-10-21T02:03:48Z	feat-requirement-trace-and-knowledge-usage	回退 g3 及之后（移除 2 条）：独立审查发现追溯实现与本次 Spec 标记缺口，需修复重验

@@ -26,8 +26,8 @@
 5. 若结论依赖具体代码路径，填「关联路径」（逗号分隔）；代码改动后 `ai-knowledge.sh impact <path...>` 会提示复核。跨模块的通用结论不必硬填路径。
 
 ## Step 4: 登记索引
-在 `.knowledge/INDEX.md` 末尾加一行：`| K-0001 | 踩坑记录 | export | 0.7 | 2027-04-17 | 0 | 一句话结论 |`。
-引用次数初始为 0；后续被 `tasks.md` §1 注入时 +1。
+在 `.knowledge/INDEX.md` 末尾加一行：`| K-0001 | 踩坑记录 | export | 0.7 | 2027-04-17 | 一句话结论 |`。
+采用次数由 `bash scripts/ai-knowledge.sh usage` 从通过 G4 的 Spec 注入记录派生，不写入索引或卡片；不把它当作实际读取次数。
 
 ## Step 5: 验证与注入闭环
 1. `bash scripts/ai-knowledge.sh check` 必须通过（索引与卡片一一对应、字段合法）。

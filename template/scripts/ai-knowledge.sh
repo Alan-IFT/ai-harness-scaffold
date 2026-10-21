@@ -11,6 +11,7 @@
 #   bash scripts/ai-knowledge.sh list    # 列出全部卡片
 #   bash scripts/ai-knowledge.sh suggest <module> # 列出该模块仍有效的候选卡，人工判断相关性
 #   bash scripts/ai-knowledge.sh impact <path...> # 代码路径变化后提示关联卡片复核
+#   bash scripts/ai-knowledge.sh usage   # 从 active/archive Spec 派生采用数与未采用卡片
 # 阈值：保鲜天数来自 harness/redlines.conf 的 KNOWLEDGE_TTL_DAYS。
 # ==============================================================================
 set -u
@@ -136,6 +137,36 @@ cmd_impact() { # 关联路径是提醒线索，不代替代码影响分析
   [ "$n" -gt 0 ] || say "无关联路径命中；仍需人工检查间接消费者"
 }
 
+cmd_usage() { # 每张卡每个 Spec 最多计一次；不写回 INDEX 或卡片
+  local card id task line spec specs count unused=0 found=0
+  say "== 知识卡采用情况（来源：已通过 G4 的 Spec 注入知识记录；非实际读取次数）=="
+  for card in "$CARDS"/K-*.md; do
+    [ -f "$card" ] || continue
+    found=1; id=$(basename "$card" .md); specs=""
+    for task in docs/specs/active/*/tasks.md docs/specs/archive/*/*/tasks.md; do
+      [ -f "$task" ] || continue
+      grep -qE '^g4[[:space:]]' "$(dirname "$task")/.gates" 2>/dev/null || continue
+      line=$(grep -E '^[[:space:]]*[-*][[:space:]]*注入知识(：|:)' "$task" | head -n 1)
+      [ -n "$line" ] || continue
+      case "$line" in *无相关卡片*) continue ;; esac
+      if printf '%s\n' "$line" | grep -oE 'K-[0-9]{4}' | grep -qxF "$id"; then
+        spec=$(basename "$(dirname "$task")")
+        specs="${specs}${specs:+,}$spec"
+      fi
+    done
+    if [ -n "$specs" ]; then
+      count=$(printf '%s\n' "$specs" | tr ',' '\n' | sort -u | wc -l | tr -d ' ')
+      specs=$(printf '%s\n' "$specs" | tr ',' '\n' | sort -u | paste -sd, -)
+      printf '  %s  %s 个 Spec：%s\n' "$id" "$count" "$specs"
+    else
+      printf '  %s  0 个 Spec（未采用）\n' "$id"
+      unused=$((unused + 1))
+    fi
+  done
+  [ "$found" -eq 1 ] || say "  无知识卡"
+  say "未采用卡片：$unused"
+}
+
 main() {
   case "${1:-}" in
     check) cmd_check ;;
@@ -143,8 +174,9 @@ main() {
     list)  cmd_list ;;
     suggest) shift; cmd_suggest "$@" ;;
     impact) shift; cmd_impact "$@" ;;
+    usage) cmd_usage ;;
     ""|-h|--help|help) sed -n '3,17p' "$0" | sed 's/^# \{0,1\}//' ;;
-    *) die "未知命令 $1（可用：check / ttl / list / suggest / impact）" ;;
+    *) die "未知命令 $1（可用：check / ttl / list / suggest / impact / usage）" ;;
   esac
 }
 

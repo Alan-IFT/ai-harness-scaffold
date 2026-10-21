@@ -8,6 +8,7 @@ bash scripts/ai-check-bloat.sh     # AGENTS / MEMORY / active spec 体积
 bash scripts/ai-knowledge.sh check # 知识卡与索引是否一致
 bash scripts/ai-knowledge.sh impact <本次变更路径...> # 关联代码变更后提示复核
 bash scripts/ai-knowledge.sh ttl   # 列出生效的「清理候选」（复核期限已过）
+bash scripts/ai-knowledge.sh usage # 从 Spec 派生采用情况与未采用卡片
 bash scripts/ai-gate.sh status     # 门禁 / 审计 / 红线基线
 ```
 
@@ -24,7 +25,7 @@ bash scripts/ai-gate.sh status     # 门禁 / 审计 / 红线基线
 - 到期卡片优先「改写」而不是「删」：把结论更新到当前代码状态，刷新复核期限。
 - 确实过时（模块已删 / 方案已换）→ 删卡 + 删索引行。
 - 被 `knowledge_feedback` 反馈过 2 次以上的卡：置信度 -0.1 并标 `#待验证`，下次再被反馈就删。
-- 长期引用次数为 0 的卡不是"坏卡"——但同类 5 条以上时合并成 1 条，保持信噪比。
+- 长期未采用的卡不是"坏卡"——先复核检索词与适用范围；同类 5 条以上时可合并，保持信噪比。不能仅凭采用数删除。
 
 ## Step 2: 下沉为确定性检查（能写代码就不要写文档）
 扫描 `MEMORY.md`、知识卡与模块文档里的"红线规则"：

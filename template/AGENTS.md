@@ -42,6 +42,7 @@
 - **知识蒸馏**：最后一次正式 G4 验证前按 `.agents/skills/knowledge-distill.md` 把可复用结论写成知识卡（`.knowledge/cards/K-XXXX.md`）并登记 `.knowledge/INDEX.md`；只留能跨需求复用的，不复述代码。归档时复核，不补写使验证摘要过期的文件。
 - **前置强注入**：写 `tasks.md` §1 时记录检索依据与采用的知识卡（没有就写「无相关卡片」及原因）；G4 校验卡片存在、有效且非待验证。
 - **检索与变更复核**：先用 `ai-knowledge.sh suggest <module>` 列候选并记取舍；改动关联路径后用 `ai-knowledge.sh impact <path...>` 找待复核卡。过期和 `#待验证` 卡不得注入。
+- **采用统计**：`ai-knowledge.sh usage` 从已通过 G4 的当前和归档 Spec 派生采用数与未采用卡，不在索引手改计数；它不代表真实读取次数。
 - **保鲜与降权**：复核期限按 `KNOWLEDGE_TTL_DAYS` 设置，过期卡视为清理候选；`knowledge_feedback` 连续反馈错误的知识卡要降置信度或删掉。体检：`bash scripts/ai-knowledge.sh check|ttl`。
 
 ## 4. 编码三纪律 (Engineering Discipline)
@@ -74,6 +75,6 @@
 | 门禁回退 | `bash scripts/ai-gate.sh reset <feat> <gate> --reason "..."` |
 | 门禁自检 | `bash scripts/harness-selftest.sh` |
 | 知识库体检 | `bash scripts/ai-knowledge.sh check\|ttl\|list` |
-| 知识候选 / 变更影响 | `bash scripts/ai-knowledge.sh suggest <module>` / `impact <path...>` |
+| 知识候选 / 变更影响 / 采用统计 | `bash scripts/ai-knowledge.sh suggest <module>` / `impact <path...>` / `usage` |
 
 **阶段指南（按需读取普通项目文件）**：`.agents/skills/new-spec.md`、`retrofit-legacy.md`、`code-review.md`、`archive-spec.md`、`knowledge-distill.md`、`gc-memory.md`。踩坑池：`MEMORY.md`。

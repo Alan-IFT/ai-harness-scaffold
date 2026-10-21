@@ -333,6 +333,45 @@ expect_fail "②③的 G3 拒绝缺少边界样本" "边界样本" bash scripts/
 printf '%s\n' '- 边界样本：无' >>docs/specs/active/t-noboundary/design.md
 expect_fail "②③的 G3 拒绝占位边界样本" "边界样本" bash scripts/ai-gate.sh check t-noboundary g3
 
+# 新格式追溯链；上面的旧格式夹具继续验证兼容性。
+mk_spec t-trace
+sed -i '/WHEN 用户点击导出/i\- REQ-01：WHEN 用户点击导出，THE SYSTEM SHALL 生成任务。' docs/specs/active/t-trace/requirements.md
+sed -i '/^# 技术架构与接口设计/a\- 追溯版本：1' docs/specs/active/t-trace/design.md
+sed -i '/^## 2. 实现顺序/i\### 1.1 需求覆盖矩阵\n| 来源 ID | 原文锚点 | 设计落点 | 验证 |\n| :-- | :-- | :-- | :-- |\n| REQ-01 | requirements.md §2 上限原文 | §2 步骤 | AC-01 |\n| AC-01 | requirements.md §3 | §2 步骤 | 自检 |\n' docs/specs/active/t-trace/design.md
+sed -i '/^# 原子执行队列/a\- 追溯版本：1' docs/specs/active/t-trace/tasks.md
+sed -i '/^- \[x\] Task 1:/a\  - 对应需求 / 验收：REQ-01 / AC-01\n  - 对应设计：design.md §2' docs/specs/active/t-trace/tasks.md
+sed -i '/^- \[x\] Task 2:/a\  - 对应需求 / 验收：REQ-01 / AC-01\n  - 对应设计：design.md §2' docs/specs/active/t-trace/tasks.md
+expect_ok "新 Spec 完整追溯矩阵通过 G3" bash scripts/ai-gate.sh check t-trace g3
+expect_ok "新 Spec 任务引用设计通过 G4" bash scripts/ai-gate.sh check t-trace g4
+cp docs/specs/active/t-trace/tasks.md "$TMP/trace-tasks.bak"
+sed -i 's#REQ-01 / AC-01#REQ-999 / AC-01#g' docs/specs/active/t-trace/tasks.md
+expect_fail "G4 拒绝不存在的需求编号" "REQ-999" bash scripts/ai-gate.sh check t-trace g4
+cp "$TMP/trace-tasks.bak" docs/specs/active/t-trace/tasks.md
+sed -i 's#design.md §2#design.md §9#g' docs/specs/active/t-trace/tasks.md
+expect_fail "G4 拒绝不存在的设计章节" "§9" bash scripts/ai-gate.sh check t-trace g4
+cp "$TMP/trace-tasks.bak" docs/specs/active/t-trace/tasks.md
+sed -i 's#REQ-01 / AC-01#REQ-01#g' docs/specs/active/t-trace/tasks.md
+expect_fail "G4 拒绝需求未被任务承接" "AC-01" bash scripts/ai-gate.sh check t-trace g4
+cp "$TMP/trace-tasks.bak" docs/specs/active/t-trace/tasks.md
+sed -i '/^- 追溯版本：1/d' docs/specs/active/t-trace/design.md
+expect_fail "G3 拒绝新 Spec 漏标记" "追溯版本" bash scripts/ai-gate.sh check t-trace g3
+sed -i '/^# 技术架构与接口设计/a\- 追溯版本：1' docs/specs/active/t-trace/design.md
+sed -i '/| AC-01 | requirements.md §3 | §2 步骤 | 自检 |/d' docs/specs/active/t-trace/design.md
+expect_fail "G3 拒绝遗漏 AC 映射" "遗漏 AC-01" bash scripts/ai-gate.sh check t-trace g3
+sed -i '/| REQ-01 |/a\| AC-01 | requirements.md §3 | §2 步骤 | 自检 |' docs/specs/active/t-trace/design.md
+sed -i '/对应设计：design.md §2/d' docs/specs/active/t-trace/tasks.md
+expect_fail "G4 拒绝任务缺设计章节" "任务与需求编号或设计章节不一致" bash scripts/ai-gate.sh check t-trace g4
+expect_fail "G5 拒绝缺需求追溯审查结论" "需求追溯核对" bash scripts/ai-gate.sh check t-trace g5
+cat >>docs/specs/active/t-trace/review.md <<'MD'
+
+## 需求追溯与项目知识
+- 需求追溯核对：REQ-01 与 AC-01 均落在设计 §2；上限已核对。
+- 知识检索：export 模块无相关卡，已读模块文档。
+- AI 协作文件审查：本次 diff 无此类文件。
+- 审查范围限制：无。
+MD
+expect_ok "G5 接受有范围和知识结论的审查" bash scripts/ai-gate.sh check t-trace g5
+
 echo "== 3. 好样例必须通过 G1~G5 =="
 mk_spec t-good
 expect_ok "G1 通过" bash scripts/ai-gate.sh pass t-good g1
@@ -607,15 +646,14 @@ cat >.knowledge/cards/K-0001.md <<'MD'
 - **创建日期**：2026-10-20
 - **最近复核**：2026-10-20
 - **复核期限**：2099-12-31
-- **引用次数**：0
 - **标签**：#自动沉淀
 - **关联路径**：src/export/
 MD
 cat >.knowledge/INDEX.md <<'MD'
 # 知识索引（Index）
-| ID | 类型 | 模块 | 置信度 | 复核期限 | 引用次数 | 结论摘要 |
-| :-- | :-- | :-- | :-- | :-- | :-- | :-- |
-| K-0001 | 技术方案 | export | 0.7 | 2099-12-31 | 0 | 导出任务幂等 |
+| ID | 类型 | 模块 | 置信度 | 复核期限 | 结论摘要 |
+| :-- | :-- | :-- | :-- | :-- | :-- |
+| K-0001 | 技术方案 | export | 0.7 | 2099-12-31 | 导出任务幂等 |
 MD
 expect_out "knowledge check 索引与卡片一致" "一致" bash scripts/ai-knowledge.sh check
 expect_out "suggest 按模块列有效卡" "K-0001" bash scripts/ai-knowledge.sh suggest export
@@ -624,6 +662,13 @@ expect_out "impact 按变更路径提示复核" "K-0001" bash scripts/ai-knowled
 mk_spec t-inj
 sed -i 's/^- 注入知识：.*/- 注入知识：`K-0001`/' docs/specs/active/t-inj/tasks.md
 expect_ok "G4 通过：注入的知识卡存在" bash scripts/ai-gate.sh check t-inj g4
+sed -i 's/`K-0001`/`K-0001`, `K-0001`/' docs/specs/active/t-inj/tasks.md
+for g in g1 g2 g3 g4; do bash scripts/ai-gate.sh pass t-inj "$g" >/dev/null || exit 1; done
+sed -i 's/无相关卡片/无相关卡片（示例 K-0001）/' docs/specs/active/t-good/tasks.md
+expect_out "usage 按 Spec 去重采用次数" "K-0001  1 个 Spec：t-inj" bash scripts/ai-knowledge.sh usage
+mkdir -p docs/specs/archive/2026-10
+mv docs/specs/active/t-inj docs/specs/archive/2026-10/
+expect_out "usage 归档后仍计同一 Spec" "K-0001  1 个 Spec：t-inj" bash scripts/ai-knowledge.sh usage
 mk_spec t-badcard
 sed -i 's/^- 注入知识：.*/- 注入知识：`K-9999`/' docs/specs/active/t-badcard/tasks.md
 expect_fail "G4 拒绝注入不存在的知识卡" "K-9999" bash scripts/ai-gate.sh check t-badcard g4
@@ -651,10 +696,10 @@ cat >.knowledge/cards/K-0002.md <<'MD'
 - **创建日期**：2026-10-20
 - **最近复核**：2026-10-20
 - **复核期限**：2000-01-01
-- **引用次数**：0
 - **标签**：#踩坑
 MD
-printf '| K-0002 | 踩坑 | export | 0.5 | 2000-01-01 | 0 | 过期卡 |\n' >>.knowledge/INDEX.md
+printf '| K-0002 | 踩坑 | export | 0.5 | 2000-01-01 | 过期卡 |\n' >>.knowledge/INDEX.md
+expect_out "usage 列出未采用卡片" "K-0002  0 个 Spec（未采用）" bash scripts/ai-knowledge.sh usage
 expect_out "ttl 列出清理候选" "清理候选" bash scripts/ai-knowledge.sh ttl
 sed -i 's/^- \*\*置信度\*\*：0.5/- **置信度**：1.5/' .knowledge/cards/K-0002.md
 expect_fail "knowledge check 拒绝置信度 >1" "置信度" bash scripts/ai-knowledge.sh check

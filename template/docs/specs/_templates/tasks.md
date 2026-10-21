@@ -2,6 +2,7 @@
 
 - **需求文档**: `docs/specs/active/{{FEATURE_NAME}}/requirements.md`
 - **设计文档**: `docs/specs/active/{{FEATURE_NAME}}/design.md`
+- 追溯版本：1（与 design.md 配套；旧 Spec 无此行仍沿用旧门禁）
 - **当前阶段**: 以 `bash scripts/ai-gate.sh status {{FEATURE_NAME}}` 为准。`docs/specs/active/{{FEATURE_NAME}}/.gates` 由脚本维护，**禁止手改**。
 
 ## 0. 阶段门
@@ -12,7 +13,8 @@
 - **条件读**（命中才读）：其他模块公共契约（`index.ts` / `types.ts`）、`harness/redlines.conf`（涉及阈值时）
 - **明确不读**：`docs/specs/archive/**`、其他模块内部实现、全量测试输出
 - **注入知识**（先检索后选择；过期或待验证的卡片不能注入）：
-  - 注入知识：无相关卡片（或填 `K-0001`、`K-0007`；G4 会校验这些卡片真实存在于 `.knowledge/INDEX.md`）
+  - 注入知识：无相关卡片
+> 有采用时把上行改成真实卡片 ID；G4 会核对卡片存在且有效。不要在「无相关卡片」行保留示例 ID。
 > 先运行 `bash scripts/ai-knowledge.sh suggest <module>`，记录模块、候选及采用或排除理由；不能只写「无相关卡片」。
 - 知识检索：
 - **本次不变量**（改坏即视为回归，例如：「对外 API 路径不变」「旧数据无需迁移」）：
@@ -22,10 +24,12 @@
 > 1. 每次只认领 **1 个** `[ ]`，粒度 5~15 分钟；单任务 >5 文件或跨 2 子系统必须拆。
 > 2. 先写 / 改关键测试 → 写实现 → 开发中用 `ai-verify.sh --quick --spec {{FEATURE_NAME}} <file>`；G4 前用无 `--quick` 的正式验证。quick 不生成 G4 摘要。
 > 3. 完成后：勾 `[x]` → 清空 WIP → 原子 commit。
+> 4. 拆分出口：每个任务引用设计章节；实现入口：写代码前回读该章节和 requirements.md §2.3 的相关原文锚点。任务摘要与设计冲突时先修任务，不据摘要实现。
 
 - [ ] **Task 1: 定义数据结构与接口契约类型** `[<<< CURRENT ACTIVE TASK]`
   - **涉及文件**: `path/to/types.ts`
   - **对应需求 / 验收**: REQ-01 / AC-01
+  - **对应设计**: design.md §3.2
   - **完成判据**: 
   - **验证命令**: `bash scripts/ai-verify.sh --spec {{FEATURE_NAME}} path/to/types.ts`
   - **检查点**: 无 / 有（第 N 步后暂停，等谁确认）
@@ -33,11 +37,14 @@
 - [ ] **Task 2: 编写核心业务逻辑与单元测试 (TDD)**
   - **涉及文件**: `path/to/service.ts`, `path/to/service.test.ts`
   - **对应需求 / 验收**: REQ-01, ERR-01 / AC-01
+  - **对应设计**: design.md §2、§3.2
   - **完成判据**: 
   - **验证命令**: `bash scripts/ai-verify.sh --spec {{FEATURE_NAME}} path/to/service.test.ts`
 
 - [ ] **Task 3: 暴露路由 / 控制器接口并完成收尾**
   - **涉及文件**: `path/to/controller.ts`
+  - **对应需求 / 验收**: REQ-01 / AC-01
+  - **对应设计**: design.md §2、§3.2
   - **完成判据**: 
   - **验证命令**: `bash scripts/ai-verify.sh --spec {{FEATURE_NAME}} path/to/controller.ts`
   - **收尾动作**: 阅读并执行 `.agents/skills/code-review.md`、`.agents/skills/knowledge-distill.md` 与 `.agents/skills/archive-spec.md`
