@@ -7,11 +7,16 @@ usage() {
   cat <<'EOF'
 用法：
   bash scripts/ai-task-pool.sh add [--priority P0|P1|P2] <原始需求>
+  bash scripts/ai-task-pool.sh intake <原始需求>
   bash scripts/ai-task-pool.sh update <T-ID> <补充或变更>
+  bash scripts/ai-task-pool.sh prefer <T-ID>
   bash scripts/ai-task-pool.sh list
   bash scripts/ai-task-pool.sh next
   bash scripts/ai-task-pool.sh start <T-ID> <feat-id>
-P0 最高，缺省 P2；同级按 ID。新会话先运行 owner 接手或 next。
+  bash scripts/ai-task-pool.sh start-next
+  bash scripts/ai-task-pool.sh archive <feat-id>
+待办默认按收录 ID 排序；P0/P1/P2 仅作信息字段。prefer 一次性指定下一项。
+intake 供 AI 在收到独立新需求时调用；维护者只需用自然语言提出需求。
 EOF
 }
 die() { printf '❌ %s\n' "$*" >&2; exit 1; }
@@ -71,10 +76,34 @@ pending_rows() {
     priority=$(field "$f" '优先级')
     case "$priority" in P0|P1|P2) ;; *) die "$id 的优先级无效：$priority" ;; esac
     [ "$state" = 待办 ] && [ "$spec" = 无 ] || continue
-    printf '%s|%s|%s\n' "${priority#P}" "$id" "$f"
-  done | sort -t '|' -k1,1n -k2,2
+    printf '%s|%s\n' "$id" "$f"
+  done | sort -t '|' -k1,1
+}
+selected_pending() {
+  local id f
+  if [ -e "$POOL/NEXT" ]; then
+    id=$(cat "$POOL/NEXT")
+    valid_id "$id" || die "人工指定的下一项无效：$id；请重新指定"
+    f=$(task_file "$id")
+    [ "$(field "$f" '队列状态')" = 待办 ] && [ "$(field "$f" '关联 Spec')" = 无 ] \
+      || die "人工指定的下一项不是未关联的待办：$id；请重新指定"
+    case "$(field "$f" '优先级')" in P0|P1|P2) ;; *) die "$id 的优先级无效" ;; esac
+    printf '%s|%s\n' "$id" "$f"
+  else
+    pending_rows | sed -n '1p'
+  fi
 }
 case "${1:-}" in
+  intake)
+    shift
+    [ "$#" -ge 1 ] || die "缺少原始需求"
+    added=$(bash "$0" add "$@") || die "需求收录失败，未启动任务"
+    printf '%s\n' "$added"
+    [[ "$added" =~ (T-[0-9]{6}) ]] || die "需求已收录但无法识别任务 ID；请查看任务池后恢复，勿重复提交"
+    added_id=${BASH_REMATCH[1]}
+    bash "$0" start-next \
+      || die "已收录 $added_id，但自动路由失败；请修复后运行 next，勿重复提交"
+    ;;
   add)
     shift
     priority=P2
@@ -118,6 +147,15 @@ case "${1:-}" in
     printf -- '- %s：%s\n' "$(date +%Y-%m-%d)" "$note" >>"$f"
     printf '✅ 已追加 %s；若关联 Spec 已开始，请同步修订需求并按门禁回退。\n' "$(basename "$f" .md)"
     ;;
+  prefer)
+    [ "$#" -eq 2 ] || die "用法：prefer <T-ID>"
+    f=$(task_file "$2")
+    lock_pool
+    [ "$(field "$f" '关联 Spec')" = 无 ] && [ "$(field "$f" '队列状态')" = 待办 ] \
+      || die "任务不是未关联的待办：$2"
+    printf '%s\n' "$2" >"$POOL/NEXT"
+    printf '✅ 已指定 %s 为下一项；当前活跃 Spec 完成后生效。\n' "$2"
+    ;;
   list)
     [ "$#" -eq 1 ] || die "list 不接受参数"
     found=0
@@ -128,7 +166,7 @@ case "${1:-}" in
       found=1
       printf '%s  %s  %s  %s  %s\n' "$id" "$(field "$f" '优先级')" "$(status_for "$f")" "$(field "$f" '关联 Spec')" "$(summary_for "$f")"
     done
-    [ "$found" -eq 1 ] || printf '任务池为空。用 add 收集第一条需求。\n'
+    [ "$found" -eq 1 ] || printf '任务池为空。维护者直接向 AI 提需求，由 AI 使用 intake 收录。\n'
     ;;
   next)
     [ "$#" -eq 1 ] || die "next 不接受参数"
@@ -138,28 +176,80 @@ case "${1:-}" in
       printf '续做活跃 Spec：%s；运行 bash scripts/ai-resume.sh owner %s\n' "$spec" "$spec"
       exit 0
     done
-    row=$(pending_rows | sed -n '1p')
+    row=$(selected_pending)
     if [ -z "$row" ]; then
-      printf '暂无待办任务。用 add 收集需求。\n'
+      printf '暂无待办任务。维护者直接向 AI 提需求，由 AI 使用 intake 收录。\n'
     else
-      id=${row#*|}; id=${id%%|*}
-      printf '下一项：%s（%s）\n' "$id" "$(field "$POOL/$id.md" '优先级')"
+      id=${row%%|*}
+      if [ -e "$POOL/NEXT" ]; then
+        printf '下一项：%s（人工指定）\n' "$id"
+      else
+        printf '下一项：%s（按收录顺序）\n' "$id"
+      fi
       printf '原始需求：%s\n' "$(summary_for "$POOL/$id.md")"
       printf '原件：%s/%s.md；开始：bash scripts/ai-task-pool.sh start %s <feat-id>\n' "$POOL" "$id" "$id"
     fi
     ;;
-  start)
-    [ "$#" -eq 3 ] || die "用法：start <T-ID> <feat-id>"
-    f=$(task_file "$2")
-    feat=$3
+  archive)
+    [ "$#" -eq 2 ] || die "用法：archive <feat-id>"
+    feat=$2
     valid_feat "$feat" || die "Spec ID 无效：$feat"
     lock_pool
-    [ "$(field "$f" '关联 Spec')" = 无 ] && [ "$(field "$f" '队列状态')" = 待办 ] || die "任务不是未关联的待办：$2"
-    case "$(field "$f" '优先级')" in P0|P1|P2) ;; *) die "任务优先级无效：$2" ;; esac
+    project_root=$(pwd -P)
+    for path in docs docs/specs docs/specs/active docs/specs/archive; do
+      [ ! -L "$path" ] || die "归档路径含符号链接：$path"
+    done
+    source_dir="docs/specs/active/$feat"
+    [ -d "$source_dir" ] && [ ! -L "$source_dir" ] || die "活跃 Spec 不存在或是符号链接：$feat"
+    month=$(date +%Y-%m)
+    mkdir -p docs/specs/archive
+    target_parent="docs/specs/archive/$month"
+    [ ! -L "$target_parent" ] || die "归档路径含符号链接：$target_parent"
+    mkdir -p "$target_parent"
+    active_root=$(cd docs/specs/active && pwd -P)
+    archive_root=$(cd "$target_parent" && pwd -P)
+    [ "$active_root" = "$project_root/docs/specs/active" ] \
+      && [ "$archive_root" = "$project_root/$target_parent" ] \
+      || die "归档路径超出当前项目"
+    [ ! -e "$target_parent/$feat" ] && [ ! -L "$target_parent/$feat" ] \
+      || die "归档目标已存在：$target_parent/$feat"
+    mv -- "$source_dir" "$target_parent/$feat" || die "归档移动失败：$feat"
+    printf '✅ 已归档 %s：%s/%s\n' "$feat" "$target_parent" "$feat"
+    ;;
+  start|start-next)
+    command=$1
+    if [ "$command" = start ]; then
+      [ "$#" -eq 3 ] || die "用法：start <T-ID> <feat-id>"
+      task_id=$2
+      f=$(task_file "$task_id")
+      feat=$3
+      valid_feat "$feat" || die "Spec ID 无效：$feat"
+    else
+      [ "$#" -eq 1 ] || die "start-next 不接受参数"
+    fi
+    lock_pool
+    if [ "$command" = start ]; then
+      [ "$(field "$f" '关联 Spec')" = 无 ] && [ "$(field "$f" '队列状态')" = 待办 ] || die "任务不是未关联的待办：$task_id"
+      case "$(field "$f" '优先级')" in P0|P1|P2) ;; *) die "任务优先级无效：$task_id" ;; esac
+    fi
     for specdir in docs/specs/active/*/; do
       [ -d "$specdir" ] || continue
+      if [ "$command" = start-next ]; then
+        spec=${specdir%/}; spec=${spec##*/}
+        printf '续做活跃 Spec：%s；运行 bash scripts/ai-resume.sh owner %s\n' "$spec" "$spec"
+        exit 0
+      fi
       die "已有活跃 Spec：${specdir%/}；先完成或移交后再开始下一项"
     done
+    if [ "$command" = start-next ]; then
+      row=$(selected_pending)
+      [ -n "$row" ] || die "暂无可启动的待办任务"
+      task_id=${row%%|*}
+      f=$(task_file "$task_id")
+      feat="feat-${task_id,,}"
+    fi
+    [ "$(field "$f" '关联 Spec')" = 无 ] && [ "$(field "$f" '队列状态')" = 待办 ] || die "任务不是未关联的待办：$task_id"
+    case "$(field "$f" '优先级')" in P0|P1|P2) ;; *) die "任务优先级无效：$task_id" ;; esac
     [ ! -e "docs/specs/active/$feat" ] || die "Spec ID 已占用：$feat"
     if find docs/specs/archive -mindepth 2 -maxdepth 2 -type d -name "$feat" -print -quit 2>/dev/null | grep -q .; then
       die "Spec ID 已归档，不能重用：$feat"
@@ -172,7 +262,10 @@ case "${1:-}" in
     mv -f -- "$LINK_TMP" "$f" || die "无法更新任务关联；正在回滚新建 Spec"
     LINK_TMP=""
     START_SPEC=""
-    printf '✅ %s 已关联 %s。先读任务原件，再完成 G1~G3。\n' "$2" "$feat"
+    if [ -e "$POOL/NEXT" ] && [ "$(cat "$POOL/NEXT")" = "$task_id" ]; then
+      rm -f -- "$POOL/NEXT"
+    fi
+    printf '✅ %s 已关联 %s。先读任务原件，再完成 G1~G3。\n' "$task_id" "$feat"
     ;;
   -h|--help|help) usage ;;
   *) usage >&2; exit 1 ;;

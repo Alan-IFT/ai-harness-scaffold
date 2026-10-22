@@ -8,7 +8,7 @@
 2. 只读相关模块的公共契约（`index.ts` / `types.ts`），评估影响面与是否已有类似实现。线索不足时做有界仓库搜索。
 
 ## Step 1: 访谈式澄清（先复述，再追问，不要替人类拍板）
-0. 新需求先用 `bash scripts/ai-task-pool.sh add "原话"` 收进任务池；后续变化用 `update <T-ID> "补充"` 追加。新会话用 `next`，先续做活跃 Spec，再从待办选下一项；开始时用 `start <T-ID> <feat-id>` 建 Spec。旧 `docs/INTAKE.md` 仅保留历史记录。任务文件只记稳定 Spec ID，阶段和位置用 `ai-gate.sh status <ID>` 查。
+0. 维护者只用自然语言提出需求，AI 自行处理队列。独立新需求调用 `bash scripts/ai-task-pool.sh intake "原话"`：有活跃 Spec 则只入队并续做，无活跃时自动启动人工指定或最早待办；空池则启动刚收录的需求。明确补充已有需求时调用 `update <T-ID> "补充"`；已开始任务同步修改 Spec 与门禁。维护者说“先做某项”时 AI 调用 `prefer <T-ID>`，无活跃 Spec 则接着 `start-next`。新会话接手或归档后，`next` 只读预览显示有待办时，用 `start-next` 原子选取与启动。收录成功而启动失败时记录输出的 T-ID，查看 `next` 恢复，不要再次 intake。旧 `docs/INTAKE.md` 仅保留历史记录。
 1. **复述理解**：用 3~5 句话复述「你要的是 X，因为 Y，做到 Z 就算完成」，让人类确认或纠正。
 2. **逐层追问**：按 为谁做 → 做什么 → 关键业务规则 → 怎么算完成 → 异常/权限/数据量 的顺序问；
    一次只问 1~3 个最关键的，不要甩 20 个问题的清单。
@@ -16,7 +16,7 @@
 4. **区分两类问题**：产品问题（需求本身有歧义）必须问清；技术问题（实现约束未知）可先给假设，但写进待确认问题。
 
 ## Step 2: 生成 Spec 目录
-`bash scripts/ai-task-pool.sh start <T-ID> <feature-slug>`（例如 `T-000001 feat-user-export`），自动带出 Spec、`verification.md` 与本地 `reports/`。不在任务池中的直接需求仍可用 `bash scripts/ai-new-spec.sh <feature-slug>`。
+`intake` 已自动调用 `start-next` 并生成稳定 Spec ID；人工指定后无活跃 Spec 时，AI 也用 `bash scripts/ai-task-pool.sh start-next`。生成的 Spec 包含 `verification.md` 与本地 `reports/`。不在任务池中的既有直接需求仍可用 `bash scripts/ai-new-spec.sh <feature-slug>`。
 
 ## Step 3: 写 `requirements.md`
 - **§0 四项必答**：做什么 / 为谁做 / 关键业务规则 / 验收标准，一行一句，能被外行判定。

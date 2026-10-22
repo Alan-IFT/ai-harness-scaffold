@@ -24,13 +24,11 @@
 - 若 G7 时仍待发布，在 `acceptance.md` 留回访时间；发布后补记结果并更新 `docs/metrics.md` 对应行，不把「测试通过」写成用户效果。
 - CR 轮次、验证失败次数、门禁回退次数可留在备注或月度分析，不必为凑数伪造。
 
-## Step 4: 物理归档
+## Step 4: 同锁物理归档
 ```bash
-# 有 git 用 git mv，没有就 mv
-mkdir -p docs/specs/archive/$(date +%Y-%m)
-git mv docs/specs/active/<feat> docs/specs/archive/$(date +%Y-%m)/
+bash scripts/ai-task-pool.sh archive <feat>
 ```
-归档前后的详细 `reports/` 只留本机，不入 Git。`git mv` 可能把原本被忽略的日志一并暂存；提交前用 `git ls-files docs/specs/archive/YYYY-MM/<feat>/reports/` 检查，若有输出，用 `git rm --cached -r -- docs/specs/archive/YYYY-MM/<feat>/reports/` 取消跟踪（`--cached` 保留本机文件）。可交接的结果仍以 `verification.md` 摘要为准。
+本命令与 `start-next` 共用任务池锁；锁冲突时归档失败、active 不移动，稍后重试，不能把失败当作已归档。归档前后的详细 `reports/` 只留本机，不入 Git。提交前用 `git ls-files docs/specs/archive/YYYY-MM/<feat>/reports/` 检查，若有输出，用 `git rm --cached -r -- docs/specs/archive/YYYY-MM/<feat>/reports/` 取消跟踪（`--cached` 保留本机文件）。可交接的结果仍以 `verification.md` 摘要为准。
 > `docs/specs/archive/**` 已被 `.cursorignore` / `.claudeignore` 屏蔽，归档后不再进入任何 AI 会话的检索范围。
 
 ## Step 5: 记录归档门
@@ -43,3 +41,7 @@ git mv docs/specs/active/<feat> docs/specs/archive/$(date +%Y-%m)/
    - `docs(archive): merge living docs and archive <feat>`
    - `chore(memory): distill reusable lessons from <feat>`
 4. 若发现 archive 里还有未走完流程的 spec：**不要顺手删**，记入新 spec 的「发现但不碰」并告知人类。
+
+## Step 7: 交接下一项
+
+提交后运行 `bash scripts/ai-task-pool.sh next`；若显示待办，立即由 AI 调用 `bash scripts/ai-task-pool.sh start-next` 创建下一项 Spec。这个动作与 intake 在归档时看到的活跃状态相衔接；下一会话再按 owner 接手继续。任务池为空则结束，不让维护者记忆命令。

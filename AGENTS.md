@@ -10,7 +10,7 @@
 
 ## 开发
 
-- 新想法用 `bash scripts/ai-task-pool.sh add "原话"` 收进 `docs/task-pool/`，变化用 `update <T-ID> "补充"` 追加；旧 `docs/INTAKE.md` 保留历史。新会话先续做活跃 Spec，否则用 `next` 选择待办，再用 `start <T-ID> <feat>` 建 Spec。非平凡变更的需求、设计、任务与 WIP 写进 `docs/specs/active/`。阶段门用 `bash scripts/ai-gate.sh check|pass <feat> <gate>`。G6 由 Agent 执行客观核验，②③只把需判断的风险和结果交给人决定；归档时更新 `docs/metrics.md`。
+- 维护者直接说需求，主 Agent 判断独立新需求还是已有需求的补充：新需求由 AI 调用 `bash scripts/ai-task-pool.sh intake "原话"` 自动入队并按活跃 Spec、人工指定、收录顺序路由；补充用 `update <T-ID> "补充"`，已开始的任务同步修订 Spec 并回退门。新会话接手或归档后，若无活跃 Spec 且 `next` 指向待办，AI 用 `start-next` 原子选取并启动。维护者说“先做某项”时 AI 用 `prefer <T-ID>` 持久指定下一项；无活跃 Spec 时立即 `start-next`。旧 `docs/INTAKE.md` 保留历史。非平凡变更的需求、设计、任务与 WIP 写进 `docs/specs/active/`。阶段门用 `bash scripts/ai-gate.sh check|pass <feat> <gate>`。G6 由 Agent 执行客观核验，②③只把需判断的风险和结果交给人决定；归档时更新 `docs/metrics.md`。
 - 修改脚手架脚本时编辑 `template/scripts/`，并跑 `bash scripts/harness-selftest.sh`。修改 `bin/` 时至少跑 Bash 语法检查与 `retrofit --dry-run` 冒烟。
 - 开发中用 `bash scripts/ai-verify.sh --quick --spec <feat> <file>` 做短检查；G4 前去掉 `--quick` 跑正式验证，产出可交接的 `verification.md`。详细日志留本地；状态指纹按 design §4 精确清单或保守全仓计算。
 - `template/AGENTS.md` 与 `template/.agents/skills/` 是交付给目标项目的规则和普通 Markdown 指南；改它们时同步检查 README、CLI 和自检。根目录规则只适用于本仓库开发。
@@ -22,8 +22,8 @@
 | 用途 | 命令 |
 | :-- | :-- |
 | 主 Agent 恢复现场 | `bash scripts/ai-resume.sh owner [feat]` |
-| 收集 / 补充 / 下一项 | `bash scripts/ai-task-pool.sh add "原话"` / `update <T-ID> "补充"` / `next` |
-| 从任务池建 Spec | `bash scripts/ai-task-pool.sh start <T-ID> <feat>` |
+| AI 收录 / 补充 / 指定下一项 | `bash scripts/ai-task-pool.sh intake "原话"` / `update <T-ID> "补充"` / `prefer <T-ID>` |
+| 自动领取下一项 | `bash scripts/ai-task-pool.sh start-next` |
 | 限定任务接手 | `bash scripts/ai-resume.sh worker <feat> <task-id>` |
 | 独立审查接手 | `bash scripts/ai-resume.sh review <feat> <base-ref>` |
 | 新建 Spec | `bash scripts/ai-new-spec.sh <feat>` |

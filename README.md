@@ -59,11 +59,10 @@ bash bin/ai-harness install-skill --host dsh
 ```bash
 bash scripts/ai-resume.sh owner  # 主 Agent 接手快照：门状态、WIP、知识库、git 残局
 bash scripts/ai-gate.sh status   # G1~G7 阶段门
-bash scripts/ai-task-pool.sh add --priority P1 "下次要做的需求"
-bash scripts/ai-task-pool.sh next
+bash scripts/ai-task-pool.sh next  # AI 接手时查看当前工作；维护者直接用自然语言说需求
 ```
 
-新想法随时用 `bash scripts/ai-task-pool.sh add "原话"` 收进项目内 `docs/task-pool/`，用 `update <T-ID> "补充"` 追加变化；旧 `docs/INTAKE.md` 保留历史。新会话运行 `ai-resume.sh owner` 会提示续做的 Spec 或下一条待办，`ai-task-pool.sh next` 可单独查询。开始待办用 `start <T-ID> <feat-id>` 建 Spec；任务只关联稳定 Spec ID，归档后再次运行 `next` 即可继续下一项。①低风险小改动可用单步紧凑设计；②③先记录人的风险或架构决定，并在 G3 列出边界样本及 REQ/ERR/AC 到设计的覆盖矩阵；任务引用设计章节，实施前回读原文锚点。④完成分类与人工移交后，门禁会阻止继续自动开发。设计时核对间接消费者与实际检索范围。独立 CR 对照需求原文、相关知识和本次修改的 AI 协作文件。知识卡可用 `ai-knowledge.sh suggest <module>` 找候选，代码改动后用 `impact <path...>` 提示复核；`usage` 从通过 G4 的 Spec 派生采用记录，不维护手工计数，也不冒充实际读取次数；验收模板记录发布与回访结果。
+维护者直接告诉 AI 新需求或补充，无需运行命令。AI 用 `ai-task-pool.sh intake` 自动保存原话：有活跃 Spec 就把新需求排队并续做；没有活跃 Spec 就启动人工指定或最早录入的待办，空池则启动刚提出的需求。默认按录入先后，旧 P0/P1/P2 字段仅保留兼容；说“先做某项”即可让 AI 持久指定下一项，仅在该项启动后清除。归档与自动领取共用任务池锁，归档完成后由 AI 接续下一项；新会话运行 `ai-resume.sh owner` 会提示续做的 Spec 或下一条待办。已开始的需求变化会同步修订 Spec 与受影响门禁。旧 `docs/INTAKE.md` 保留历史。①低风险小改动可用单步紧凑设计；②③先记录人的风险或架构决定，并在 G3 列出边界样本及 REQ/ERR/AC 到设计的覆盖矩阵；任务引用设计章节，实施前回读原文锚点。④完成分类与人工移交后，门禁会阻止继续自动开发。设计时核对间接消费者与实际检索范围。独立 CR 对照需求原文、相关知识和本次修改的 AI 协作文件。知识卡可用 `ai-knowledge.sh suggest <module>` 找候选，代码改动后用 `impact <path...>` 提示复核；`usage` 从通过 G4 的 Spec 派生采用记录，不维护手工计数，也不冒充实际读取次数；验收模板记录发布与回访结果。
 
 G6 由 Agent 执行冒烟和 AC 核对，并把命令、环境、结果写入 `acceptance.md`。①证据充分时自动收尾；②③默认把风险和结果交给人决定。维护者也可在 G3 明确限定条件委托：仅当 AC 全通过、G5 无阻塞且无新增重大风险时由 Agent 收尾；超出范围仍须当次决定。用户不必填写 Markdown 或亲跑命令。本地文件不是身份认证，需要强制审批时使用项目自己的权限机制。
 

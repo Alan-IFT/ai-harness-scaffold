@@ -832,8 +832,12 @@ expect_fail "拒绝无效优先级" "优先级" bash scripts/ai-task-pool.sh add
 expect_fail "拒绝空白原话" "不能为空" bash scripts/ai-task-pool.sh add "   "
 expect_out "收集第一条需求" "T-000001" bash scripts/ai-task-pool.sh add "较晚处理"
 expect_out "收集高优先级需求" "T-000002" bash scripts/ai-task-pool.sh add --priority P0 "先处理"
-expect_out "按优先级选下一项" "下一项：T-000002" bash scripts/ai-task-pool.sh next
-expect_out "下一项显示原始需求" "原始需求：先处理" bash scripts/ai-task-pool.sh next
+expect_out "默认按收录顺序选下一项" "下一项：T-000001" bash scripts/ai-task-pool.sh next
+expect_out "下一项显示原始需求" "原始需求：较晚处理" bash scripts/ai-task-pool.sh next
+expect_fail "拒绝指定不存在任务" "任务不存在" bash scripts/ai-task-pool.sh prefer T-000003
+expect_out "人工指定下一项" "已指定 T-000002" bash scripts/ai-task-pool.sh prefer T-000002
+expect_out "跨会话保留指定" "下一项：T-000002" bash scripts/ai-task-pool.sh next
+file_has "指定选择已落盘" docs/task-pool/NEXT "T-000002"
 expect_out "追加需求变更" "已追加" bash scripts/ai-task-pool.sh update T-000002 "加入边界"
 expect_out "再次追加需求变更" "已追加" bash scripts/ai-task-pool.sh update T-000002 "再补一条"
 expect_fail "拒绝空白补充" "不能为空" bash scripts/ai-task-pool.sh update T-000002 "   "
@@ -841,10 +845,10 @@ file_has "原话未被更新覆盖" docs/task-pool/T-000002.md "先处理"
 file_has "补充已落盘" docs/task-pool/T-000002.md "加入边界"
 file_has "第二次补充已落盘" docs/task-pool/T-000002.md "再补一条"
 expect_fail "拒绝非法任务 ID" "ID 无效" bash scripts/ai-task-pool.sh update T-2 bad
-sed -i 's/^- 优先级: P2$/- 优先级: P3/' docs/task-pool/T-000001.md
+sed -i 's/^- 优先级: P0$/- 优先级: P3/' docs/task-pool/T-000002.md
 expect_fail "next 拒绝手工改坏的优先级" "优先级无效" bash scripts/ai-task-pool.sh next
-expect_fail "start 拒绝手工改坏的优先级" "优先级无效" bash scripts/ai-task-pool.sh start T-000001 feat-invalid
-sed -i 's/^- 优先级: P3$/- 优先级: P2/' docs/task-pool/T-000001.md
+expect_fail "start 拒绝手工改坏的优先级" "优先级无效" bash scripts/ai-task-pool.sh start T-000002 feat-invalid
+sed -i 's/^- 优先级: P3$/- 优先级: P0/' docs/task-pool/T-000002.md
 rm docs/specs/_templates/acceptance.md
 expect_fail "建 Spec 缺模板时失败" "模板缺失" bash scripts/ai-task-pool.sh start T-000002 feat-broken
 [ ! -e docs/specs/active/feat-broken ] && ok_msg "失败后无孤儿 Spec" || ng_msg "失败后留下孤儿 Spec"
@@ -856,17 +860,48 @@ expect_fail "建 Spec 来源占位缺失时失败" "创建 Spec 失败" bash scr
 [ ! -e docs/specs/active/feat-broken-source ] && ok_msg "来源处理失败后无孤儿 Spec" || ng_msg "来源处理失败后留下孤儿 Spec"
 cp "$TMP/pool-requirements.original" docs/specs/_templates/requirements.md
 expect_out "从待办建 Spec" "已关联 feat-first" bash scripts/ai-task-pool.sh start T-000002 feat-first
+[ ! -e docs/task-pool/NEXT ] && ok_msg "成功启动后清除一次性指定" || ng_msg "成功启动后仍有指定"
 file_has "新 Spec 引用任务原件" docs/specs/active/feat-first/requirements.md "docs/task-pool/T-000002.md"
 expect_out "活跃 Spec 优先续做" "续做活跃 Spec：feat-first" bash scripts/ai-task-pool.sh next
+expect_fail "拒绝指定已开始任务" "不是未关联" bash scripts/ai-task-pool.sh prefer T-000002
+expect_out "活跃期间可指定下项" "已指定 T-000001" bash scripts/ai-task-pool.sh prefer T-000001
 expect_fail "拒绝重复领取" "不是未关联" bash scripts/ai-task-pool.sh start T-000002 feat-second
 expect_fail "已有活跃 Spec 时拒绝启动下一项" "已有活跃 Spec" bash scripts/ai-task-pool.sh start T-000001 feat-second
 mkdir -p docs/specs/archive/2026-10
-mv docs/specs/active/feat-first docs/specs/archive/2026-10/
+mkdir docs/task-pool/.lock
+expect_fail "归档遇任务池锁明确拒绝" "另一进程修改" bash scripts/ai-task-pool.sh archive feat-first
+[ -d docs/specs/active/feat-first ] && ok_msg "锁冲突时活跃 Spec 未移动" || ng_msg "锁冲突误移动活跃 Spec"
+rmdir docs/task-pool/.lock
+expect_out "同锁归档活跃 Spec" "已归档 feat-first" bash scripts/ai-task-pool.sh archive feat-first
 expect_out "归档后选下一项" "下一项：T-000001" bash scripts/ai-task-pool.sh next
 expect_out "归档状态由 Spec 派生" "已归档" bash scripts/ai-task-pool.sh list
+expect_out "补充另一个待办" "T-000003" bash scripts/ai-task-pool.sh add "临时插队"
+expect_out "手动启动其他任务" "已关联 feat-other" bash scripts/ai-task-pool.sh start T-000003 feat-other
+file_has "手动启动其他任务不清除指定" docs/task-pool/NEXT "T-000001"
+expect_out "归档插队任务" "已归档 feat-other" bash scripts/ai-task-pool.sh archive feat-other
+expect_out "同锁选择并启动指定任务" "已关联 feat-t-000001" bash scripts/ai-task-pool.sh start-next
+[ ! -e docs/task-pool/NEXT ] && ok_msg "指定任务启动后清除指定" || ng_msg "指定任务启动后仍有指定"
 mkdir docs/task-pool/.lock
 expect_fail "并发写锁拒绝收集" "另一进程修改" bash scripts/ai-task-pool.sh add "冲突任务"
 rmdir docs/task-pool/.lock
+
+AUTO_SB="$TMP/task-pool-auto"
+mkdir -p "$AUTO_SB/scripts" "$AUTO_SB/docs/specs/archive"
+cp "$ROOT/scripts/ai-task-pool.sh" "$ROOT/scripts/ai-new-spec.sh" "$AUTO_SB/scripts/"
+cp -r "$ROOT/docs/specs/_templates" "$AUTO_SB/docs/specs/_templates"
+cd "$AUTO_SB" || exit 1
+expect_out "空池自然语言收录并启动" "已关联 feat-t-000001" bash scripts/ai-task-pool.sh intake "第一条需求"
+expect_out "活跃期间新需求只入队" "续做活跃 Spec：feat-t-000001" bash scripts/ai-task-pool.sh intake "第二条需求"
+file_has "活跃期间新需求保留原话" docs/task-pool/T-000002.md "第二条需求"
+mkdir -p docs/specs/archive/2026-10
+expect_out "自动路由样本归档" "已归档 feat-t-000001" bash scripts/ai-task-pool.sh archive feat-t-000001
+expect_out "已有待办时先启动旧任务" "已关联 feat-t-000002" bash scripts/ai-task-pool.sh intake "第三条需求"
+file_has "较新需求仍待办" docs/task-pool/T-000003.md "- 关联 Spec: 无"
+expect_out "旧待办完成后归档" "已归档 feat-t-000002" bash scripts/ai-task-pool.sh archive feat-t-000002
+rm docs/specs/_templates/acceptance.md
+expect_fail "自动启动失败仍提示已收录" "已收录" bash scripts/ai-task-pool.sh intake "第四条需求"
+file_has "自动启动失败仍保留任务" docs/task-pool/T-000004.md "第四条需求"
+file_has "自动启动失败不关联旧待办" docs/task-pool/T-000003.md "- 关联 Spec: 无"
 cd "$SB" || exit 1
 
 # ---------------------------------------------------------------- 汇总 --------
