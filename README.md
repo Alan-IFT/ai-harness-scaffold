@@ -43,6 +43,10 @@ bash bin/ai-harness init ../my-new-project
 bash bin/ai-harness retrofit ../legacy-project --dry-run   # 先看计划
 bash bin/ai-harness retrofit ../legacy-project
 
+# 已安装项目升级（先预演，再自动更新未改动的机制文件）
+bash bin/ai-harness upgrade ../legacy-project --dry-run
+bash bin/ai-harness upgrade ../legacy-project
+
 # 体检
 bash bin/ai-harness doctor ../legacy-project
 
@@ -79,6 +83,7 @@ G6 由 Agent 执行冒烟和 AC 核对，并把命令、环境、结果写入 `a
 ```
 ai-harness init     <dir> [--no-git] [--dry-run] [--force]
 ai-harness retrofit <dir> [--no-git] [--skip-doctor] [--dry-run]
+ai-harness upgrade  <dir> [--dry-run] [--accept-custom <relative-path>]
 ai-harness doctor   <dir>
 ai-harness install-skill [--host dsh|codex|claude] [--dest DIR]
 ai-harness version | help
@@ -109,6 +114,7 @@ bash scripts/harness-selftest.sh
 `harness/redlines.conf`（唯一阈值来源）、`.knowledge/`（知识卡）、`.agents/skills/`（阶段技能）。
 通用 CI 接入命令见 `template/harness/CI.md`；覆盖率和变异测试阈值须由目标项目的 CI 实现。
 老项目 `retrofit --dry-run` 只读；正式接入不会覆盖已有文件、删除同名示例文件或自动改写红线。目录扫描结果放在 `.ai-harness/suggested/` 供审核。
+安装时记录 `.ai-harness/manifest.tsv`，之后用本仓库的 `upgrade <项目路径>` 自动补齐新脚本、更新安装后未改动的机制文件。项目自己的任务、Spec、架构文档、红线及 ignore 文件不在自动替换范围。定制文件保留原样，新版模板写到 `.ai-harness/suggested/<相对路径>.upgrade-<哈希>`；命令返回非零且版本号暂不推进。合并后逐文件运行 `upgrade <项目路径> --accept-custom <相对路径>` 确认当前定制内容；后续模板变化会再次提示冲突。`upgrade --dry-run` 严格只读。旧安装没有 manifest 时只能自动补缺，已有不同内容须逐项确认。升级前建议先提交目标项目当前改动。
 若旧项目的红线配置缺少必要键或值无效，脚本会指出键名并停止；维护者按项目需要补齐 `harness/redlines.conf` 后再运行。脚本不使用另一套隐含默认阈值。
 示例领域图与路线图不会复制进老项目，避免把虚构架构当成项目事实。
 
@@ -138,7 +144,7 @@ G4 只认不带 `--quick` 的正式验证摘要。设计 §4 逐条列精确文�
 
 ## 设计取舍
 
-- **不做 `upgrade` 子命令**：升级时用 `git diff` 对比 `template/` 与项目内文件即可；自动化合并的维护成本高于收益。
+- **升级范围明确**：`upgrade` 只按安装基线更新未改动的脚手架机制文件；合并定制内容由项目维护者判断。
 - **不覆盖、不猜测**：老项目的 `AGENTS.md`、`00-INDEX.md` 可能已有团队约定，合并是判断题，不是复制题。
 - **过时内容归档而非删除**：被取代的旧文档移入 `docs/specs/archive/`，保持单一真相。
 - **模板即实例**：这个仓库自身就是可运行的脚手架（`template/` 内可跑 `harness-selftest.sh` 自检）。

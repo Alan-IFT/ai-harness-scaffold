@@ -20,6 +20,7 @@
 2. **精准路由**：主 Agent 用 WIP、`MEMORY.md`、`git diff` 恢复全局状态；worker 读本任务、相关需求与设计章节、分配文件的 diff；G5 审查者独立读需求原文、AC、完整相关 diff、验证摘要和契约，不能用实现者自述代替。再从 `docs/architecture/00-INDEX.md` 加载相关模块活文档；跨模块按需扩展。
 3. **受控执行**：只认领 `tasks.md` 里 **1 个** `[ ]` 原子任务；**门禁未过不得开始编码**。
 4. **任务池**：随时用 `bash scripts/ai-task-pool.sh add [--priority P0|P1|P2] "原话"` 收集需求，`update <T-ID> "补充"` 追加变化；新会话的 owner 接手输出会提示续做 Spec 或下一条待办。任务原件在 `docs/task-pool/`，开始时用 `start <T-ID> <feat-id>` 建 Spec；已开始的需求变化须同步更新 Spec 并回退受影响门。
+5. **脚手架升级**：已安装项目用源仓库的 `bash bin/ai-harness upgrade <项目路径> --dry-run` 预演，再正式执行；定制文件冲突按 `.agents/skills/retrofit-legacy.md` 合并并逐文件确认，项目状态与红线不自动替换。
 
 ## 2. 质量门 G1~G7（由 `scripts/ai-gate.sh` 机械校验）
 | 门 | 名称 | 通过条件 | 失败回到 | 谁推进 |

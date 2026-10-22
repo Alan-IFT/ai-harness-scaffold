@@ -3,18 +3,19 @@
 #
 #   bash bin/ai-harness init     <dir> [--no-git] [--dry-run] [--force]
 #   bash bin/ai-harness retrofit <dir> [--dry-run] [--no-git] [--skip-doctor]
+#   bash bin/ai-harness upgrade  <dir> [--dry-run]
 #   bash bin/ai-harness doctor   <dir>
 #   bash bin/ai-harness install-skill [--host dsh|codex|claude] [--dest DIR]
 #   bash bin/ai-harness version | help
 #
 # 设计原则：
 #   1. 模板只存一份（./template），本脚本只做「复制 + 冲突隔离 + 栈探测」，不复制业务逻辑。
-#   2. 老项目改造永不覆盖已有文件：冲突内容进 <dir>/.ai-harness/suggested/，人/AI 再合并。
+#   2. retrofit 不覆盖已有文件；upgrade 仅替换有安装基线且未改动的机制文件。
 #   3. ignore 类文件用幂等 marker 块追加，重复执行不会产生第二份。
-#   4. 只依赖 bash + 常见 Unix 工具（cp/find/sed/awk/date），Windows 用 Git Bash 即可。
+#   4. 只依赖 bash + 常见 Unix 工具（含 sha256sum 或 shasum），Windows 用 Git Bash 即可。
 set -u
 
-VERSION="1.0.0"
+VERSION="1.1.0"
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd) || exit 1
 TPL="$ROOT/template"
@@ -40,6 +41,9 @@ ai-harness v$VERSION — 跨工具防膨胀 AI 辅助开发脚手架
   ai-harness retrofit <dir> [--no-git] [--skip-doctor] [--dry-run]
       老项目：不覆盖任何已有文件；探测技术栈生成 verify.conf；
       扫描代码树生成模块索引桩（标注待人工确认）。
+  ai-harness upgrade  <dir> [--dry-run] [--accept-custom <relative-path>]
+      已安装项目：自动更新未改过的机制文件并补缺；定制文件保留并生成冲突建议。
+      人工合并一处定制文件后，可用 --accept-custom 记录本次模板基线。
   ai-harness doctor   <dir>
       体检：上下文体积、知识卡一致性、门禁自检、当前门状态、verify 配置。
   ai-harness install-skill [--host dsh|codex|claude] [--dest DIR]
@@ -75,6 +79,59 @@ ensure_git_repo() { # <dir>; only initialize after Git explicitly reports no rep
 write_version() { # <dir> <mode>
   mkdir -p "$1/.ai-harness"
   printf 'version=%s\nmode=%s\ninstalled_at=%s\n' "$VERSION" "$2" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$1/.ai-harness/version"
+}
+
+# manifest 仅追踪分发机制。项目事实、红线和 ignore 文件不自动替换。
+managed_file() { # <relative path>
+  case "$1" in
+    AGENTS.md|CLAUDE.md|.cursorrules|scripts/*.sh|.agents/skills/*.md|docs/specs/_templates/*.md|docs/task-pool/README.md|harness/CI.md|harness/verify.conf.example) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+file_hash() { # <file>; stable across Git Bash and macOS
+  if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | cut -d ' ' -f 1
+  elif command -v shasum >/dev/null 2>&1; then shasum -a 256 "$1" | cut -d ' ' -f 1
+  else die "缺少 sha256sum/shasum，不能安全判断文件是否改动"; fi
+}
+
+safe_path() { # <target root> <relative path>; reject symlink and non-directory parents
+  local root=$1 rel=$2 part current=$1 remaining=$2 IFS
+  local -a parts
+  [ ! -L "$root" ] || return 1
+  IFS=/ read -r -a parts <<< "$rel"
+  for part in "${parts[@]}"; do
+    [ -n "$part" ] && [ "$part" != . ] && [ "$part" != .. ] || return 1
+    current="$current/$part"
+    [ ! -L "$current" ] || return 1
+    case "$remaining" in
+      */*) [ ! -e "$current" ] || [ -d "$current" ] || return 1; remaining=${remaining#*/} ;;
+    esac
+  done
+}
+
+write_manifest() { # <dir>; record only byte-identical managed files
+  local tgt=$1 f rel tmp
+  [ -d "$tgt/.ai-harness" ] || mkdir -p "$tgt/.ai-harness"
+  safe_path "$tgt" .ai-harness/manifest.tsv || die "manifest 路径含符号链接"
+  tmp=$(mktemp "$tgt/.ai-harness/.manifest.XXXXXX") || die "无法创建 manifest 临时文件"
+  while IFS= read -r f; do
+    rel=${f#"$TPL"/}
+    managed_file "$rel" || continue
+    if [ -f "$tgt/$rel" ] && [ ! -L "$tgt/$rel" ] && cmp -s "$f" "$tgt/$rel"; then
+      printf '%s\t%s\t%s\n' "$(file_hash "$f")" "$(file_hash "$f")" "$rel" >> "$tmp"
+    fi
+  done < <(find "$TPL" -type f | sort)
+  mv -f "$tmp" "$tgt/.ai-harness/manifest.tsv" || die "无法写入 manifest"
+}
+
+install_managed_file() { # <source> <destination> <relative path>; replace atomically
+  local src=$1 dst=$2 rel=$3 tmp
+  mkdir -p "$(dirname "$dst")" || die "无法创建升级目标目录: $rel"
+  tmp=$(mktemp "$(dirname "$dst")/.ai-harness-upgrade.XXXXXX") || die "无法创建升级临时文件: $rel"
+  cp -p "$src" "$tmp" || { rm -f "$tmp"; die "复制失败: $rel"; }
+  case "$rel" in scripts/*.sh) chmod +x "$tmp" || { rm -f "$tmp"; die "设置执行权限失败: $rel"; } ;; esac
+  mv -f "$tmp" "$dst" || { rm -f "$tmp"; die "安装失败: $rel"; }
 }
 
 # -------------------------------------------------------------------- 栈探测
@@ -238,6 +295,7 @@ cmd_init() {
   make_skeleton_dirs "$tgt"
   if [ "$DRY" -eq 0 ]; then
     write_version "$tgt" init
+    write_manifest "$tgt"
     ( cd "$tgt" && bash scripts/ai-gate.sh status >/dev/null 2>&1 || true )   # 首次记录红线基线
     if [ "$NOGIT" -eq 0 ]; then ensure_git_repo "$tgt"; fi
   fi
@@ -264,7 +322,8 @@ cmd_retrofit() {
   copy_tree "$tgt"
   make_skeleton_dirs "$tgt"
   if [ "$DRY" -eq 0 ]; then
-    write_version "$tgt" retrofit
+    [ -e "$tgt/.ai-harness/version" ] || write_version "$tgt" retrofit
+    [ -e "$tgt/.ai-harness/manifest.tsv" ] || write_manifest "$tgt"
     if [ -f "$tgt/harness/verify.conf" ]; then
       info "harness/verify.conf 已存在，保留（不覆盖）"
     elif gen_verify_conf "$tgt" "$stack"; then
@@ -292,6 +351,98 @@ cmd_retrofit() {
   if [ "$DRY" -eq 1 ]; then say "✅ 只读预演完成：预计新增 $COPIED 个文件，$SKIPPED 个同内容，$CONFLICTS 个冲突。"
   else say "✅ 完成：+$COPIED 个新文件，$SKIPPED 个同内容，$CONFLICTS 个冲突。"; fi
   if [ "$SKIP_DOCTOR" -eq 0 ] && [ "$DRY" -eq 0 ]; then doctor_core "$tgt"; fi
+}
+
+cmd_upgrade() {
+  local tgt="" accept="" a f rel src dst current old_source old_local new suggestion manifest tmp mode installed seen=0
+  while [ $# -gt 0 ]; do
+    case $1 in
+      --dry-run) DRY=1 ;;
+      --accept-custom) shift; [ $# -gt 0 ] || die "--accept-custom 缺少路径"; accept=$1 ;;
+      -*) die "未知参数: $1" ;;
+      *) [ -z "$tgt" ] || die "只能指定一个目标目录"; tgt=$1 ;;
+    esac
+    shift
+  done
+  [ -z "$accept" ] || { safe_path "$TPL" "$accept" && managed_file "$accept" && [ -f "$TPL/$accept" ] || die "--accept-custom 只接受模板机制文件"; }
+  [ "$DRY" -eq 0 ] || [ -z "$accept" ] || die "只读预演不能确认定制文件"
+  need_dir "$tgt"
+  [ -d "$tgt" ] && [ ! -L "$tgt" ] || die "目标不是普通目录: $tgt"
+  [ -f "$tgt/.ai-harness/version" ] && [ ! -L "$tgt/.ai-harness/version" ] || die "目标未安装 ai-harness（缺少 .ai-harness/version）"
+  [ -d "$TPL" ] || die "模板缺失: $TPL"
+  safe_path "$tgt" .ai-harness/manifest.tsv && safe_path "$tgt" .ai-harness/version \
+    && safe_path "$tgt" .ai-harness/suggested || die "升级元数据路径不安全"
+  manifest="$tgt/.ai-harness/manifest.tsv"
+  [ ! -e "$manifest" ] || [ -f "$manifest" ] || die "manifest 不是普通文件"
+  command -v sha256sum >/dev/null 2>&1 || command -v shasum >/dev/null 2>&1 || die "缺少 SHA-256 工具"
+  # 全量路径预检先于任何写入，避免符号链接把内容导向项目外。
+  while IFS= read -r f; do
+    rel=${f#"$TPL"/}; managed_file "$rel" || continue
+    safe_path "$tgt" "$rel" || die "升级路径不安全: $rel"
+    new=$(file_hash "$f")
+    safe_path "$tgt" ".ai-harness/suggested/$rel.upgrade-${new:0:12}" || die "建议文件路径不安全: $rel"
+  done < <(find "$TPL" -type f | sort)
+  if [ "$DRY" -eq 0 ]; then
+    tmp=$(mktemp "$tgt/.ai-harness/.manifest.XXXXXX") || die "无法创建 manifest 临时文件"
+  fi
+  say "⬆️  upgrade → $tgt （template v$VERSION）"
+  while IFS= read -r f; do
+    rel=${f#"$TPL"/}; managed_file "$rel" || continue
+    src=$f; dst="$tgt/$rel"; new=$(file_hash "$src"); old_source=""; old_local=""
+    [ "$rel" != "$accept" ] || seen=1
+    if [ -f "$manifest" ]; then
+      old_source=$(awk -F '\t' -v name="$rel" '$3 == name {print $1; exit}' "$manifest")
+      old_local=$(awk -F '\t' -v name="$rel" '$3 == name {print $2; exit}' "$manifest")
+    fi
+    case "$old_source:$old_local" in *[!0-9a-f:]* ) old_source=""; old_local="" ;; esac
+    [ "${#old_source}" -eq 64 ] && [ "${#old_local}" -eq 64 ] || { old_source=""; old_local=""; }
+    if [ ! -e "$dst" ]; then
+      [ "$DRY" -eq 1 ] || install_managed_file "$src" "$dst" "$rel"
+      info "+ $rel"; COPIED=$((COPIED+1))
+      [ "$DRY" -eq 1 ] || printf '%s\t%s\t%s\n' "$new" "$new" "$rel" >> "$tmp"
+    elif [ -f "$dst" ] && [ "$(file_hash "$dst")" = "$new" ]; then
+      info "= $rel"; SKIPPED=$((SKIPPED+1))
+      [ "$DRY" -eq 1 ] || printf '%s\t%s\t%s\n' "$new" "$new" "$rel" >> "$tmp"
+    elif [ -f "$dst" ] && [ -n "$old_source" ] && [ "$old_source" = "$new" ] && [ "$(file_hash "$dst")" = "$old_local" ]; then
+      info "= $rel（已确认定制）"; SKIPPED=$((SKIPPED+1))
+      [ "$DRY" -eq 1 ] || printf '%s\t%s\t%s\n' "$new" "$old_local" "$rel" >> "$tmp"
+    elif [ -f "$dst" ] && [ -n "$old_source" ] && [ "$old_source" = "$old_local" ] && [ "$(file_hash "$dst")" = "$old_local" ]; then
+      [ "$DRY" -eq 1 ] || install_managed_file "$src" "$dst" "$rel"
+      info "↑ $rel"; COPIED=$((COPIED+1))
+      [ "$DRY" -eq 1 ] || printf '%s\t%s\t%s\n' "$new" "$new" "$rel" >> "$tmp"
+    elif [ "$rel" = "$accept" ] && [ -f "$dst" ]; then
+      current=$(file_hash "$dst")
+      info "✓ $rel（已确认合并的定制文件）"; SKIPPED=$((SKIPPED+1))
+      printf '%s\t%s\t%s\n' "$new" "$current" "$rel" >> "$tmp"
+    else
+      suggestion="$tgt/.ai-harness/suggested/$rel.upgrade-${new:0:12}"
+      if [ "$DRY" -eq 0 ]; then
+        mkdir -p "$(dirname "$suggestion")" || die "无法创建建议目录: $rel"
+        if [ -e "$suggestion" ]; then
+          cmp -s "$src" "$suggestion" || die "已有同名建议文件被改动，拒绝覆盖: $suggestion"
+        else cp "$src" "$suggestion" || die "写入建议文件失败: $rel"; fi
+        [ -z "$old_source" ] || printf '%s\t%s\t%s\n' "$old_source" "$old_local" "$rel" >> "$tmp"
+      fi
+      info "! $rel → .ai-harness/suggested/$rel.upgrade-${new:0:12}"
+      CONFLICTS=$((CONFLICTS+1))
+    fi
+  done < <(find "$TPL" -type f | sort)
+  [ -z "$accept" ] || [ "$seen" -eq 1 ] || die "未找到待确认的机制文件: $accept"
+  if [ "$DRY" -eq 0 ]; then
+    mv -f "$tmp" "$manifest" || die "无法更新 manifest"
+    if [ "$CONFLICTS" -eq 0 ]; then
+      mode=$(sed -n 's/^mode=//p' "$tgt/.ai-harness/version" | head -1)
+      installed=$(sed -n 's/^installed_at=//p' "$tgt/.ai-harness/version" | head -1)
+      [ -n "$mode" ] || mode=unknown
+      [ -n "$installed" ] || installed=unknown
+      tmp=$(mktemp "$tgt/.ai-harness/.version.XXXXXX") || die "无法创建版本临时文件"
+      printf 'version=%s\nmode=%s\ninstalled_at=%s\nupgraded_at=%s\n' "$VERSION" "$mode" "$installed" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$tmp"
+      mv -f "$tmp" "$tgt/.ai-harness/version" || die "无法更新版本"
+    fi
+  fi
+  if [ "$DRY" -eq 1 ]; then say "只读预演：$COPIED 个待新增/更新，$SKIPPED 个已是新版，$CONFLICTS 个冲突。"
+  else say "升级完成：$COPIED 个新增/更新，$SKIPPED 个已是新版，$CONFLICTS 个冲突。"; fi
+  [ "$CONFLICTS" -eq 0 ] || { warn "冲突需合并；版本标记保留旧值，合并后重跑 upgrade。"; return 1; }
 }
 
 doctor_core() { # <dir>
@@ -381,6 +532,7 @@ EOF
 case "${1:-help}" in
   init) shift; cmd_init "$@" ;;
   retrofit) shift; cmd_retrofit "$@" ;;
+  upgrade) shift; cmd_upgrade "$@" ;;
   doctor) shift; cmd_doctor "$@" ;;
   install-skill) shift; cmd_install_skill "$@" ;;
   version) say "ai-harness $VERSION (template @ $ROOT)" ;;
