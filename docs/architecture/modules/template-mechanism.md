@@ -7,4 +7,4 @@
 - **状态**：项目自己的 `docs/specs/`、`.knowledge/`、`harness/redlines.conf` 留在项目内并进入 Git，详细验证日志除外。
 - **验证**：`ai-verify.sh --quick` 仅执行项目 `QUICK_CHECK`，不写 G4 摘要；正式调用仍运行配置的完整检查并写摘要。`ai-state-id.sh --spec` 在 design §4 显式确认验证依赖清单后，才从精确路径构建指纹；多路径条目、无可靠清单或有未归属改动时回退全仓。`harness-selftest.sh` 覆盖正反例，CI 另跑项目回归。
 - **追溯与统计**：新 Spec 用追溯版本标记启用 G3 的 REQ/ERR/AC 覆盖矩阵检查与 G4 的任务设计章节检查；旧 Spec 保持原门禁。`ai-knowledge.sh usage` 只读扫描通过 G4 的 active/archive Spec 注入知识行，按 Spec 去重派生采用数。
-- **评分与可选 CI 指标**：G1 校验七维固定权重、加权分、单项最低分及 `FEASIBILITY_MIN`；模板解释该规则，不新增旧 Spec 的门禁。覆盖率和变异测试配置仅供目标项目 CI 选择接线；项目应核对报告与低于阈值时的失败路径，未接线不能视为通过。
+- **评分与可选 CI 指标**：G1 校验七维固定权重、加权分、单项得分大于 3 及 `FEASIBILITY_MIN`；模板解释该规则，不新增旧 Spec 的门禁。覆盖率和变异测试配置仅供目标项目 CI 选择接线；项目应核对报告与低于阈值时的失败路径，未接线不能视为通过。
