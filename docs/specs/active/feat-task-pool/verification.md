@@ -4,8 +4,8 @@
 - target: bin/ai-harness
 - result: PASS
 - checks: 1
-- state: a0abab54bc1882372cf267e9a5cc6203fb43edd8f19280f6508b21cd9cd94f09
+- state: cccd18d396e4159517dba3a55105a69f6392d36a26ce86591639c64dd1f7f65e
 - command: bash scripts/ai-verify.sh --spec feat-task-pool bin/ai-harness
-- verified_at_utc: 2026-10-22T07:05:48Z
+- verified_at_utc: 2026-10-22T07:29:26Z
 
 详细输出仅在本地 reports/；代码内容或 Git 暂存状态变化后重新验证，同一索引内容提交后仍有效。
