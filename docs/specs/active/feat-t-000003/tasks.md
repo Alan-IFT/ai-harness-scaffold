@@ -34,7 +34,7 @@
   - 完成判据：观察证据可用；候选问题不自动入队；固定权重及单项门槛、CI 接线责任准确。
   - 验证命令：`bash scripts/ai-verify.sh --quick --spec feat-t-000003 README.md`
 
-- [ ] **Task 3: 同步说明并完成回归** `[<<< CURRENT ACTIVE TASK]`
+- [x] **Task 3: 同步说明并完成回归**
   - 涉及文件：`README.md`、`docs/architecture/modules/guidance.md`、`docs/architecture/modules/template-mechanism.md`、`docs/PROPOSAL-2026-10-blog-ai-ambition.md`
   - 对应需求 / 验收：REQ-01, REQ-04 / AC-04
   - 对应设计：design.md §2
@@ -47,11 +47,11 @@
 
 ## 4. Current WIP & Handoff Scratchpad
 
-- 当前正在执行的任务：Task 3。
+- 当前正在执行的任务：无；待正式 G4、独立 CR 与 G6。
 - 前置依赖 / 并行关系：先更新模板，再同步指南与回归。
-- 已完成的小步进展：G1~G3 通过；Task 1、2 的模板、验收与 CI 指南已修改，各次 quick 验证 PASS。
-- 正在编辑的文件：`README.md`、`docs/architecture/modules/guidance.md`、`docs/architecture/modules/template-mechanism.md`、`docs/PROPOSAL-2026-10-blog-ai-ambition.md`。
+- 已完成的小步进展：G1~G3 通过；Task 1~3 的内容完成，quick 验证 PASS，完整 `harness-selftest.sh` 210/210 通过。
+- 正在编辑的文件：无。
 - 已排除的死胡同 / 错误方案：仅加红线注释无法解决 CI 未接线；删除权重校验会造成评分失真。
 - 上次验证与未验证改动：尚未运行正式 G4。
-- 下一步立即执行的唯一动作：完成 Task 3 的文档同步与正式验证。
+- 下一步立即执行的唯一动作：运行正式 `ai-verify.sh --spec feat-t-000003 README.md` 并检查 G4。
 - knowledge_feedback：无。

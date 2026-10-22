@@ -62,7 +62,7 @@ bash scripts/ai-gate.sh status   # G1~G7 阶段门
 bash scripts/ai-task-pool.sh next  # AI 接手时查看当前工作；维护者直接用自然语言说需求
 ```
 
-维护者直接告诉 AI 新需求或补充，无需运行命令。AI 用 `ai-task-pool.sh intake` 自动保存原话：有活跃 Spec 就把新需求排队并续做；没有活跃 Spec 就启动人工指定或最早录入的待办，空池则启动刚提出的需求。默认按录入先后，旧 P0/P1/P2 字段仅保留兼容；说“先做某项”即可让 AI 持久指定下一项，仅在该项启动后清除。归档与自动领取共用任务池锁，归档完成后由 AI 接续下一项；新会话运行 `ai-resume.sh owner` 会提示续做的 Spec 或下一条待办。已开始的需求变化会同步修订 Spec 与受影响门禁。旧 `docs/INTAKE.md` 保留历史。①低风险小改动可用单步紧凑设计；②③先记录人的风险或架构决定，并在 G3 列出边界样本及 REQ/ERR/AC 到设计的覆盖矩阵；任务引用设计章节，实施前回读原文锚点。④完成分类与人工移交后，门禁会阻止继续自动开发。设计时核对间接消费者与实际检索范围。独立 CR 对照需求原文、相关知识和本次修改的 AI 协作文件。知识卡可用 `ai-knowledge.sh suggest <module>` 找候选，代码改动后用 `impact <path...>` 提示复核；`usage` 从通过 G4 的 Spec 派生采用记录，不维护手工计数，也不冒充实际读取次数；验收模板记录发布与回访结果。
+维护者直接告诉 AI 新需求或补充，无需运行命令。AI 用 `ai-task-pool.sh intake` 自动保存原话：有活跃 Spec 就把新需求排队并续做；没有活跃 Spec 就启动人工指定或最早录入的待办，空池则启动刚提出的需求。默认按录入先后，旧 P0/P1/P2 字段仅保留兼容；说“先做某项”即可让 AI 持久指定下一项，仅在该项启动后清除。归档与自动领取共用任务池锁，归档完成后由 AI 接续下一项；新会话运行 `ai-resume.sh owner` 会提示续做的 Spec 或下一条待办。已开始的需求变化会同步修订 Spec 与受影响门禁。旧 `docs/INTAKE.md` 保留历史。需求澄清先明确完成后希望促成的行动、效果与观察方式；设计时用原始证据低成本检验关键前提，不因实现困难擅自降低目标。①低风险小改动可用单步紧凑设计；②③先记录人的风险或架构决定，并在 G3 列出边界样本及 REQ/ERR/AC 到设计的覆盖矩阵；任务引用设计章节，实施前回读原文锚点。④完成分类与人工移交后，门禁会阻止继续自动开发。设计时核对间接消费者与实际检索范围。独立 CR 对照需求原文、相关知识和本次修改的 AI 协作文件。知识卡可用 `ai-knowledge.sh suggest <module>` 找候选，代码改动后用 `impact <path...>` 提示复核；`usage` 从通过 G4 的 Spec 派生采用记录，不维护手工计数，也不冒充实际读取次数；验收模板记录发布与回访结果，后续问题仅在有证据时作为候选提出。
 
 G6 由 Agent 执行冒烟和 AC 核对，并把命令、环境、结果写入 `acceptance.md`。①证据充分时自动收尾；②③默认把风险和结果交给人决定。维护者也可在 G3 明确限定条件委托：仅当 AC 全通过、G5 无阻塞且无新增重大风险时由 Agent 收尾；超出范围仍须当次决定。用户不必填写 Markdown 或亲跑命令。本地文件不是身份认证，需要强制审批时使用项目自己的权限机制。
 
@@ -111,7 +111,7 @@ bash scripts/harness-selftest.sh
 `template/` 里包含：`AGENTS.md`（L1 入口）、`MEMORY.md`（踩坑池）、`docs/`（轻量需求入口 + 模块活文档 + Spec 与验证摘要模板 + 度量）、
 `scripts/`（ai-task-pool / ai-gate / ai-verify / ai-resume / ai-new-spec / ai-state-id / ai-config / ai-check-bloat / ai-knowledge / harness-selftest）、
 `harness/redlines.conf`（唯一阈值来源）、`.knowledge/`（知识卡）、`.agents/skills/`（阶段技能）。
-通用 CI 接入命令见 `template/harness/CI.md`；覆盖率和变异测试阈值须由目标项目的 CI 实现。
+通用 CI 接入命令见 `template/harness/CI.md`；覆盖率和变异测试阈值须由目标项目的 CI 实现，并用低于阈值的样本确认失败路径。未接线时配置值不代表检查已通过。
 老项目 `retrofit --dry-run` 只读；正式接入不会覆盖已有文件、删除同名示例文件或自动改写红线。目录扫描结果放在 `.ai-harness/suggested/` 供审核。
 安装时记录 `.ai-harness/manifest.tsv`，之后用本仓库的 `upgrade <项目路径>` 自动补齐新脚本、更新安装后未改动的机制文件。项目自己的任务、Spec、架构文档、红线及 ignore 文件不在自动替换范围。定制文件保留原样，新版模板写到 `.ai-harness/suggested/<相对路径>.upgrade-<哈希>`；命令返回非零且版本号暂不推进。合并后逐文件运行 `upgrade <项目路径> --accept-custom <相对路径>` 确认当前定制内容；后续模板变化会再次提示冲突。`upgrade --dry-run` 严格只读。旧安装没有 manifest 时只能自动补缺，已有不同内容须逐项确认。升级前建议先提交目标项目当前改动。
 若旧项目的红线配置缺少必要键或值无效，脚本会指出键名并停止；维护者按项目需要补齐 `harness/redlines.conf` 后再运行。脚本不使用另一套隐含默认阈值。

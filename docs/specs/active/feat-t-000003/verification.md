@@ -1,10 +1,11 @@
-# 增量验证摘要：feat-t-000003
-
-> 状态：未验证。运行 `bash scripts/ai-verify.sh --spec feat-t-000003 <file>` 后由脚本更新。
-> 本文件进入 Git，供其他 IDE、worktree 或电脑接手；详细日志留在本地 `reports/`。
+# 增量验证摘要（随项目文档和 Git 交接）
 
 - spec: feat-t-000003
-- target: 未验证
-- result: UNVERIFIED
-- checks: 0
-- state: 未验证
+- target: README.md
+- result: PASS
+- checks: 1
+- state: 95852752d8c139e4e0b489ce966d534c9ad9c65dade2073190e0fc6f4b8a17eb
+- command: bash scripts/ai-verify.sh --spec feat-t-000003 README.md
+- verified_at_utc: 2026-10-22T17:48:29Z
+
+详细输出仅在本地 reports/；代码内容或 Git 暂存状态变化后重新验证，同一索引内容提交后仍有效。
