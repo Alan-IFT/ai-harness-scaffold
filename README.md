@@ -55,9 +55,11 @@ bash bin/ai-harness install-skill --host dsh
 ```bash
 bash scripts/ai-resume.sh owner  # 主 Agent 接手快照：门状态、WIP、知识库、git 残局
 bash scripts/ai-gate.sh status   # G1~G7 阶段门
+bash scripts/ai-task-pool.sh add --priority P1 "下次要做的需求"
+bash scripts/ai-task-pool.sh next
 ```
 
-粗想法可先记在项目内 `docs/INTAKE.md`，保留原话与一次处理决定；明确的需求直接建 Spec。入口只关联稳定 Spec ID，用 `ai-gate.sh status <ID>` 查询当前位置与阶段，归档时不用改写入口路径。①低风险小改动可用单步紧凑设计；②③先记录人的风险或架构决定，并在 G3 列出边界样本及 REQ/ERR/AC 到设计的覆盖矩阵；任务引用设计章节，实施前回读原文锚点。④完成分类与人工移交后，门禁会阻止继续自动开发。设计时核对间接消费者与实际检索范围。独立 CR 对照需求原文、相关知识和本次修改的 AI 协作文件。知识卡可用 `ai-knowledge.sh suggest <module>` 找候选，代码改动后用 `impact <path...>` 提示复核；`usage` 从通过 G4 的 Spec 派生采用记录，不维护手工计数，也不冒充实际读取次数；验收模板记录发布与回访结果。
+新想法随时用 `bash scripts/ai-task-pool.sh add "原话"` 收进项目内 `docs/task-pool/`，用 `update <T-ID> "补充"` 追加变化；旧 `docs/INTAKE.md` 保留历史。新会话运行 `ai-resume.sh owner` 会提示续做的 Spec 或下一条待办，`ai-task-pool.sh next` 可单独查询。开始待办用 `start <T-ID> <feat-id>` 建 Spec；任务只关联稳定 Spec ID，归档后再次运行 `next` 即可继续下一项。①低风险小改动可用单步紧凑设计；②③先记录人的风险或架构决定，并在 G3 列出边界样本及 REQ/ERR/AC 到设计的覆盖矩阵；任务引用设计章节，实施前回读原文锚点。④完成分类与人工移交后，门禁会阻止继续自动开发。设计时核对间接消费者与实际检索范围。独立 CR 对照需求原文、相关知识和本次修改的 AI 协作文件。知识卡可用 `ai-knowledge.sh suggest <module>` 找候选，代码改动后用 `impact <path...>` 提示复核；`usage` 从通过 G4 的 Spec 派生采用记录，不维护手工计数，也不冒充实际读取次数；验收模板记录发布与回访结果。
 
 G6 由 Agent 执行冒烟和 AC 核对，并把命令、环境、结果写入 `acceptance.md`。①证据充分时自动收尾；②③默认把风险和结果交给人决定。维护者也可在 G3 明确限定条件委托：仅当 AC 全通过、G5 无阻塞且无新增重大风险时由 Agent 收尾；超出范围仍须当次决定。用户不必填写 Markdown 或亲跑命令。本地文件不是身份认证，需要强制审批时使用项目自己的权限机制。
 
@@ -103,7 +105,7 @@ bash scripts/harness-selftest.sh
 本仓库在接入前已有 Git 历史和 `main` 分支，因此自用接入保留原仓库；没有重新执行 `git init`。接入记录已归档在 `docs/specs/archive/2026-10/feat-self-hosting/`。
 
 `template/` 里包含：`AGENTS.md`（L1 入口）、`MEMORY.md`（踩坑池）、`docs/`（轻量需求入口 + 模块活文档 + Spec 与验证摘要模板 + 度量）、
-`scripts/`（ai-gate / ai-verify / ai-resume / ai-new-spec / ai-state-id / ai-config / ai-check-bloat / ai-knowledge / harness-selftest）、
+`scripts/`（ai-task-pool / ai-gate / ai-verify / ai-resume / ai-new-spec / ai-state-id / ai-config / ai-check-bloat / ai-knowledge / harness-selftest）、
 `harness/redlines.conf`（唯一阈值来源）、`.knowledge/`（知识卡）、`.agents/skills/`（阶段技能）。
 通用 CI 接入命令见 `template/harness/CI.md`；覆盖率和变异测试阈值须由目标项目的 CI 实现。
 老项目 `retrofit --dry-run` 只读；正式接入不会覆盖已有文件、删除同名示例文件或自动改写红线。目录扫描结果放在 `.ai-harness/suggested/` 供审核。

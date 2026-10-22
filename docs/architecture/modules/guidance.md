@@ -1,6 +1,8 @@
 # 项目指南与文档
 
+- **新需求入口**：新想法写入 `docs/task-pool/`；`add` 收集、`update` 追加、`next` 先续做活跃 Spec 再按优先级/ID 选待办、`start` 建 Spec。旧 `docs/INTAKE.md` 保留历史，不和任务文件重复记录原文。
+
 - **职责**：`template/AGENTS.md` 给目标项目提供跨 IDE 入口；`template/.agents/skills/` 是按阶段读取的普通 Markdown；`skill/SKILL.md` 是仓库内共享技能入口，Codex/Claude Code 用户技能目录只放带源路径的薄适配器。主 Agent、限定任务 worker 和 G5 审查者按角色读取项目原件，避免转贴整个 Spec 或上一 Agent 对话。
-- **边界**：项目事实写在目标项目的 Spec、活文档与 Git 中；需求入口只关联稳定 Spec ID，创建脚本拒绝重用已归档 ID，目录和阶段由 `ai-gate.sh status <ID>` 解析。知识卡、路线图等参与代码指纹的文件在最后一次正式 G4 前更新，归档时只复核。指南不得把示例事实当作真实架构，也不复述 `harness/redlines.conf` 的可变阈值数字，只引用配置键。
+- **边界**：项目事实写在任务文件、Spec、活文档与 Git 中；任务文件只关联稳定 Spec ID，创建脚本拒绝重用已归档 ID，目录和阶段由 `ai-gate.sh status <ID>` 解析。知识卡、路线图等参与代码指纹的文件在最后一次正式 G4 前更新，归档时只复核。指南不得把示例事实当作真实架构，也不复述 `harness/redlines.conf` 的可变阈值数字，只引用配置键。
 - **验证**：①可用单步紧凑记录；②③在 G3 提前列边界样本，G5 独立审查仍保留。正式 G4 的目标须是归档后路径与内容稳定的项目文件；验证器拒绝以 `docs/specs/**` 或 `docs/metrics.md` 为正式目标。G6 默认要当次结果决定，仅在 G3 有明确条件委托、AC 全通过且无新增重大风险时 Agent 可按授权收尾。检查指南命令与门禁实现一致。
 - **需求语义与审查**：②③记录易走样的原文锚点，设计矩阵覆盖 REQ/ERR/AC，任务引用设计章节。独立审查用 `ai-resume.sh review <feat> <base-ref>` 定位原文、完整相关 diff、验证摘要、相关知识与本次改动的 AI 协作文件；机器只查记录完整，语义由审查判断。

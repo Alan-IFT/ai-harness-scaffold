@@ -19,6 +19,7 @@
 1. **按角色恢复现场**：主 Agent 跑 `bash scripts/ai-resume.sh owner [feat]`；限定任务的 Agent 跑 `bash scripts/ai-resume.sh worker <feat> <task-id>`；G5 审查者跑 `bash scripts/ai-resume.sh review <feat> <base-ref>`。只读输出指向的项目原件和本角色所需章节；不要把整份 Spec 或上一个 Agent 对话转贴给所有角色。
 2. **精准路由**：主 Agent 用 WIP、`MEMORY.md`、`git diff` 恢复全局状态；worker 读本任务、相关需求与设计章节、分配文件的 diff；G5 审查者独立读需求原文、AC、完整相关 diff、验证摘要和契约，不能用实现者自述代替。再从 `docs/architecture/00-INDEX.md` 加载相关模块活文档；跨模块按需扩展。
 3. **受控执行**：只认领 `tasks.md` 里 **1 个** `[ ]` 原子任务；**门禁未过不得开始编码**。
+4. **任务池**：随时用 `bash scripts/ai-task-pool.sh add [--priority P0|P1|P2] "原话"` 收集需求，`update <T-ID> "补充"` 追加变化；新会话的 owner 接手输出会提示续做 Spec 或下一条待办。任务原件在 `docs/task-pool/`，开始时用 `start <T-ID> <feat-id>` 建 Spec；已开始的需求变化须同步更新 Spec 并回退受影响门。
 
 ## 2. 质量门 G1~G7（由 `scripts/ai-gate.sh` 机械校验）
 | 门 | 名称 | 通过条件 | 失败回到 | 谁推进 |
@@ -32,7 +33,7 @@
 | G7 | 归档 | 已按 `archive-spec.md` 归档 | G6 补验收 | Agent |
 
 - 推进：`bash scripts/ai-gate.sh check <feat> <gate>` → 通过后 `bash scripts/ai-gate.sh pass <feat> <gate>`。
-- **④ 收尾**：G1 留下分析与人工移交结论后，把 Spec 移入 archive 并更新 `docs/INTAKE.md` 的决定；不计为交付，也不尝试 G2~G7。优先只用 INTAKE 记录这类想法，避免占用 active Spec。
+- **④ 收尾**：G1 留下分析与人工移交结论后，把 Spec 移入 archive，并在关联任务文件的补充记录中写明人工接管决定；不计为交付，也不尝试 G2~G7。优先只用任务池记录这类想法，避免占用 active Spec。
 - **失败包络**：同一目标连续验证失败达到 `VERIFY_MAX_ATTEMPTS` 时停下，更新 WIP 并向人说明卡点；不要重复运行同一失败检查。
 - **门状态必须与代码同步**：回滚代码后跑 `bash scripts/ai-gate.sh reset <feat> <gate> --reason "..."`，让该门及之后的门失效；`--force` 跳过前置门会记入 `<spec>/.violations` 审计。
 - **G6 分工**：Agent 运行冒烟、核对 AC 并填写 `acceptance.md`；②③默认由人决定，若 G3 有明确条件委托且 AC 全通过、G5 无阻塞、无新增重大风险，可由 Agent 按授权范围收尾；超出范围仍向人呈现判断点。不让人填文档或跑机械命令。门禁无法认证对话身份；强制审批使用项目自己的权限机制。
@@ -73,6 +74,8 @@
 | 开发快检 / 正式验证 | `bash scripts/ai-verify.sh --quick --spec <feat> <file>` / 去掉 `--quick` |
 | 门间耗时 | `bash scripts/ai-gate.sh metrics <feat>` |
 | 新建 Spec | `bash scripts/ai-new-spec.sh <feat-name>` |
+| 收集 / 查看下一项 | `bash scripts/ai-task-pool.sh add "原话"` / `next` |
+| 开始任务 / 补充需求 | `bash scripts/ai-task-pool.sh start <T-ID> <feat-name>` / `update <T-ID> "补充"` |
 | 体积体检 | `bash scripts/ai-check-bloat.sh` |
 | 门禁回退 | `bash scripts/ai-gate.sh reset <feat> <gate> --reason "..."` |
 | 门禁自检 | `bash scripts/harness-selftest.sh` |

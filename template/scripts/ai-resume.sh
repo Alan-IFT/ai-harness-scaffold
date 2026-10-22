@@ -148,6 +148,12 @@ if [ -d docs/specs/active ]; then
   [ "$found" -eq 1 ] || echo "  当前无活跃 Spec。新建：bash scripts/ai-new-spec.sh <feat-name>"
 fi
 
+# 2a. 持久任务池：先续做活跃 Spec；完成后选下一条待办
+echo -e "\n[2a] 任务池下一步"
+if [ -f scripts/ai-task-pool.sh ]; then
+  bash scripts/ai-task-pool.sh next || true
+fi
+
 # 3. 工作区残局
 echo -e "\n[3] 工作区未提交的半成品 (Git Dirty State)"
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then

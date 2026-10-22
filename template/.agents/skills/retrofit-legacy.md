@@ -12,7 +12,7 @@
 ## 2. 最小落地
 
 1. 用 `retrofit <项目路径> --skip-doctor` 复制缺失文件；冲突留在 `.ai-harness/suggested/`，逐个合并，不覆盖现有规则。已有未提交改动保持原样。
-   `docs/INTAKE.md` 可作为新需求的轻量入口；已有需求系统继续使用，只在 Spec 的「原始问题 / 原话」保留链接与原意，不复制历史需求池。
+   `docs/task-pool/` 是新需求的轻量入口；已有需求系统继续使用，只在 Spec 的「原始问题 / 原话」保留链接与原意，不复制历史需求池。旧 `docs/INTAKE.md` 可保留历史。
 2. `AGENTS.md` 只留项目入口、真实验证命令、接力文件位置和必要禁令；`CLAUDE.md` 可作为薄导入入口。项目文档与 Git 是状态来源。
 3. 从 `.ai-harness/suggested/module-candidates.md` 选**一个**真实模块，确认职责、代码路径和公共契约，写一篇活文档并登记 `docs/architecture/00-INDEX.md`。其他候选暂不建空文档。
 4. 审核 `.ai-harness/suggested/harness/allowed-write-dirs.txt`；由有权限的人决定是否合并进 `harness/redlines.conf` 并更新基线。不要把目录扫描结果当权限事实。

@@ -4,13 +4,13 @@
 
 ## 接手
 
-1. 主 Agent 在仓库根目录运行 `bash scripts/ai-resume.sh owner [feat]`；限定任务运行 `worker <feat> <task-id>`；独立审查运行 `review <feat> <base-ref>`。按角色读取原件；主 Agent 再读 `MEMORY.md`、当前 Spec 的 `tasks.md` 与 `verification.md`、`git status` / `git diff`。
+1. 主 Agent 在仓库根目录运行 `bash scripts/ai-resume.sh owner [feat]`；输出会提示续做的 Spec 或任务池下一项。限定任务运行 `worker <feat> <task-id>`；独立审查运行 `review <feat> <base-ref>`。按角色读取原件；主 Agent 再读 `MEMORY.md`、当前 Spec 的 `tasks.md` 与 `verification.md`、`git status` / `git diff`。
 2. 从 `docs/architecture/00-INDEX.md` 找到要改的部分。CLI、模板脚本、项目指南是不同模块；跨模块修改按需读多篇。
 3. 项目状态保存在 Git 与上述项目文件中。`CLAUDE.md` 只导入本文件，换 IDE 不依赖宿主记忆。
 
 ## 开发
 
-- 粗想法先保留在 `docs/INTAKE.md`；非平凡变更建 Spec，需求、设计、任务与 WIP 写进 `docs/specs/active/`。阶段门用 `bash scripts/ai-gate.sh check|pass <feat> <gate>`。G6 由 Agent 执行客观核验，②③只把需判断的风险和结果交给人决定；归档时更新 `docs/metrics.md`。
+- 新想法用 `bash scripts/ai-task-pool.sh add "原话"` 收进 `docs/task-pool/`，变化用 `update <T-ID> "补充"` 追加；旧 `docs/INTAKE.md` 保留历史。新会话先续做活跃 Spec，否则用 `next` 选择待办，再用 `start <T-ID> <feat>` 建 Spec。非平凡变更的需求、设计、任务与 WIP 写进 `docs/specs/active/`。阶段门用 `bash scripts/ai-gate.sh check|pass <feat> <gate>`。G6 由 Agent 执行客观核验，②③只把需判断的风险和结果交给人决定；归档时更新 `docs/metrics.md`。
 - 修改脚手架脚本时编辑 `template/scripts/`，并跑 `bash scripts/harness-selftest.sh`。修改 `bin/` 时至少跑 Bash 语法检查与 `retrofit --dry-run` 冒烟。
 - 开发中用 `bash scripts/ai-verify.sh --quick --spec <feat> <file>` 做短检查；G4 前去掉 `--quick` 跑正式验证，产出可交接的 `verification.md`。详细日志留本地；状态指纹按 design §4 精确清单或保守全仓计算。
 - `template/AGENTS.md` 与 `template/.agents/skills/` 是交付给目标项目的规则和普通 Markdown 指南；改它们时同步检查 README、CLI 和自检。根目录规则只适用于本仓库开发。
@@ -22,6 +22,8 @@
 | 用途 | 命令 |
 | :-- | :-- |
 | 主 Agent 恢复现场 | `bash scripts/ai-resume.sh owner [feat]` |
+| 收集 / 补充 / 下一项 | `bash scripts/ai-task-pool.sh add "原话"` / `update <T-ID> "补充"` / `next` |
+| 从任务池建 Spec | `bash scripts/ai-task-pool.sh start <T-ID> <feat>` |
 | 限定任务接手 | `bash scripts/ai-resume.sh worker <feat> <task-id>` |
 | 独立审查接手 | `bash scripts/ai-resume.sh review <feat> <base-ref>` |
 | 新建 Spec | `bash scripts/ai-new-spec.sh <feat>` |

@@ -4,12 +4,12 @@
 **产出**：已复核的活文档与知识卡 + 归档目录 + 度量行 + 一个干净的 commit。
 正式 G4 的验证目标须选归档后路径不变的项目文件；`docs/specs/**` 和 `docs/metrics.md` 不能作为正式目标。
 
-象限④是分析与人工移交，不走本技能的 G6/G7 交付归档：在 `docs/INTAKE.md` 记录人工接管决定；若已经建立 Spec，G1 后将其移到 `docs/specs/archive/YYYY-MM/`，不写交付度量行。保留需求和分析作为依据，但不让它长期占用 active 名额。
+象限④是分析与人工移交，不走本技能的 G6/G7 交付归档：在关联任务文件记录人工接管决定；若已经建立 Spec，G1 后将其移到 `docs/specs/archive/YYYY-MM/`，不写交付度量行。保留需求和分析作为依据，但不让它长期占用 active 名额。
 
 ## Step 1: 复核「活态真相区」(`docs/architecture/`)
 1. 对照 `design.md` §3 / §4，确认新增模块、公共契约、核心数据表和红线已在最后一次正式 G4 验证前同步。
 2. 如仍须修改模块活文档或 `00-INDEX.md`，先修改并按门禁回退、重跑正式验证与后续门；不要在 G6 后悄悄使验证摘要过期。
-3. `docs/INTAKE.md` 只存稳定 Spec ID 和一次处理决定，物理归档时不更新路径或阶段；由 `ai-gate.sh status <feat>` 定位。
+3. 任务文件只存稳定 Spec ID，物理归档时不更新路径或阶段；由 `ai-gate.sh status <feat>` 定位。旧 `docs/INTAKE.md` 历史无需迁移。
 
 ## Step 2: 复核知识卡与路线图
 1. 可复用结论应已在最后一次正式 G4 前按 `.agents/skills/knowledge-distill.md` 蒸馏，至多 3 条；没有可复用结论可为 0 条。此时只核对 `.knowledge/cards/` 与 `.knowledge/INDEX.md`。
@@ -18,7 +18,7 @@
 4. 若 G5 审查或 G6 核验产生必须写入知识卡、路线图或其他非流程文件的新结论，先按门禁规则回退并重跑正式 G4 与后续门；不能在归档时补写后仍沿用旧摘要。
 
 ## Step 3: 记录度量（`docs/metrics.md` 追加一行）
-先运行 `bash scripts/ai-gate.sh metrics <feat>`，从 `.gates` 自动得到门间耗时；再从 `docs/INTAKE.md`、当前 Spec、`review.md`、`.violations` 和本地 `reports/` 补充非门禁事实。不要另算一份时间或美化；缺少时间戳写「未知」：
+先运行 `bash scripts/ai-gate.sh metrics <feat>`，从 `.gates` 自动得到门间耗时；再从关联任务文件（或旧 `docs/INTAKE.md`）、当前 Spec、`review.md`、`.violations` 和本地 `reports/` 补充非门禁事实。不要另算一份时间或美化；缺少时间戳写「未知」：
 - 需求提出 → G1、G3 → G4、G4 → G6 的耗时；人工或外部依赖等待只记有证据的时间。
 - 遗漏的间接影响与返工、交付形态及实际反馈；待发布或未观察写清状态。
 - 若 G7 时仍待发布，在 `acceptance.md` 留回访时间；发布后补记结果并更新 `docs/metrics.md` 对应行，不把「测试通过」写成用户效果。

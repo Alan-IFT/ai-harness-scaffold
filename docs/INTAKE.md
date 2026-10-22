@@ -1,5 +1,7 @@
 # 本仓库需求入口
 
+新需求请用 `bash scripts/ai-task-pool.sh add "原话"` 收进 `docs/task-pool/`；本文件保留已有历史记录，不再新增任务。
+
 关联列只存稳定 Spec ID；当前位置与阶段由 `bash scripts/ai-gate.sh status <ID>` 查询。归档时不改写入口中的目录路径或完成状态。
 
 | ID | 提出时间 / 来源 | 原始问题或原话 | 期望结果与证据 | 一次处理决定与理由 | 关联 Spec ID |

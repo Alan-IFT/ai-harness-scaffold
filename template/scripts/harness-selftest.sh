@@ -467,6 +467,7 @@ expect_fail "正式验证拒绝归档时会更新的度量目标" "流程文件"
 expect_fail "验证拒绝重复分隔符绕过流程目标限制" "规范化项目路径" bash scripts/ai-verify.sh --spec t-good docs//metrics.md
 expect_fail "验证拒绝中间点目录绕过流程目标限制" "规范化项目路径" bash scripts/ai-verify.sh --spec t-good docs/./specs/active/t-good/requirements.md
 expect_out "owner 接手快照显示验证摘要" "可交接验证摘要" bash scripts/ai-resume.sh owner t-good
+expect_out "owner 接手提示任务池下一步" "任务池下一步" bash scripts/ai-resume.sh owner t-good
 expect_fail "旧式接手命令给迁移提示" "旧式" bash scripts/ai-resume.sh t-good
 expect_fail "接手命令必须指定角色" "用法" bash scripts/ai-resume.sh
 expect_fail "接手拒绝未知角色" "未知角色" bash scripts/ai-resume.sh observer t-good
@@ -818,6 +819,36 @@ expect_fail "非法知识期限时 knowledge 拒绝" "KNOWLEDGE_TTL_DAYS" bash s
 rm harness/redlines.conf
 expect_fail "缺失项目配置时拒绝" "缺少配置" bash scripts/ai-gate.sh check t-config-threshold g1
 cp "$TMP/redlines.original" harness/redlines.conf
+
+# ---------------------------------------------------------------- 汇总 --------
+echo "== 13. 跨会话任务池 =="
+POOL_SB="$TMP/task-pool"
+mkdir -p "$POOL_SB/scripts" "$POOL_SB/docs/specs/archive"
+cp "$ROOT/scripts/ai-task-pool.sh" "$ROOT/scripts/ai-new-spec.sh" "$POOL_SB/scripts/"
+cp -r "$ROOT/docs/specs/_templates" "$POOL_SB/docs/specs/_templates"
+cd "$POOL_SB" || exit 1
+expect_out "空池 next 可用" "暂无待办" bash scripts/ai-task-pool.sh next
+expect_fail "拒绝无效优先级" "优先级" bash scripts/ai-task-pool.sh add --priority P3 bad
+expect_out "收集第一条需求" "T-000001" bash scripts/ai-task-pool.sh add "较晚处理"
+expect_out "收集高优先级需求" "T-000002" bash scripts/ai-task-pool.sh add --priority P0 "先处理"
+expect_out "按优先级选下一项" "下一项：T-000002" bash scripts/ai-task-pool.sh next
+expect_out "下一项显示原始需求" "原始需求：先处理" bash scripts/ai-task-pool.sh next
+expect_out "追加需求变更" "已追加" bash scripts/ai-task-pool.sh update T-000002 "加入边界"
+file_has "原话未被更新覆盖" docs/task-pool/T-000002.md "先处理"
+file_has "补充已落盘" docs/task-pool/T-000002.md "加入边界"
+expect_fail "拒绝非法任务 ID" "ID 无效" bash scripts/ai-task-pool.sh update T-2 bad
+expect_out "从待办建 Spec" "已关联 feat-first" bash scripts/ai-task-pool.sh start T-000002 feat-first
+expect_out "活跃 Spec 优先续做" "续做活跃 Spec：feat-first" bash scripts/ai-task-pool.sh next
+expect_fail "拒绝重复领取" "不是未关联" bash scripts/ai-task-pool.sh start T-000002 feat-second
+expect_fail "已有活跃 Spec 时拒绝启动下一项" "已有活跃 Spec" bash scripts/ai-task-pool.sh start T-000001 feat-second
+mkdir -p docs/specs/archive/2026-10
+mv docs/specs/active/feat-first docs/specs/archive/2026-10/
+expect_out "归档后选下一项" "下一项：T-000001" bash scripts/ai-task-pool.sh next
+expect_out "归档状态由 Spec 派生" "已归档" bash scripts/ai-task-pool.sh list
+mkdir docs/task-pool/.lock
+expect_fail "并发写锁拒绝收集" "另一进程修改" bash scripts/ai-task-pool.sh add "冲突任务"
+rmdir docs/task-pool/.lock
+cd "$SB" || exit 1
 
 # ---------------------------------------------------------------- 汇总 --------
 echo ""

@@ -8,7 +8,7 @@
 2. 只读相关模块的公共契约（`index.ts` / `types.ts`），评估影响面与是否已有类似实现。线索不足时做有界仓库搜索。
 
 ## Step 1: 访谈式澄清（先复述，再追问，不要替人类拍板）
-0. 若只有粗想法，先在 `docs/INTAKE.md` 保留提出者原话、期望结果与一次处理决定；明确的小任务可直接建 Spec 并引用原话。创建脚本会拒绝重用 active 或 archive 中已有的 ID。创建后在入口行只记稳定 Spec ID，阶段和位置用 `ai-gate.sh status <ID>` 查，不写随归档变化的目录路径。
+0. 新需求先用 `bash scripts/ai-task-pool.sh add "原话"` 收进任务池；后续变化用 `update <T-ID> "补充"` 追加。新会话用 `next`，先续做活跃 Spec，再从待办选下一项；开始时用 `start <T-ID> <feat-id>` 建 Spec。旧 `docs/INTAKE.md` 仅保留历史记录。任务文件只记稳定 Spec ID，阶段和位置用 `ai-gate.sh status <ID>` 查。
 1. **复述理解**：用 3~5 句话复述「你要的是 X，因为 Y，做到 Z 就算完成」，让人类确认或纠正。
 2. **逐层追问**：按 为谁做 → 做什么 → 关键业务规则 → 怎么算完成 → 异常/权限/数据量 的顺序问；
    一次只问 1~3 个最关键的，不要甩 20 个问题的清单。
@@ -16,11 +16,11 @@
 4. **区分两类问题**：产品问题（需求本身有歧义）必须问清；技术问题（实现约束未知）可先给假设，但写进待确认问题。
 
 ## Step 2: 生成 Spec 目录
-`bash scripts/ai-new-spec.sh <feature-slug>`（例如 `feat-user-export`），自动带出 Spec、`verification.md` 与本地 `reports/`。
+`bash scripts/ai-task-pool.sh start <T-ID> <feature-slug>`（例如 `T-000001 feat-user-export`），自动带出 Spec、`verification.md` 与本地 `reports/`。不在任务池中的直接需求仍可用 `bash scripts/ai-new-spec.sh <feature-slug>`。
 
 ## Step 3: 写 `requirements.md`
 - **§0 四项必答**：做什么 / 为谁做 / 关键业务规则 / 验收标准，一行一句，能被外行判定。
-- **原始问题与象限**：保留原话，按复杂度和风险定①~④。④只给出分析与人工移交，G1 后不得推进 G2~G7；把结果写回 `docs/INTAKE.md`，若已有 Spec 则移入 archive，不计为交付。①可精简设计；②③要在设计里记人的前置决策。
+- **原始问题与象限**：保留任务原话，按复杂度和风险定①~④。④只给出分析与人工移交，G1 后不得推进 G2~G7；把结果追加到关联任务文件，若已有 Spec 则移入 archive，不计为交付。①可精简设计；②③要在设计里记人的前置决策。
 - **§1 背景 + Non-Goals**：明确这次不做什么，防止范围蔓延。
 - **§2 EARS 需求**：正常流 + 异常边界流（并发、重试、超时、越权、非法输入）。
 - **§3 验收标准表**：每行写清「通过条件 / 不通过条件 / 量化证据」，能数字化就数字化（耗时、条数、错误码）。空格子过不了 G2。
