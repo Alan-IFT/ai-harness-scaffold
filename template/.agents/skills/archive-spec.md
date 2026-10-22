@@ -45,3 +45,5 @@ bash scripts/ai-task-pool.sh archive <feat>
 ## Step 7: 交接下一项
 
 提交后运行 `bash scripts/ai-task-pool.sh next`；若显示待办，立即由 AI 调用 `bash scripts/ai-task-pool.sh start-next` 创建下一项 Spec。这个动作与 intake 在归档时看到的活跃状态相衔接；下一会话再按 owner 接手继续。任务池为空则结束，不让维护者记忆命令。
+
+若 `acceptance.md` 的「后续动作」有基于证据的候选下一问，仅保留为候选并在交接时说明；维护者提出或确认要做后，再按新需求收录。不要把候选问题当作现有待办自动入队。

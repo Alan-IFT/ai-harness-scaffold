@@ -8,7 +8,11 @@ bash scripts/ai-check-bloat.sh
 bash scripts/ai-knowledge.sh check
 ```
 
-再按项目技术栈加入构建、单元测试、集成或冒烟测试、安全扫描。若采用 `harness/redlines.conf` 中的 `COVERAGE_MIN`、`MUTATION_SCORE_MIN`，须在项目 CI 中明确读取并裁决；仅填写阈值不会自动形成门禁。
+再按项目技术栈加入构建、单元测试、集成或冒烟测试、安全扫描。`harness/redlines.conf` 中的 `COVERAGE_MIN`、`MUTATION_SCORE_MIN`、`MUTATION_MODE` 是供项目 CI 选择接入的配置；仅填写这些键不会自动形成门禁。项目决定采用时，先核对：
+
+1. CI 作业实际读取这些键，并按项目工具链执行对应检查；`MUTATION_MODE=off` 时明确跳过变异测试。
+2. 构建结果保留覆盖率或变异测试的报告、执行数与对应提交；检查未运行时显示「未执行」，不能显示「通过」。
+3. 对启用的阈值，低于阈值或缺少有效报告时作业失败；用一次低于阈值的样本确认失败路径。若项目未采用，明确标记为未接线的参考配置。
 
 CI 应把测试执行数、失败数和对应提交写进构建结果，零测试时不得把“未执行”显示为“测试通过”。`verification.md` 是本地增量检查的可交接摘要，不能代替完整回归结果。
 
