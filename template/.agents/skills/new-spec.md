@@ -45,6 +45,8 @@
 - 运行 `bash scripts/ai-knowledge.sh suggest <module>`，在 §1 记录候选和取舍；相关卡若过期或待验证，先复核再注入。
 - 第一个任务标记 `[<<< CURRENT ACTIVE TASK]`。
 - ①简单任务可只写一个紧凑任务和单步设计；AC、真实验证、独立 CR 与 G6 证据仍保留。开发中配置 `QUICK_CHECK` 后使用 `ai-verify.sh --quick`，G4 前必须跑正式验证。
+- **首次正式 G4 前预检**：逐项对照 requirements.md 的原文锚点与 AC、design.md §4 文件清单、实际代码和项目活文档，确认关键数字、禁止项、时序与失败路径没有被摘要改写；用 `git status --short` 找出未跟踪、未暂存和已暂存的非流程交付物，确认均已纳入审查和提交计划。运行 `git diff --check` 与 `git diff --cached --check`，修复后再做完整验证。可归档前会移动或更新的流程文件不选作正式验证目标。
+- 完整验证之后如交付物内容或暂存状态变化，应重跑正式验证并更新摘要；quick 只供开发期反馈，不能代替 G4。
 
 ## Step 6: 过机械门并处理未决事项
 1. 依次 `bash scripts/ai-gate.sh check <feat> g1`（再 g2、g3），按报错补齐。

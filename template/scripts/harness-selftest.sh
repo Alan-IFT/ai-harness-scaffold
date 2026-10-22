@@ -44,6 +44,14 @@ mkdir -p src/export
 printf 'export function createExport() { return true; }\n' >src/export/service.ts
 
 TOTAL=0; FAILED=0
+SECTION_NAME=""; SECTION_START=$SECONDS
+section() {
+  if [ -n "$SECTION_NAME" ]; then
+    printf '== %s: %ss ==\n' "$SECTION_NAME" "$((SECONDS - SECTION_START))"
+  fi
+  SECTION_NAME="$1"; SECTION_START=$SECONDS
+  printf '== %s ==\n' "$SECTION_NAME"
+}
 ok_msg() { TOTAL=$((TOTAL + 1)); printf '  ✅ %s\n' "$1"; }
 ng_msg() {
   TOTAL=$((TOTAL + 1)); FAILED=$((FAILED + 1))
@@ -253,7 +261,7 @@ mk_spec() {       # $1=feat：在沙箱里造一个好样例 spec
 }
 
 # ==============================================================================
-echo "== 1. 模板生成与参数校验 =="
+section "1. 模板生成与参数校验"
 expect_ok   "ai-new-spec 生成新 spec 文档" bash scripts/ai-new-spec.sh t-empty
 expect_fail "ai-new-spec 拒绝无参" "请提供功能名称" bash scripts/ai-new-spec.sh
 expect_fail "ai-new-spec 拒绝同名重复" "已存在" bash scripts/ai-new-spec.sh t-empty
@@ -263,7 +271,7 @@ expect_fail "ai-new-spec 拒绝路径别名" "只允许" bash scripts/ai-new-spe
 file_has "新 spec 含 acceptance.md（G6 留痕）" docs/specs/active/t-empty/acceptance.md "核验执行者"
 file_has "新 spec 含 verification.md（跨 IDE 接力）" docs/specs/active/t-empty/verification.md "UNVERIFIED"
 
-echo "== 2. 空模板必须被逐门拒绝（模板占位不能算完成） =="
+section "2. 空模板必须被逐门拒绝（模板占位不能算完成）"
 expect_fail "G1 拒绝未澄清的需求" "四项必答" bash scripts/ai-gate.sh check t-empty g1
 expect_fail "G2 拒绝空 AC 表" "AC 表有空单元格" bash scripts/ai-gate.sh check t-empty g2
 expect_fail "G3 拒绝模板占位路径 path/to/" "path/to" bash scripts/ai-gate.sh check t-empty g3
@@ -372,7 +380,7 @@ cat >>docs/specs/active/t-trace/review.md <<'MD'
 MD
 expect_ok "G5 接受有范围和知识结论的审查" bash scripts/ai-gate.sh check t-trace g5
 
-echo "== 3. 好样例必须通过 G1~G5 =="
+section "3. 好样例必须通过 G1~G5"
 mk_spec t-good
 expect_ok "G1 通过" bash scripts/ai-gate.sh pass t-good g1
 expect_ok "G2 通过" bash scripts/ai-gate.sh pass t-good g2
@@ -440,7 +448,7 @@ add_delegation docs/specs/active/t-empty-delegation-source/design.md
 sed -i 's/^- 条件委托来源：模拟对话/- 条件委托来源：/' docs/specs/active/t-empty-delegation-source/design.md
 expect_fail "G3 拒绝空来源的委托" "非空决策人和来源" bash scripts/ai-gate.sh check t-empty-delegation-source g3
 
-echo "== 4. 验证摘要必须有目标、真实检查和当前代码状态 =="
+section "4. 验证摘要必须有目标、真实检查和当前代码状态"
 mk_spec t-fake-hand
 sed -i 's/^- result: PASS/- result: FAIL/' docs/specs/active/t-fake-hand/verification.md
 expect_fail "G4 拒绝失败摘要" "未通过" bash scripts/ai-gate.sh check t-fake-hand g4
@@ -644,7 +652,7 @@ expect_fail "review 拒绝过期验证摘要" "过期" bash -c 'cd "$1" && bash 
 )
 expect_fail "review 拒绝空 diff" "没有可审查的变更" bash -c 'cd "$1" && bash scripts/ai-resume.sh review demo HEAD' _ "$RESUME_SB"
 
-echo "== 5. 独立 CR 证据链（自己审自己不留痕 = 未审查） =="
+section "5. 独立 CR 证据链（自己审自己不留痕 = 未审查）"
 mk_spec t-selfreview
 sed -i '/未参与实现/d' docs/specs/active/t-selfreview/review.md
 expect_fail "G5 拒绝未声明「未参与实现」" "未参与实现" bash scripts/ai-gate.sh check t-selfreview g5
@@ -664,7 +672,7 @@ for g in g1 g2 g3 g4; do bash scripts/ai-gate.sh pass t-stalereview "$g" >/dev/n
 sed -i 's/^- 审查状态：.*/- 审查状态：old-state/' docs/specs/active/t-stalereview/review.md
 expect_fail "G5 拒绝与验证摘要不符的旧审查" "审查状态" bash scripts/ai-gate.sh check t-stalereview g5
 
-echo "== 6. Agent 记录与人工身份标记的本地防误操作 =="
+section "6. Agent 记录与人工身份标记的本地防误操作"
 call_g6_agent() { bash scripts/ai-gate.sh pass t-good g6; }
 call_g6_human() { bash scripts/ai-gate.sh pass t-good g6 --by human </dev/null; }
 call_baseline() { bash scripts/ai-gate.sh baseline </dev/null; }
@@ -672,14 +680,14 @@ expect_ok "②有人决定与客观证据后可由 Agent 记录 G6" call_g6_agen
 expect_fail "G6 拒绝非 TTY 的 --by human" "TTY" call_g6_human
 expect_fail "baseline 拒绝非 TTY 确认" "TTY" call_baseline
 
-echo "== 7. 红线漂移必须阻断推进 =="
+section "7. 红线漂移必须阻断推进"
 printf '\n# tampered by selftest\n' >>harness/redlines.conf
 expect_fail "红线漂移时 pass 被阻断" "漂移" bash scripts/ai-gate.sh pass t-good g1
 expect_out "status 报出红线漂移" "漂移" bash scripts/ai-gate.sh status t-good
 cp "$TMP/redlines.fixture" harness/redlines.conf
 expect_out "恢复红线后基线重新一致" "一致" bash scripts/ai-gate.sh status t-good
 
-echo "== 8. 门禁回退（reset） =="
+section "8. 门禁回退（reset）"
 mk_spec t-reset
 bash scripts/ai-gate.sh pass t-reset g1 >/dev/null 2>&1
 bash scripts/ai-gate.sh pass t-reset g2 >/dev/null 2>&1
@@ -692,11 +700,11 @@ expect_fail "reset 后 pass g3 被前置门拦住" "前置门 g2 未通过" bash
 expect_fail "未知门被拒" "未知门" bash scripts/ai-gate.sh pass t-reset g9
 expect_fail "未知 spec 被拒" "找不到 spec" bash scripts/ai-gate.sh pass no-such-feat g1
 
-echo "== 9. 零检查 = 未验证（本地可信最低门槛） =="
+section "9. 零检查 = 未验证（本地可信最低门槛）"
 mkdir -p src && : >src/x.ts
 expect_fail "无项目工具链时 ai-verify 必须失败" "未执行任何真实检查" bash scripts/ai-verify.sh --spec t-good src/x.ts
 
-echo "== 10. 成本包络：连续失败计数与黄卡 =="
+section "10. 成本包络：连续失败计数与黄卡"
 ONLY="$TMP/only"
 mkdir -p "$ONLY/scripts" "$ONLY/harness" "$ONLY/docs/specs/active/only/reports"
 cp -r "$ROOT/scripts/." "$ONLY/scripts/"
@@ -714,7 +722,7 @@ if [ "${n:-}" = "3" ]; then ok_msg "连续失败计数 = 3"; else ng_msg "连续
 if grep -q '黄卡' "$ONLY/out3" 2>/dev/null; then ok_msg "第 3 次失败输出黄卡"; else ng_msg "第 3 次失败未输出黄卡"; fi
 
 # ---------------------------------------------------------------- 知识飞轮 ----
-echo "== 11. 知识卡体检与前置强注入 =="
+section "11. 知识卡体检与前置强注入"
 mkdir -p .knowledge/cards
 cat >.knowledge/cards/K-0001.md <<'MD'
 # K-0001 导出任务幂等
@@ -788,7 +796,7 @@ sed -i '/K-0002/d' .knowledge/INDEX.md
 expect_out "删卡并删索引后恢复一致" "一致" bash scripts/ai-knowledge.sh check
 
 # ---------------------------------------------------------- 单一配置来源 ----
-echo "== 12. 阈值只从项目配置读取 =="
+section "12. 阈值只从项目配置读取"
 cp harness/redlines.conf "$TMP/redlines.original"
 sed -i 's/^FEASIBILITY_MIN=.*/FEASIBILITY_MIN=81/' harness/redlines.conf
 mk_spec t-config-threshold
@@ -821,7 +829,7 @@ expect_fail "缺失项目配置时拒绝" "缺少配置" bash scripts/ai-gate.sh
 cp "$TMP/redlines.original" harness/redlines.conf
 
 # ---------------------------------------------------------------- 汇总 --------
-echo "== 13. 跨会话任务池 =="
+section "13. 跨会话任务池"
 POOL_SB="$TMP/task-pool"
 mkdir -p "$POOL_SB/scripts" "$POOL_SB/docs/specs/archive"
 cp "$ROOT/scripts/ai-task-pool.sh" "$ROOT/scripts/ai-new-spec.sh" "$POOL_SB/scripts/"
@@ -906,6 +914,7 @@ cd "$SB" || exit 1
 
 # ---------------------------------------------------------------- 汇总 --------
 echo ""
+printf '== %s: %ss ==\n' "$SECTION_NAME" "$((SECONDS - SECTION_START))"
 echo "== 自检结果：$TOTAL 项断言，失败 $FAILED 项 =="
 if [ "$FAILED" -ne 0 ]; then
   echo "❌ 门禁自检未通过：先修 scripts/ai-gate.sh 或 ai-verify.sh，再谈业务代码。"
