@@ -19,6 +19,7 @@ valid_id() { [[ "$1" =~ ^T-[0-9]{6}$ ]]; }
 valid_feat() { [[ "$1" =~ ^[A-Za-z0-9._-]+$ ]] && [ "$1" != . ] && [ "$1" != .. ]; }
 field() { sed -n "s/^- $2: //p" "$1" | head -n 1; }
 summary_for() { awk '/^## 原始需求[[:space:]]*$/ { inside=1; next } inside && NF { print; exit }' "$1"; }
+nonblank() { [[ "$1" =~ [^[:space:]] ]]; }
 task_file() {
   valid_id "$1" || die "任务 ID 无效：$1"
   [ -f "$POOL/$1.md" ] || die "任务不存在：$1"
@@ -27,7 +28,17 @@ task_file() {
 lock_pool() {
   mkdir -p "$POOL"
   mkdir "$POOL/.lock" 2>/dev/null || die "任务池正被另一进程修改；稍后重试（若异常中断，核实后移除 $POOL/.lock）"
-  trap 'rmdir "$POOL/.lock"' EXIT
+  trap cleanup_lock EXIT
+}
+cleanup_lock() {
+  [ -z "${LINK_TMP:-}" ] || rm -f -- "$LINK_TMP"
+  if [ -n "${START_SPEC:-}" ]; then
+    for name in requirements.md design.md tasks.md acceptance.md verification.md; do
+      rm -f -- "$START_SPEC/$name"
+    done
+    rmdir "$START_SPEC/reports" "$START_SPEC" 2>/dev/null || true
+  fi
+  rmdir "$POOL/.lock"
 }
 spec_location() {
   local spec=$1
@@ -74,6 +85,7 @@ case "${1:-}" in
     case "$priority" in P0|P1|P2) ;; *) die "优先级只允许 P0/P1/P2" ;; esac
     [ "$#" -ge 1 ] || die "缺少原始需求"
     title="$*"
+    nonblank "$title" || die "原始需求不能为空"
     [[ "$title" != *$'\n'* && "$title" != *$'\r'* ]] || die "原始需求须为单行；长内容可在创建后编辑任务文件"
     lock_pool
     max=0
@@ -100,6 +112,7 @@ case "${1:-}" in
     f=$(task_file "$2")
     shift 2
     note="$*"
+    nonblank "$note" || die "补充不能为空"
     [[ "$note" != *$'\n'* && "$note" != *$'\r'* ]] || die "补充须为单行；长内容可直接编辑任务文件"
     lock_pool
     printf -- '- %s：%s\n' "$(date +%Y-%m-%d)" "$note" >>"$f"
@@ -142,6 +155,7 @@ case "${1:-}" in
     valid_feat "$feat" || die "Spec ID 无效：$feat"
     lock_pool
     [ "$(field "$f" '关联 Spec')" = 无 ] && [ "$(field "$f" '队列状态')" = 待办 ] || die "任务不是未关联的待办：$2"
+    case "$(field "$f" '优先级')" in P0|P1|P2) ;; *) die "任务优先级无效：$2" ;; esac
     for specdir in docs/specs/active/*/; do
       [ -d "$specdir" ] || continue
       die "已有活跃 Spec：${specdir%/}；先完成或移交后再开始下一项"
@@ -150,9 +164,14 @@ case "${1:-}" in
     if find docs/specs/archive -mindepth 2 -maxdepth 2 -type d -name "$feat" -print -quit 2>/dev/null | grep -q .; then
       die "Spec ID 已归档，不能重用：$feat"
     fi
-    bash scripts/ai-new-spec.sh "$feat" || die "创建 Spec 失败；任务仍未关联"
-    sed -i "s/^- 关联 Spec: 无$/- 关联 Spec: $feat/" "$f"
-    sed -i "s@^- \*\*需求来源\*\*:.*@- **需求来源**: $POOL/$2.md（原始需求与更新）@" "docs/specs/active/$feat/requirements.md"
+    LINK_TMP=$(mktemp "$POOL/.link.XXXXXX") || die "无法暂存任务关联"
+    sed "s/^- 关联 Spec: 无$/- 关联 Spec: $feat/" "$f" >"$LINK_TMP" || die "无法暂存任务关联"
+    [ "$(field "$LINK_TMP" '关联 Spec')" = "$feat" ] || die "任务关联字段无效"
+    AI_HARNESS_SOURCE_TASK="$f" bash scripts/ai-new-spec.sh "$feat" || die "创建 Spec 失败；任务仍未关联"
+    START_SPEC="docs/specs/active/$feat"
+    mv -f -- "$LINK_TMP" "$f" || die "无法更新任务关联；正在回滚新建 Spec"
+    LINK_TMP=""
+    START_SPEC=""
     printf '✅ %s 已关联 %s。先读任务原件，再完成 G1~G3。\n' "$2" "$feat"
     ;;
   -h|--help|help) usage ;;

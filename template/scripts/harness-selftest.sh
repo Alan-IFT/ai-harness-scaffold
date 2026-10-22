@@ -829,15 +829,34 @@ cp -r "$ROOT/docs/specs/_templates" "$POOL_SB/docs/specs/_templates"
 cd "$POOL_SB" || exit 1
 expect_out "空池 next 可用" "暂无待办" bash scripts/ai-task-pool.sh next
 expect_fail "拒绝无效优先级" "优先级" bash scripts/ai-task-pool.sh add --priority P3 bad
+expect_fail "拒绝空白原话" "不能为空" bash scripts/ai-task-pool.sh add "   "
 expect_out "收集第一条需求" "T-000001" bash scripts/ai-task-pool.sh add "较晚处理"
 expect_out "收集高优先级需求" "T-000002" bash scripts/ai-task-pool.sh add --priority P0 "先处理"
 expect_out "按优先级选下一项" "下一项：T-000002" bash scripts/ai-task-pool.sh next
 expect_out "下一项显示原始需求" "原始需求：先处理" bash scripts/ai-task-pool.sh next
 expect_out "追加需求变更" "已追加" bash scripts/ai-task-pool.sh update T-000002 "加入边界"
+expect_out "再次追加需求变更" "已追加" bash scripts/ai-task-pool.sh update T-000002 "再补一条"
+expect_fail "拒绝空白补充" "不能为空" bash scripts/ai-task-pool.sh update T-000002 "   "
 file_has "原话未被更新覆盖" docs/task-pool/T-000002.md "先处理"
 file_has "补充已落盘" docs/task-pool/T-000002.md "加入边界"
+file_has "第二次补充已落盘" docs/task-pool/T-000002.md "再补一条"
 expect_fail "拒绝非法任务 ID" "ID 无效" bash scripts/ai-task-pool.sh update T-2 bad
+sed -i 's/^- 优先级: P2$/- 优先级: P3/' docs/task-pool/T-000001.md
+expect_fail "next 拒绝手工改坏的优先级" "优先级无效" bash scripts/ai-task-pool.sh next
+expect_fail "start 拒绝手工改坏的优先级" "优先级无效" bash scripts/ai-task-pool.sh start T-000001 feat-invalid
+sed -i 's/^- 优先级: P3$/- 优先级: P2/' docs/task-pool/T-000001.md
+rm docs/specs/_templates/acceptance.md
+expect_fail "建 Spec 缺模板时失败" "模板缺失" bash scripts/ai-task-pool.sh start T-000002 feat-broken
+[ ! -e docs/specs/active/feat-broken ] && ok_msg "失败后无孤儿 Spec" || ng_msg "失败后留下孤儿 Spec"
+file_has "失败后任务仍未关联" docs/task-pool/T-000002.md "- 关联 Spec: 无"
+cp "$ROOT/docs/specs/_templates/acceptance.md" docs/specs/_templates/acceptance.md
+cp docs/specs/_templates/requirements.md "$TMP/pool-requirements.original"
+sed -i '/^- \*\*需求来源\*\*:/d' docs/specs/_templates/requirements.md
+expect_fail "建 Spec 来源占位缺失时失败" "创建 Spec 失败" bash scripts/ai-task-pool.sh start T-000002 feat-broken-source
+[ ! -e docs/specs/active/feat-broken-source ] && ok_msg "来源处理失败后无孤儿 Spec" || ng_msg "来源处理失败后留下孤儿 Spec"
+cp "$TMP/pool-requirements.original" docs/specs/_templates/requirements.md
 expect_out "从待办建 Spec" "已关联 feat-first" bash scripts/ai-task-pool.sh start T-000002 feat-first
+file_has "新 Spec 引用任务原件" docs/specs/active/feat-first/requirements.md "docs/task-pool/T-000002.md"
 expect_out "活跃 Spec 优先续做" "续做活跃 Spec：feat-first" bash scripts/ai-task-pool.sh next
 expect_fail "拒绝重复领取" "不是未关联" bash scripts/ai-task-pool.sh start T-000002 feat-second
 expect_fail "已有活跃 Spec 时拒绝启动下一项" "已有活跃 Spec" bash scripts/ai-task-pool.sh start T-000001 feat-second

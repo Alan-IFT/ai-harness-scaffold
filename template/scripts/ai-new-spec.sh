@@ -35,19 +35,54 @@ if [ ! -d "$TEMPLATE_DIR" ]; then
   exit 1
 fi
 
-mkdir -p "$TARGET_DIR/reports"
-TODAY=$(date +%Y-%m-%d)
-
 for file in requirements.md design.md tasks.md acceptance.md verification.md; do
   src="$TEMPLATE_DIR/$file"
   if [ ! -f "$src" ]; then
     echo "❌ 错误: 模板缺失: $src"
     exit 1
   fi
+done
+
+if [ -n "${AI_HARNESS_SOURCE_TASK:-}" ]; then
+  [[ "$AI_HARNESS_SOURCE_TASK" =~ ^docs/task-pool/T-[0-9]{6}\.md$ ]] && [ -f "$AI_HARNESS_SOURCE_TASK" ] || {
+    echo "❌ 错误: 任务来源文件无效: $AI_HARNESS_SOURCE_TASK"
+    exit 1
+  }
+fi
+
+mkdir -p docs/specs/active
+BUILD_DIR=$(mktemp -d "docs/specs/active/.$FEAT_NAME.tmp.XXXXXX") || exit 1
+cleanup_build() {
+  [ -n "${BUILD_DIR:-}" ] || return 0
+  for file in requirements.md design.md tasks.md acceptance.md verification.md requirements.md.tmp; do
+    rm -f -- "$BUILD_DIR/$file"
+  done
+  rmdir "$BUILD_DIR/reports" "$BUILD_DIR" 2>/dev/null || true
+}
+trap cleanup_build EXIT
+mkdir "$BUILD_DIR/reports" || exit 1
+TODAY=$(date +%Y-%m-%d)
+
+for file in requirements.md design.md tasks.md acceptance.md verification.md; do
+  src="$TEMPLATE_DIR/$file"
   sed -e "s/{{FEATURE_NAME}}/$FEAT_NAME/g" \
       -e "s/{{DATE}}/$TODAY/g" \
-      "$src" >"$TARGET_DIR/$file"
+      "$src" >"$BUILD_DIR/$file" || exit 1
 done
+
+if [ -n "${AI_HARNESS_SOURCE_TASK:-}" ]; then
+  awk -v source="$AI_HARNESS_SOURCE_TASK" '
+    /^- \*\*需求来源\*\*:/ { print "- **需求来源**: `" source "`（原始需求与更新）"; found=1; next }
+    { print }
+    END { if (!found) exit 1 }
+  ' "$BUILD_DIR/requirements.md" >"$BUILD_DIR/requirements.md.tmp" || exit 1
+  mv "$BUILD_DIR/requirements.md.tmp" "$BUILD_DIR/requirements.md" || exit 1
+fi
+
+[ ! -e "$TARGET_DIR" ] || { echo "⚠️  目录已存在，未覆盖: $TARGET_DIR"; exit 1; }
+mv "$BUILD_DIR" "$TARGET_DIR" || exit 1
+BUILD_DIR=""
+trap - EXIT
 
 echo "✅ 已创建: $TARGET_DIR"
 echo "   - $TARGET_DIR/requirements.md  (含需求象限 + 可行性加权评分)"

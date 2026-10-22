@@ -26,18 +26,18 @@
 | AC-04 | requirements.md §3 | §2 文档与安装 | AC-04 |
 
 ## 2. 实现顺序与检查点
-1. 建任务池脚本和模板目录，验证 add/list/next/update/start。
+1. 建任务池脚本和模板目录，验证 add/list/next/update/start；Spec 模板先完整检查，再在临时目录生成并移入 active，任务关联写入失败则清理本次生成的 Spec。
 2. 接入 owner resume 与根目录转发，增加自检；检查点：活跃 Spec 优先与归档后切换。
 3. 更新指南、README、架构文档；检查点：命令和状态语义一致。
-- 边界样本：非法 ID、P3、重复 start、空池、活跃 Spec 与高优先级待办并存、归档任务、并发 add 锁冲突、手工改坏优先级或队列状态。
+- 边界样本：非法 ID、P3、空白需求和补充、重复 start、空池、活跃 Spec 与高优先级待办并存、归档任务、并发 add 锁冲突、手工改坏优先级或队列状态、模板缺文件或需求来源占位。
 
 ## 3. 契约
 `ai-task-pool.sh add [--priority P0|P1|P2] <原话>`、`update <T-ID> <补充>`、`list`、`next`、`start <T-ID> <feat-id>`。next/list 只读；start 拒绝已有关联和已存在 Spec。
 
 ## 4. 影响面与文件清单
 - 新建：`template/scripts/ai-task-pool.sh`、`scripts/ai-task-pool.sh`、`template/docs/task-pool/README.md`、`docs/task-pool/README.md`、`docs/task-pool/T-000001.md`。
-- 修改：`template/scripts/ai-resume.sh`、`template/scripts/harness-selftest.sh`、`template/AGENTS.md`、`AGENTS.md`、`template/.agents/skills/new-spec.md`、`template/.agents/skills/archive-spec.md`、`template/.agents/skills/retrofit-legacy.md`、`template/docs/specs/_templates/requirements.md`、`template/docs/INTAKE.md`、`docs/INTAKE.md`、`README.md`、`docs/architecture/modules/template-mechanism.md`、`docs/architecture/modules/guidance.md`、`docs/architecture/modules/self-hosting.md`。
-- 只读依赖：`template/scripts/ai-new-spec.sh`、`template/scripts/ai-gate.sh`、`bin/ai-harness`、`harness/verify.conf`。
+- 修改：`template/scripts/ai-new-spec.sh`、`template/scripts/ai-resume.sh`、`template/scripts/harness-selftest.sh`、`template/AGENTS.md`、`AGENTS.md`、`template/.agents/skills/new-spec.md`、`template/.agents/skills/archive-spec.md`、`template/.agents/skills/retrofit-legacy.md`、`template/docs/specs/_templates/requirements.md`、`template/docs/INTAKE.md`、`docs/INTAKE.md`、`README.md`、`docs/architecture/modules/template-mechanism.md`、`docs/architecture/modules/guidance.md`、`docs/architecture/modules/self-hosting.md`。
+- 只读依赖：`template/scripts/ai-gate.sh`、`bin/ai-harness`、`harness/verify.conf`。
 - 间接消费者 / 副作用：init/retrofit 复制模板全树；selftest 复制模板脚本；owner resume 增加只读提示。旧项目文件保护不变。
 - 检索依据：`rg -n 'INTAKE|ai-resume|ai-new-spec' template README.md bin docs/architecture`；检查 CLI、指南和转发。
 
