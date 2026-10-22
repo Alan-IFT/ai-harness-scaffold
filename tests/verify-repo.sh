@@ -19,7 +19,8 @@ run_phase() {
 case "${TARGET_FILE:-}" in
   *.sh|bin/ai-harness) run_phase '目标文件语法' bash -n "$TARGET_FILE" || exit $? ;;
 esac
-run_phase '模板自检' bash template/scripts/harness-selftest.sh || exit $?
-run_phase 'CLI 回归' bash tests/cli-upgrade.sh || exit $?
+# 便宜的错误先拒绝，避免带着空白错误跑数分钟自检。
 run_phase '未暂存 diff' git diff --check || exit $?
 run_phase '已暂存 diff' git diff --cached --check || exit $?
+run_phase '模板自检' bash template/scripts/harness-selftest.sh || exit $?
+run_phase 'CLI 回归' bash tests/cli-upgrade.sh || exit $?
