@@ -7,8 +7,9 @@ case "${TARGET_FILE:-}" in
     echo '== 目标文件语法 =='
     bash -n "$TARGET_FILE"
     ;;
-  template/.agents/skills/*|template/AGENTS.md|README.md)
-    echo '== 项目指南体积 =='
+  template/.agents/skills/*|template/AGENTS.md|skill/*|README.md)
+    echo '== 项目指南标题与上下文体积 =='
+    grep -q '^# ' "$TARGET_FILE"
     bash scripts/ai-check-bloat.sh
     ;;
 esac
