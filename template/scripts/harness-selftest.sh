@@ -322,6 +322,7 @@ sed -i 's/^| AC-01 | .*/| AC-01 | 文案 | 按钮显示「尽快处理。」与 
 expect_ok "G2 放行引号内原文与复合词（字节 locale）" env LC_ALL=C bash scripts/ai-gate.sh check t-vague g2
 sed -i '/^## 3\./a\> 说明：尽量写成可计数的条件（说明行不是 AC 行）。' docs/specs/active/t-vague/requirements.md
 expect_ok "G2 不扫描 AC 行以外的说明文字" env LC_ALL=C bash scripts/ai-gate.sh check t-vague g2
+sed -i '/^> 说明：尽量写成可计数的条件/d' docs/specs/active/t-vague/requirements.md
 sed -i 's/^| AC-01 | .*/| AC-01 | 文案 | 提示显示『适当休息』 | 文案不符 | 截图 |/' docs/specs/active/t-vague/requirements.md
 expect_ok "G2 放行『』内的被测原文" env LC_ALL=C bash scripts/ai-gate.sh check t-vague g2
 sed -i 's/^| AC-01 | .*/| AC-01 | 导出 | 「尽量 2 秒内返回 | 超时 | 计时 |/' docs/specs/active/t-vague/requirements.md
