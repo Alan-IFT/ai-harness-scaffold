@@ -289,6 +289,20 @@ expect_fail "G2 对「大概率」给出改写示例" "至少 95 次" bash scrip
 sed -i "s/^| AC-01 | .*/| AC-01 | 导出 | 大概 2s 返回 | 超时 | 计时 |/" docs/specs/active/t-vague/requirements.md
 vague_out=$(bash scripts/ai-gate.sh check t-vague g2 2>&1 || true)
 case "$vague_out" in *"含糊词：大概（"*) case "$vague_out" in *"至少 95 次"*) ng_msg "G2 对「大概」误给大概率示例" ;; *) ok_msg "G2 只对「大概率」给改写示例" ;; esac ;; *) ng_msg "G2 未拦「大概」" ;; esac
+# 完整词表只在 ai-gate.sh；模板举的例子必须都在词表里，改词表忘了同步模板会在这里报出
+vague_missing=$(awk '
+  FNR == NR { if (index($0, "split(\"")) words = words " " $0; next }
+  index($0, "G2 拒绝 AC 行里的含糊词") {
+    n = split($0, part, "「")
+    for (k = 2; k <= n; k++) {
+      j = index(part[k], "」"); if (j <= 1) continue
+      w = substr(part[k], 1, j - 1); sub(/[.]$/, "", w); checked++
+      if (!index(words, w)) print w
+    }
+  }
+  END { if (!checked) print "（未抽到任何例子）" }
+' scripts/ai-gate.sh docs/specs/_templates/requirements.md)
+if [ -z "$vague_missing" ]; then ok_msg "模板含糊词例子都在 ai-gate.sh 词表中"; else ng_msg "模板含糊词例子不在 ai-gate.sh 词表中：$(printf '%s' "$vague_missing" | tr '\n' ' ')"; fi
 sed -i 's/^| AC-01 | .*/| AC-01 | 文案 | 按钮显示「尽快处理。」与 `ASAP` | 文案不符 | 合理性校验返回 400 |/' docs/specs/active/t-vague/requirements.md
 expect_ok "G2 放行引号内原文与复合词（字节 locale）" env LC_ALL=C bash scripts/ai-gate.sh check t-vague g2
 expect_fail "G3 拒绝模板占位路径 path/to/" "path/to" bash scripts/ai-gate.sh check t-empty g3
