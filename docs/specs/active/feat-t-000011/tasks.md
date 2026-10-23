@@ -20,7 +20,7 @@
 
 ## 2. 原子任务序列
 
-- [ ] **Task 1: G6 升级提示与升级说明** `[<<< CURRENT ACTIVE TASK]`
+- [x] **Task 1: G6 升级提示与升级说明**
   - 涉及文件：`template/scripts/ai-gate.sh`、`template/.agents/skills/retrofit-legacy.md`、`template/scripts/harness-selftest.sh`
   - 对应需求 / 验收：REQ-01, REQ-02, ERR-01 / AC-01, AC-02, AC-03, AC-04
   - 对应设计：design.md §2
@@ -33,12 +33,12 @@
 
 ## 4. Current WIP & Handoff
 
-- 当前正在执行的任务：Task 1
+- 当前正在执行的任务：G5 独立 CR
 - 前置依赖 / 并行关系：无
 - 已完成的小步进展：G1~G3 通过
 - 正在编辑的文件：
   - `template/scripts/ai-gate.sh`
 - 已排除的死胡同：G6 同时接受新旧快照（维护者否决）
-- 上次验证与未验证改动：尚未验证
+- 上次验证与未验证改动：无 locale 正式验证 PASS；自检 238/238；ai-gate.sh 仅改一行文案
 - 下一步立即执行的唯一动作：改 ai-gate.sh 第 507 行文案
 - knowledge_feedback：无
