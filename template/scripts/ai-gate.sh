@@ -233,7 +233,7 @@ trace_requirement_ids() {
 
 ck_trace_g3() {
   local matrix ids id rows
-  matrix=$(awk '/^### 1[.]1 /{inside=1;next} /^## /{inside=0} inside' "$DIR/design.md")
+  matrix=$(awk '/^### 1[.]1 /{inside=1;next} /^## /{inside=0} inside' "$DIR/design.md" | sed 's/　/ /g')
   [ -n "$matrix" ] || { say "新 Spec 缺少 design.md §1.1 需求覆盖矩阵"; return 1; }
   ids=$(trace_requirement_ids)
   [ -n "$ids" ] || { say "新 Spec 缺少可追溯的 REQ/ERR/AC 编号"; return 1; }

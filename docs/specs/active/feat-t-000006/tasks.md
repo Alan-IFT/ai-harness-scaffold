@@ -51,15 +51,16 @@
 ## 3. 发现但不碰
 
 - 记录：`template/scripts/ai-task-pool.sh` `nonblank()` / 纯全角空格的需求原话在 C 下视为非空、UTF-8 下视为空 / 不是门禁判定、影响极小 / 如需处理另立任务。
+- 记录：G5 第 1 轮改进建议 / ① ai-gate.sh 的 section_body 与 field_ok 双重归一化可加注释说明来源；② 旧脚本下过 G3 且委托行含全角空格的 Spec，G6 会报授权快照不一致，需重过 G3；③ 已按建议扫描 ai-gate.sh 所有直接读文件处，除需求覆盖矩阵（已修）外均只匹配固定符号、编号或 ASCII 空白，两种 locale 结论一致 / 均不阻塞 / ①② 如需处理另立任务。
 
 ## 4. Current WIP & Handoff
 
-- 当前正在执行的任务：G5 独立 CR
+- 当前正在执行的任务：G5 第 2 轮
 - 前置依赖 / 并行关系：Task 3 依赖 Task 1、2；Task 4 依赖前三项
 - 已完成的小步进展：G1~G3 通过；独立设计审查首轮需修改，已改入设计
 - 正在编辑的文件：
   - `docs/architecture/modules/template-mechanism.md`、`.knowledge/cards/K-0001.md`
 - 已排除的死胡同：脚本强制 LC_ALL（维护者否决）；只修自检（会掩盖缺陷）
-- 上次验证与未验证改动：无 locale 正式验证 PASS（233s）；UTF-8 与无 locale 自检均 223/223
+- 上次验证与未验证改动：修覆盖矩阵全角空格后待重新正式验证
 - 下一步立即执行的唯一动作：新上下文运行 `ai-resume.sh review feat-t-000006 f0ea114` 写 review.md
 - knowledge_feedback：无

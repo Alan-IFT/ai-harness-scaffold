@@ -368,6 +368,9 @@ sed -i '/^# 原子执行队列/a\- 追溯版本：1' docs/specs/active/t-trace/t
 sed -i '/^- \[x\] Task 1:/a\  - 对应需求 / 验收：REQ-01 / AC-01\n  - 对应设计：design.md §2' docs/specs/active/t-trace/tasks.md
 sed -i '/^- \[x\] Task 2:/a\  - 对应需求 / 验收：REQ-01 / AC-01\n  - 对应设计：design.md §2' docs/specs/active/t-trace/tasks.md
 expect_ok "新 Spec 完整追溯矩阵通过 G3" bash scripts/ai-gate.sh check t-trace g3
+cp -r docs/specs/active/t-trace docs/specs/active/t-trace-fw
+sed -i "s/^| REQ-01 | requirements.md §2 上限原文 | §2 步骤 | AC-01 |/| REQ-01 | 　 | §2 步骤 | AC-01 |/" docs/specs/active/t-trace-fw/design.md
+expect_fail "LC_ALL=C：覆盖矩阵单元格只有全角空格被拒" "空单元格" env LC_ALL=C bash scripts/ai-gate.sh check t-trace-fw g3
 expect_ok "新 Spec 任务引用设计通过 G4" bash scripts/ai-gate.sh check t-trace g4
 cp docs/specs/active/t-trace/tasks.md "$TMP/trace-tasks.bak"
 sed -i 's#REQ-01 / AC-01#REQ-999 / AC-01#g' docs/specs/active/t-trace/tasks.md
