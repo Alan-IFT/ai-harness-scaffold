@@ -42,7 +42,7 @@ if [ "$QUICK" -eq 0 ]; then
   stable_target="$TARGET_FILE"
   while [ "${stable_target#./}" != "$stable_target" ]; do stable_target="${stable_target#./}"; done
   case "$stable_target" in
-    docs/specs/*|docs/metrics.md)
+    docs/specs/*|docs/metrics.md|docs/task-pool/*)
       echo "❌ 正式验证目标不能选归档时会移动或更新的流程文件: $TARGET_FILE" >&2
       exit 1 ;;
   esac

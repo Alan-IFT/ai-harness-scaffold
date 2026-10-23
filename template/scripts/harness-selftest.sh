@@ -639,6 +639,12 @@ expect_fail "正式验证拒绝会移动的 Spec 文档目标" "流程文件" ba
 mkdir -p docs
 printf '# Metrics\n' >docs/metrics.md
 expect_fail "正式验证拒绝归档时会更新的度量目标" "流程文件" bash scripts/ai-verify.sh --spec t-good ./docs/metrics.md
+mkdir -p docs/task-pool
+printf '# T-000001\n' >docs/task-pool/T-000001.md
+printf 'T-000001\n' >docs/task-pool/NEXT
+expect_fail "正式验证拒绝任务池文件目标" "流程文件" bash scripts/ai-verify.sh --spec t-good docs/task-pool/T-000001.md
+expect_fail "正式验证拒绝 ./ 开头的任务池目标" "流程文件" bash scripts/ai-verify.sh --spec t-good ./docs/task-pool/NEXT
+rm -rf docs/task-pool
 expect_fail "验证拒绝重复分隔符绕过流程目标限制" "规范化项目路径" bash scripts/ai-verify.sh --spec t-good docs//metrics.md
 expect_fail "验证拒绝中间点目录绕过流程目标限制" "规范化项目路径" bash scripts/ai-verify.sh --spec t-good docs/./specs/active/t-good/requirements.md
 expect_out "owner 接手快照显示验证摘要" "可交接验证摘要" bash scripts/ai-resume.sh owner t-good
@@ -744,6 +750,41 @@ metrics_before=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh source.txt)
 printf 'delivery result\n' >"$GIT_SB/docs/metrics.md"
 metrics_after=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh source.txt)
 if [ "$metrics_before" = "$metrics_after" ]; then ok_msg "交付度量不使代码指纹过期"; else ng_msg "交付度量错误地使代码指纹过期"; fi
+# 任务池是流程记录：未跟踪走未跟踪 case，已跟踪的修改、暂存、提交与删除走 pathspec 排除；基线取在收录之前
+cp scripts/ai-task-pool.sh "$GIT_SB/scripts/"
+(cd "$GIT_SB" && git add scripts/ai-task-pool.sh 2>/dev/null && git -c user.name=selftest -c user.email=selftest@example.invalid commit -qm pool-script)
+pool_base=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh source.txt)
+pool_same() { # $1=描述
+  local now
+  now=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh source.txt)
+  if [ "$now" = "$pool_base" ]; then ok_msg "$1"; else ng_msg "$1：指纹变化"; fi
+}
+(cd "$GIT_SB" && bash scripts/ai-task-pool.sh intake "中途收录的问题" && bash scripts/ai-task-pool.sh prefer T-000001) >/dev/null 2>&1
+if [ -f "$GIT_SB/docs/task-pool/T-000001.md" ] && [ -f "$GIT_SB/docs/task-pool/NEXT" ]; then
+  pool_same "Spec 进行中收录并指定任务不使指纹过期"
+else
+  ng_msg "Git 夹具中任务池收录未生成任务文件"
+fi
+(cd "$GIT_SB" && git add docs/task-pool 2>/dev/null && git -c user.name=selftest -c user.email=selftest@example.invalid commit -qm pool)
+pool_same "任务池提交后指纹不变"
+(cd "$GIT_SB" && bash scripts/ai-task-pool.sh update T-000001 "补充一条") >/dev/null 2>&1
+pool_same "已跟踪任务文件未暂存的补充不使指纹过期"
+(cd "$GIT_SB" && git add docs/task-pool 2>/dev/null)
+pool_same "已跟踪任务文件暂存后不使指纹过期"
+(cd "$GIT_SB" && git -c user.name=selftest -c user.email=selftest@example.invalid commit -qm pool-update)
+pool_same "任务文件补充提交后不使指纹过期"
+rm -f "$GIT_SB/docs/task-pool/NEXT"
+pool_same "删除已跟踪的 NEXT 不使指纹过期"
+(cd "$GIT_SB" && git -c user.name=selftest -c user.email=selftest@example.invalid commit -qam pool-next)
+mkdir -p "$GIT_SB/docs/task-pool-x"
+printf 'near\n' >"$GIT_SB/docs/task-pool-x/a.md"
+near_after=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh source.txt)
+if [ "$near_after" != "$pool_base" ]; then ok_msg "前缀相近的目录照常计入指纹"; else ng_msg "docs/task-pool-x 被误排除"; fi
+rm -rf "$GIT_SB/docs/task-pool-x"
+printf '\n# changed\n' >>"$GIT_SB/scripts/ai-task-pool.sh"
+script_after=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh source.txt)
+if [ "$script_after" != "$pool_base" ]; then ok_msg "任务池脚本改动照常计入指纹"; else ng_msg "ai-task-pool.sh 被误排除"; fi
+(cd "$GIT_SB" && git checkout -- scripts/ai-task-pool.sh)
 mkdir -p "$GIT_SB/docs/specs/active/one" "$GIT_SB/docs/specs/active/two" "$GIT_SB/docs/specs/active/three"
 printf '## 4. 影响面与涉及文件清单\n- 指纹范围确认：已核对验证命令及其脚本、配置、测试依赖\n- `source.txt`：本任务\n' >"$GIT_SB/docs/specs/active/one/design.md"
 printf '## 4. 影响面与涉及文件清单\n- 指纹范围确认：已核对验证命令及其脚本、配置、测试依赖\n- `other.txt`：另一任务\n' >"$GIT_SB/docs/specs/active/two/design.md"
@@ -767,6 +808,12 @@ if [ "$scope_other" != "$scope_toolchain" ]; then ok_msg "其他 Spec 修改工�
 printf 'own change\n' >>"$GIT_SB/source.txt"
 scope_own=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh --spec one source.txt)
 if [ "$scope_other" != "$scope_own" ]; then ok_msg "本 Spec 文件改动使指纹过期"; else ng_msg "本 Spec 文件改动未使指纹过期"; fi
+printf 'scoped intake\n' >"$GIT_SB/docs/task-pool/T-000009.md"
+printf '- 补充\n' >>"$GIT_SB/docs/task-pool/T-000001.md"
+scope_pool=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh --spec one source.txt)
+if [ "$scope_own" = "$scope_pool" ]; then ok_msg "精确清单模式下任务池改动不回退全仓"; else ng_msg "任务池改动使精确清单指纹回退或变化"; fi
+rm -f "$GIT_SB/docs/task-pool/T-000009.md"
+(cd "$GIT_SB" && git checkout -- docs/task-pool/T-000001.md)
 sed -i 's/`source.txt`：本任务/`source.txt`、`other.txt`：本任务/' "$GIT_SB/docs/specs/active/one/design.md"
 scope_multi_before=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh --spec one source.txt)
 printf 'multi path change\n' >>"$GIT_SB/other.txt"

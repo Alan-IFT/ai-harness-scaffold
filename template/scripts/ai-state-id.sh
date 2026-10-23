@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 当前代码状态的便携指纹。无精确 Spec 清单时保守使用全仓算法。
-# 流程记录不参与指纹；索引内容提交后保持稳定。
+# 流程记录（docs/specs/**、docs/metrics.md、docs/task-pool/**）不参与指纹；索引内容提交后保持稳定。
 set -uo pipefail
 
 spec=""
@@ -100,7 +100,7 @@ if [ -n "$spec" ] && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     done
     SCOPED=1
     while IFS= read -r -d '' path; do
-      case "$path" in docs/specs/*|docs/metrics.md) continue ;; esac
+      case "$path" in docs/specs/*|docs/metrics.md|docs/task-pool/*) continue ;; esac
       if ! in_list "$path" "${SCOPE[@]}" && ! claimed_elsewhere "$path"; then
         SCOPED=0
         break
@@ -128,10 +128,10 @@ fi
       done < <(git ls-files --others --exclude-standard -z -- "${SCOPE[@]}")
     else
       printf 'global\\0'
-      git ls-files --stage -z -- . ':(exclude)docs/specs/**' ':(exclude)docs/metrics.md'
-      git diff --binary -- . ':(exclude)docs/specs/**' ':(exclude)docs/metrics.md'
+      git ls-files --stage -z -- . ':(exclude)docs/specs/**' ':(exclude)docs/metrics.md' ':(exclude)docs/task-pool/**'
+      git diff --binary -- . ':(exclude)docs/specs/**' ':(exclude)docs/metrics.md' ':(exclude)docs/task-pool/**'
       while IFS= read -r -d '' path; do
-        case "$path" in docs/specs/*|docs/metrics.md) continue ;; esac
+        case "$path" in docs/specs/*|docs/metrics.md|docs/task-pool/*) continue ;; esac
         [ -f "$path" ] || continue
         printf 'untracked:%s\\0' "$path"
         hash_file "$path"
