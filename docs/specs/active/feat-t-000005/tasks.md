@@ -41,7 +41,7 @@
   - 完成判据：三类信号、写纠正前删同主题旧条、晋升后删原条均写明。
   - 验证命令：`bash scripts/ai-verify.sh --quick --spec feat-t-000005 README.md`
 
-- [ ] **Task 4: 同步活文档并完成回归** `[<<< CURRENT ACTIVE TASK]`
+- [x] **Task 4: 同步活文档并完成回归**
   - 涉及文件：`docs/architecture/modules/guidance.md`、`docs/architecture/modules/template-mechanism.md`
   - 对应需求 / 验收：REQ-01, REQ-02 / AC-05
   - 对应设计：design.md §2、§4
@@ -55,12 +55,12 @@
 
 ## 4. Current WIP & Handoff
 
-- 当前正在执行的任务：Task 4
+- 当前正在执行的任务：G5 独立 CR
 - 前置依赖 / 并行关系：Task 2、3 互不依赖；Task 4 依赖前三项
 - 已完成的小步进展：G1~G3 已通过（独立设计审查首轮需修改，已改入设计）；Task 1 完成，自检需在 `LC_ALL=C.UTF-8` 下运行
 - 正在编辑的文件：
   - `docs/architecture/modules/guidance.md`、`docs/architecture/modules/template-mechanism.md`
 - 已排除的死胡同：宿主专属 hook（维护者否决）
-- 上次验证与未验证改动：尚未正式验证
-- 下一步立即执行的唯一动作：同步 guidance.md 与 template-mechanism.md，然后正式验证
+- 上次验证与未验证改动：正式验证 PASS（LC_ALL=C.UTF-8，220s），见 verification.md
+- 下一步立即执行的唯一动作：新上下文运行 `ai-resume.sh review feat-t-000005 1dee735` 写 review.md
 - knowledge_feedback：无
