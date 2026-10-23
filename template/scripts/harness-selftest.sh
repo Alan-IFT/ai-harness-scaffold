@@ -345,6 +345,8 @@ expect_fail "G1 拒绝待确认问题未清零" "待确认" bash scripts/ai-gate
 mk_spec t-noorigin
 sed -i '/^- 原始问题 \/ 原话：/d' docs/specs/active/t-noorigin/requirements.md
 expect_fail "G1 拒绝丢失提出者原意" "原始问题" bash scripts/ai-gate.sh check t-noorigin g1
+printf '%s\n' '- 原始问题 / 原话：　' >>docs/specs/active/t-noorigin/requirements.md
+expect_fail "LC_ALL=C：原始问题只有全角空格被拒" "原始问题" env LC_ALL=C bash scripts/ai-gate.sh check t-noorigin g1
 mk_spec t-lowfeas
 sed -i 's/^- 加权总分：.*/- 加权总分：30 \/ 100/' docs/specs/active/t-lowfeas/requirements.md
 sed -i '/^- 加权总分：/i\> 门禁说明中的加权总分：<60 或 >100 直接拒绝。' docs/specs/active/t-lowfeas/requirements.md

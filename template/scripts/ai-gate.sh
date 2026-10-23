@@ -78,6 +78,12 @@ delegation_fields() {
 }
 
 # --- 文本抽取：二级标题下、到下一个二级标题为止 ---
+# 全角空格归一分两层，不能只留一层（字节 locale 下全角空格不属于 [[:space:]]）：
+#   1. section_body：覆盖按章节抽取的文本（需求四项、AC 表、设计各节、items、委托字段）。
+#   2. field_ok / field_value：还会直接收整份文件或单行原文（ck_g1 的原始问题、象限行、分级依据），
+#      这些不经 section_body，必须自己归一。
+#   直接读文件、不走上面两层的入口各自归一：需求覆盖矩阵（ck_trace_g3）、G5 / G6 的 nv。
+#   自检「LC_ALL=C：原始问题只有全角空格被拒」守住第 2 层。
 section_body() {
   [ -f "$1" ] || return 0
   awk -v p="$2" '
@@ -99,6 +105,7 @@ items() {
 field_ok() {         # $1=section 正文 $2=标签：冒号后必须有实质内容且非占位符
   # 先把全角冒号归一化为半角：全角字符放进 [] 会被按字节拆开，导致空值被误判为已填。
   # 全角空格在字节 locale 下不属于 [[:space:]]，同样先归一，否则「冒号后只有全角空格」会被当成已填。
+  # 调用方可能传整份文件原文（不经 section_body），所以这里的归一不能删，见 section_body 上方说明。
   local line val nv
   nv=$(printf '%s\n' "$1" | sed 's/：/:/g; s/　/ /g')
   line=$(printf '%s\n' "$nv" | grep -E "^[[:space:]]*[-*][[:space:]]*$2[[:space:]]*:" | head -n 1)
