@@ -279,6 +279,13 @@ sed -i 's/^| AC-01 | .*/| AC-01 | 导出 | 尽量 2s 内返回 | 超时 | 计时
 expect_fail "G2 拒绝 AC 含糊词并指出命中词" "含糊词：尽量" bash scripts/ai-gate.sh check t-vague g2
 sed -i 's/^| AC-01 | .*/| AC-01 | 导出 | Etc. 格式都支持 | 报错 | 样例 |/' docs/specs/active/t-vague/requirements.md
 expect_fail "G2 英文含糊词不分大小写" "含糊词：etc" bash scripts/ai-gate.sh check t-vague g2
+sed -i "s/^| AC-01 | .*/| AC-01 | 导出 | 开启 ASAP_mode 与 etc2 选项 | 选项缺失 | 配置快照 |/" docs/specs/active/t-vague/requirements.md
+expect_ok "G2 不拦标识符里的英文片段" env LC_ALL=C bash scripts/ai-gate.sh check t-vague g2
+sed -i "s/^| AC-01 | .*/| AC-01 | 导出 | 标记 ASAP 处理 | 未标记 | 日志 |/" docs/specs/active/t-vague/requirements.md
+expect_fail "G2 仍拦独立出现的英文含糊词" "含糊词：asap" env LC_ALL=C bash scripts/ai-gate.sh check t-vague g2
+sed -i "s/^| AC-01 | .*/| AC-01 | 导出 | 大概率成功 | 报错 | 日志 |/" docs/specs/active/t-vague/requirements.md
+expect_fail "G2 报出完整的「大概率」" "含糊词：大概率" env LC_ALL=C bash scripts/ai-gate.sh check t-vague g2
+expect_fail "G2 对「大概率」给出改写示例" "至少 95 次" bash scripts/ai-gate.sh check t-vague g2
 sed -i 's/^| AC-01 | .*/| AC-01 | 文案 | 按钮显示「尽快处理。」与 `ASAP` | 文案不符 | 合理性校验返回 400 |/' docs/specs/active/t-vague/requirements.md
 expect_ok "G2 放行引号内原文与复合词（字节 locale）" env LC_ALL=C bash scripts/ai-gate.sh check t-vague g2
 expect_fail "G3 拒绝模板占位路径 path/to/" "path/to" bash scripts/ai-gate.sh check t-empty g3

@@ -206,18 +206,23 @@ ck_g2() {
     /AC-[0-9][0-9]/ {
       s = strip(strip(strip($0, "「", "」"), "『", "』"), "`", "`")
       gsub(/合理性|及时性/, "", s)
-      n = split("适当 尽量 尽可能 合理 及时 尽快 大概 大约 酌情 视情况 若干 等等", zh, " ")
+      # 长词在前：命中「大概率」时报完整词，避免被误读为「大概」误判
+      n = split("适当 尽量 尽可能 合理 及时 尽快 大概率 大概 大约 酌情 视情况 若干 等等", zh, " ")
       for (k = 1; k <= n; k++) if (index(s, zh[k])) { print zh[k] "\t" $0; exit }
       low = tolower(s)
       n = split("appropriate reasonable as_needed asap etc", en, " ")
       for (k = 1; k <= n; k++) {
-        w = en[k]; gsub(/_/, " ", w); re = (w == "etc") ? "etc[.]" : w
-        if (low ~ ("(^|[^a-z])" re "([^a-z]|$)")) { print w "\t" $0; exit }
+        # 字母、数字、下划线算词内字符：ASAP_mode 这类标识符片段不算含糊词；etc 以句点收尾即可
+        w = en[k]; gsub(/_/, " ", w)
+        re = (w == "etc") ? "etc[.]" : w "([^a-z0-9_]|$)"
+        if (low ~ ("(^|[^a-z0-9_])" re)) { print w "\t" $0; exit }
       }
     }') || { say "AC 含糊词检查执行失败（awk 出错），按未通过处理"; return 1; }
   [ -z "$bad" ] || {
     say "AC 含含糊词：${bad%%$'\t'*}（改成可判定的条件；被测文案原文用「」『』或反引号标出）："
-    say "  ${bad#*$'\t'}"; return 1
+    say "  ${bad#*$'\t'}"
+    case "${bad%%$'\t'*}" in 大概率) say "  可改写为可计数的条件，例如「100 次中至少 95 次成功」。" ;; esac
+    return 1
   }
   return 0
 }
