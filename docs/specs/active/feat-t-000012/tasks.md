@@ -20,7 +20,7 @@
 
 ## 2. 原子任务序列
 
-- [ ] **Task 1: 归一覆盖注释与原文入口用例** `[<<< CURRENT ACTIVE TASK]`
+- [x] **Task 1: 归一覆盖注释与原文入口用例**
   - 涉及文件：`template/scripts/ai-gate.sh`、`template/scripts/harness-selftest.sh`
   - 对应需求 / 验收：REQ-01, ERR-01 / AC-01, AC-02, AC-03, AC-04
   - 对应设计：design.md §2
@@ -33,12 +33,12 @@
 
 ## 4. Current WIP & Handoff
 
-- 当前正在执行的任务：Task 1
+- 当前正在执行的任务：G5 独立 CR
 - 前置依赖 / 并行关系：无
 - 已完成的小步进展：G1~G3 通过；已查清 field_ok 原文入口为 ck_g1 第 150、158、163 行
 - 正在编辑的文件：
   - `template/scripts/ai-gate.sh`
 - 已排除的死胡同：合并为单一归一函数（超出最小改动）
-- 上次验证与未验证改动：尚未验证
+- 上次验证与未验证改动：无 locale 正式验证 PASS；自检全部通过；沙箱删掉 field_ok 归一后新用例报出
 - 下一步立即执行的唯一动作：在 section_body 与 field_ok 处加注释
 - knowledge_feedback：无
