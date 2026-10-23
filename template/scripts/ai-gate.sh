@@ -459,6 +459,60 @@ ck_g5() {
   return 0
 }
 
+# G6 证据扫描：关键词检查前剥离「」『』与反引号内的被测原文，并只豁免数量恰为 0 的失败写法。
+# mode=scan 供关键词检查；mode=strip 只剥引号，供正向判定。边界规则经三轮独立设计审查，
+# 自检从本变量取出程序逐例核对；修改时同步 harness-selftest.sh 的样本表。
+G6_SCAN_AWK='
+function strip(s, lq, rq,    i, j, rest) {
+  while ((i = index(s, lq)) > 0) {
+    rest = substr(s, i + length(lq)); j = index(rest, rq)
+    if (!j) break
+    s = substr(s, 1, i - 1) " " substr(rest, j + length(rq))
+  }
+  return s
+}
+function rtrim(s) { sub(/[ \t]+$/, "", s); return s }
+function ltrim(s) { sub(/^[ \t]+/, "", s); return s }
+# 0 前面（跳过空格）若是数字（含全角）、小数点、逗号、斜杠、正负号、字母、_、# 或「第」，就不是零计数
+function counted_before(p,    k, n, fw, l) {
+  p = rtrim(p)
+  if (substr(p, length(p), 1) ~ /[0-9.,\/+A-Za-z_#-]/) return 1
+  n = split("０ １ ２ ３ ４ ５ ６ ７ ８ ９ 第", fw, " ")
+  for (k = 1; k <= n; k++) { l = length(fw[k]); if (l <= length(p) && substr(p, length(p) - l + 1) == fw[k]) return 1 }
+  return 0
+}
+# 零计数之后（跳过空格）只允许行尾或句读，其他文字一律不豁免
+function clean_after(r) {
+  r = ltrim(r)
+  return r == "" || substr(r, 1, 1) ~ /[;)|]/ || index(r, "，") == 1 || index(r, "。") == 1 \
+    || index(r, "；") == 1 || index(r, "、") == 1 || index(r, "）") == 1
+}
+# 只替换命中的那一段，前后字符原样保留（gsub 连带边界会吞掉相邻关键词）
+function drop_zero(s, re, form,    out, pre, seg, rest, keep) {
+  out = ""
+  while (match(s, re)) {
+    pre = substr(s, 1, RSTART - 1); seg = substr(s, RSTART, RLENGTH); rest = substr(s, RSTART + RLENGTH)
+    keep = !clean_after(rest) || (form == 2 && counted_before(out pre))
+    out = out pre (keep ? seg : " "); s = rest
+  }
+  return out s
+}
+{
+  s = strip(strip(strip($0, "「", "」"), "『", "』"), "`", "`")
+  if (mode == "scan") {
+    s = drop_zero(s, "失败 *:? *0( *(项|个|条|次))?", 1)
+    s = drop_zero(s, "0 *(项|个|条|次)? *失败", 2)
+  }
+  print s
+}'
+# 正向判定：只剥引号后的文本里要有通过结果；零失败须是独立的 0，避免「10 失败」借子串命中
+G6_PASS_RE='通过|PASS|成功|(^|[^0-9.,/])0 *(项|个|条|次)? *失败'
+g6_scan() {   # $1=scan|strip $2=文本；awk 出错时 scan 回退原文、strip 回退为空，都不放宽
+  local out
+  if out=$(printf '%s\n' "$2" | awk -v mode="$1" "$G6_SCAN_AWK"); then printf '%s' "$out"
+  elif [ "$1" = scan ]; then printf '%s' "$2"; fi
+}
+
 ck_g6() {
   local i g a="$DIR/acceptance.md" nv line val miss="" ac ac_ids
   for i in 1 2 3 4 5; do
@@ -480,19 +534,21 @@ ck_g6() {
   [ -z "$miss" ] || { say "acceptance.md 未填:$miss"; return 1; }
   line=$(printf '%s\n' "$nv" | grep -E '^[[:space:]]*[-*][[:space:]]*冒烟或 E2E 证据:' | head -n 1)
   val=$(printf '%s' "$line" | sed -E 's/^[^:]*:[[:space:]]*//; s/[[:space:]]+$//')
-  case "$val" in ''|'<'*|*未执行*|*未检查*|*待填写*|*失败*|*不通过*) say "acceptance.md 缺少已通过的冒烟 / E2E 客观证据"; return 1 ;; esac
-  printf '%s' "$val" | grep -Eq '通过|PASS|成功|0 失败' || { say "acceptance.md 冒烟 / E2E 证据缺少通过结果"; return 1; }
+  case "$val" in ''|'<'*) say "acceptance.md 缺少已通过的冒烟 / E2E 客观证据"; return 1 ;; esac
+  case "$(g6_scan scan "$val")" in *未执行*|*未检查*|*待填写*|*失败*|*不通过*) say "acceptance.md 缺少已通过的冒烟 / E2E 客观证据"; return 1 ;; esac
+  g6_scan strip "$val" | grep -Eq "$G6_PASS_RE" || { say "acceptance.md 冒烟 / E2E 证据缺少通过结果"; return 1; }
   line=$(printf '%s\n' "$nv" | grep -E '^[[:space:]]*[-*][[:space:]]*对照 AC 的检查结果:' | head -n 1)
   val=$(printf '%s' "$line" | sed -E 's/^[^:]*:[[:space:]]*//; s/[[:space:]]+$//')
-  case "$val" in ''|'<'*|*未执行*|*未检查*|*待填写*|*失败*|*不通过*) say "acceptance.md 缺少已完成的 AC 核验摘要"; return 1 ;; esac
-  printf '%s' "$val" | grep -Eq '通过|PASS|成功' || { say "acceptance.md AC 核验摘要缺少通过结果"; return 1; }
+  case "$val" in ''|'<'*) say "acceptance.md 缺少已完成的 AC 核验摘要"; return 1 ;; esac
+  case "$(g6_scan scan "$val")" in *未执行*|*未检查*|*待填写*|*失败*|*不通过*) say "acceptance.md 缺少已完成的 AC 核验摘要"; return 1 ;; esac
+  g6_scan strip "$val" | grep -Eq "$G6_PASS_RE" || { say "acceptance.md AC 核验摘要缺少通过结果"; return 1; }
   ac_ids=$(awk -F'|' '{ id=$2; gsub(/^[ \t]+|[ \t]+$/, "", id); if (id ~ /^AC-[A-Za-z0-9_-]+$/) print id }' "$DIR/requirements.md" | sort -u)
   [ -n "$ac_ids" ] || { say "requirements.md 缺少可逐项核验的 AC 编号"; return 1; }
   while IFS= read -r ac; do
     [ -n "$ac" ] || continue
     line=$(printf '%s\n' "$nv" | grep -E "^[[:space:]]*[-*][[:space:]]*$ac:[[:space:]]*通过" | head -n 1)
     [ -n "$line" ] || { say "acceptance.md 缺少 $ac 的通过证据"; return 1; }
-    case "$line" in *未执行*|*未检查*|*失败*|*不通过*) say "acceptance.md 的 $ac 仍有未通过项"; return 1 ;; esac
+    case "$(g6_scan scan "$line")" in *未执行*|*未检查*|*失败*|*不通过*) say "acceptance.md 的 $ac 仍有未通过项"; return 1 ;; esac
   done <<<"$ac_ids"
   printf '%s' "$nv" | grep -qE '结论:[[:space:]]*通过' || { say "acceptance.md 判定未写「结论：通过」"; return 1; }
   case "$(quadrant)" in
