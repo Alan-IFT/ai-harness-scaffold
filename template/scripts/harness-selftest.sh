@@ -274,6 +274,13 @@ file_has "新 spec 含 verification.md（跨 IDE 接力）" docs/specs/active/t-
 section "2. 空模板必须被逐门拒绝（模板占位不能算完成）"
 expect_fail "G1 拒绝未澄清的需求" "四项必答" bash scripts/ai-gate.sh check t-empty g1
 expect_fail "G2 拒绝空 AC 表" "AC 表有空单元格" bash scripts/ai-gate.sh check t-empty g2
+mk_spec t-vague
+sed -i 's/^| AC-01 | .*/| AC-01 | 导出 | 尽量 2s 内返回 | 超时 | 计时 |/' docs/specs/active/t-vague/requirements.md
+expect_fail "G2 拒绝 AC 含糊词并指出命中词" "含糊词：尽量" bash scripts/ai-gate.sh check t-vague g2
+sed -i 's/^| AC-01 | .*/| AC-01 | 导出 | Etc. 格式都支持 | 报错 | 样例 |/' docs/specs/active/t-vague/requirements.md
+expect_fail "G2 英文含糊词不分大小写" "含糊词：etc" bash scripts/ai-gate.sh check t-vague g2
+sed -i 's/^| AC-01 | .*/| AC-01 | 文案 | 按钮显示「尽快处理。」与 `ASAP` | 文案不符 | 合理性校验返回 400 |/' docs/specs/active/t-vague/requirements.md
+expect_ok "G2 放行引号内原文与复合词（字节 locale）" env LC_ALL=C bash scripts/ai-gate.sh check t-vague g2
 expect_fail "G3 拒绝模板占位路径 path/to/" "path/to" bash scripts/ai-gate.sh check t-empty g3
 expect_fail "G4 拒绝模板占位路径 path/to/" "path/to" bash scripts/ai-gate.sh check t-empty g4
 expect_fail "G5 拒绝缺失的 review.md" "review.md" bash scripts/ai-gate.sh check t-empty g5
