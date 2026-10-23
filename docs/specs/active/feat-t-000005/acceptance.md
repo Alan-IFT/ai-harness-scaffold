@@ -5,15 +5,19 @@
 > ②③若 G3 有明确条件委托，可在客观 AC 全通过、G5 无阻塞且无新增重大风险时使用「预授权委托」；否则仍需当次人的结果决定。
 > 本地门禁只能检查记录完整，不能认证对话中的人；需要强制审批时使用项目自己的权限机制。
 
-- 核验执行者：<Agent / 工具>
+- 核验执行者：Claude Code（Opus 5.5，Git Bash；命令输出与 Spec 摘要）
 - 核验时间：2026-10-22
-- 测试环境：<环境名 / 地址>
-- 冒烟或 E2E 证据：<Agent 实际执行的命令 + 结果摘要，或报告路径>
+- 测试环境：本仓库 Windows 工作区 `<本仓库>`，`LC_ALL=C.UTF-8`（本机 LANG 为空时自检基线即有 21 项既有失败，已记入 tasks.md §3）
+- 冒烟或 E2E 证据：`LC_ALL=C.UTF-8 bash scripts/harness-selftest.sh` 213/213 通过；`ai-verify.sh --spec feat-t-000005 template/scripts/ai-gate.sh` PASS（215s），摘要见 `verification.md`；G2 含糊词另在 LC_ALL=C 与 `gawk --posix` 下手工用例全部符合预期。
 
 ## 1. 核验摘要
-- 对照 AC 的检查结果：<全部 AC 均通过时写「逐项通过」；否则写明未通过项>
-- AC-01：<通过 + 可复核证据（命令与结果、报告或可观察输出及判定依据）；按 requirements.md 的 AC 表逐项列完，未检查不得写通过>
-- 需人判断的风险 / 遗留：<仅②③填写具体决策点；①写「不需要」>
+- 对照 AC 的检查结果：逐项通过；mawk / BSD awk 未实测（本机只有 gawk），以 POSIX 模式近似。
+- AC-01：通过；自检新增 3 例：裸词「尽量」被拒并输出命中词、Etc. 不分大小写被拒、LC_ALL=C 下引号内原文与「合理性」放行；12 个归档 Spec 的 AC 行零命中，不误拦既有写法。
+- AC-02：通过；`design.md` 模板 §5 新增「独立设计审查」行，`new-spec.md` Step 4/6 写明②③在 pass g3 前审查及任意宿主的换上下文方式；本 Spec 自身执行了一轮，首轮查出 3 项关键问题并改入设计。
+- AC-03：通过；`AGENTS.md` §3「记忆捕获」列三类信号与纠正替换；`gc-memory.md` Step 1.6 晋升；`MEMORY.md` 只留指针（因其不随 upgrade 分发）。
+- AC-04：通过；`design.md` 模板 §4「复用检索」行与 `new-spec.md` Step 4 说明。
+- AC-05：通过；`git diff --name-only 1dee735` 无 .claude/.codex/settings/hooks 等宿主文件；活文档已同步；体积体检 🟢（AGENTS 89 行）；自检与正式验证通过。
+- 需人判断的风险 / 遗留：① G2 新规则会让下游在途、尚未过 G2 的 Spec 被新拦（改 AC 或给原文加引号即可）；② 已知误报「大概率」「ASAP_mode」，词表三处重复、自检缺部分用例，记为后续；③ 自检依赖 UTF-8 locale 的既有问题未在本次修复。
 
 ## 2. 决策与结论
 - 验收方式：当次人工决定 / 预授权委托 / ①自动核验
