@@ -24,7 +24,8 @@ valid_id() { [[ "$1" =~ ^T-[0-9]{6}$ ]]; }
 valid_feat() { [[ "$1" =~ ^[A-Za-z0-9._-]+$ ]] && [ "$1" != . ] && [ "$1" != .. ]; }
 field() { sed -n "s/^- $2: //p" "$1" | head -n 1; }
 summary_for() { awk '/^## 原始需求[[:space:]]*$/ { inside=1; next } inside && NF { print; exit }' "$1"; }
-nonblank() { [[ "$1" =~ [^[:space:]] ]]; }
+# 全角空格在字节 locale 下不属于 [[:space:]]，先归一，否则纯全角空格会被当成有内容
+nonblank() { local s=${1//　/ }; [[ "$s" =~ [^[:space:]] ]]; }
 task_file() {
   valid_id "$1" || die "任务 ID 无效：$1"
   [ -f "$POOL/$1.md" ] || die "任务不存在：$1"

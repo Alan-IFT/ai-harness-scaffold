@@ -934,6 +934,7 @@ cd "$POOL_SB" || exit 1
 expect_out "空池 next 可用" "暂无待办" bash scripts/ai-task-pool.sh next
 expect_fail "拒绝无效优先级" "优先级" bash scripts/ai-task-pool.sh add --priority P3 bad
 expect_fail "拒绝空白原话" "不能为空" bash scripts/ai-task-pool.sh add "   "
+expect_fail "LC_ALL=C：拒绝只有全角空格的原话" "不能为空" env LC_ALL=C bash scripts/ai-task-pool.sh add "　　"
 expect_out "收集第一条需求" "T-000001" bash scripts/ai-task-pool.sh add "较晚处理"
 expect_out "收集高优先级需求" "T-000002" bash scripts/ai-task-pool.sh add --priority P0 "先处理"
 expect_out "默认按收录顺序选下一项" "下一项：T-000001" bash scripts/ai-task-pool.sh next
@@ -945,6 +946,7 @@ file_has "指定选择已落盘" docs/task-pool/NEXT "T-000002"
 expect_out "追加需求变更" "已追加" bash scripts/ai-task-pool.sh update T-000002 "加入边界"
 expect_out "再次追加需求变更" "已追加" bash scripts/ai-task-pool.sh update T-000002 "再补一条"
 expect_fail "拒绝空白补充" "不能为空" bash scripts/ai-task-pool.sh update T-000002 "   "
+expect_fail "LC_ALL=C：拒绝只有全角空格的补充" "不能为空" env LC_ALL=C bash scripts/ai-task-pool.sh update T-000002 "　 　"
 file_has "原话未被更新覆盖" docs/task-pool/T-000002.md "先处理"
 file_has "补充已落盘" docs/task-pool/T-000002.md "加入边界"
 file_has "第二次补充已落盘" docs/task-pool/T-000002.md "再补一条"
