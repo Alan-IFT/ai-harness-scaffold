@@ -41,7 +41,7 @@
   - 完成判据：新用例在旧脚本上失败、在新脚本上通过。
   - 验证命令：`env -u LC_ALL bash scripts/harness-selftest.sh`
 
-- [ ] **Task 4: 活文档、知识卡与回归** `[<<< CURRENT ACTIVE TASK]`
+- [x] **Task 4: 活文档、知识卡与回归**
   - 涉及文件：`docs/architecture/modules/template-mechanism.md`、`.knowledge/cards/K-0001.md`、`.knowledge/INDEX.md`
   - 对应需求 / 验收：REQ-01, REQ-03 / AC-01, AC-05
   - 对应设计：design.md §2、§4
@@ -54,12 +54,12 @@
 
 ## 4. Current WIP & Handoff
 
-- 当前正在执行的任务：Task 4
+- 当前正在执行的任务：G5 独立 CR
 - 前置依赖 / 并行关系：Task 3 依赖 Task 1、2；Task 4 依赖前三项
 - 已完成的小步进展：G1~G3 通过；独立设计审查首轮需修改，已改入设计
 - 正在编辑的文件：
   - `docs/architecture/modules/template-mechanism.md`、`.knowledge/cards/K-0001.md`
 - 已排除的死胡同：脚本强制 LC_ALL（维护者否决）；只修自检（会掩盖缺陷）
-- 上次验证与未验证改动：尚未验证
-- 下一步立即执行的唯一动作：更新 template-mechanism.md 与 K-0001，然后在无 locale 环境下正式验证
+- 上次验证与未验证改动：无 locale 正式验证 PASS（233s）；UTF-8 与无 locale 自检均 223/223
+- 下一步立即执行的唯一动作：新上下文运行 `ai-resume.sh review feat-t-000006 f0ea114` 写 review.md
 - knowledge_feedback：无
