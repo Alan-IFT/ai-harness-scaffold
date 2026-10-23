@@ -8,6 +8,7 @@
 >
 > 复核日期到期（按 `harness/redlines.conf` 的 `KNOWLEDGE_TTL_DAYS`）必须重新验证或删除。与代码冲突时**以代码为准**，
 > 并在对应 spec 的 WIP 里记 `knowledge_feedback`，GC 时据此降权。
+> 何时写、纠正时如何替换旧条目见 `AGENTS.md` §3「记忆捕获」；晋升到模块活文档见 `.agents/skills/gc-memory.md` Step 1.6。
 
 ## 1. 构建与测试环境怪癖 (Build & Test Quirks)
 暂无记录。

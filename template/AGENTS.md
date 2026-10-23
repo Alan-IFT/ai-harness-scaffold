@@ -46,6 +46,7 @@
 - **检索与变更复核**：先用 `ai-knowledge.sh suggest <module>` 列候选并记取舍；改动关联路径后用 `ai-knowledge.sh impact <path...>` 找待复核卡。过期和 `#待验证` 卡不得注入。
 - **采用统计**：`ai-knowledge.sh usage` 从已通过 G4 的当前和归档 Spec 派生采用数与未采用卡，不在索引手改计数；它不代表真实读取次数。
 - **保鲜与降权**：复核期限按 `KNOWLEDGE_TTL_DAYS` 设置，过期卡视为清理候选；`knowledge_feedback` 连续反馈错误的知识卡要降置信度或删掉。体检：`bash scripts/ai-knowledge.sh check|ttl`。
+- **记忆捕获**：会话中出现用户纠正（「不对」「应该是」）、反复尝试才解决的问题、用户主动告知的关键事实时，当场按格式写进 `MEMORY.md`，换宿主后仍可读到。写纠正前先搜同主题旧条目并删除，同一件事只留一个当前答案，追溯交给 Git。稳定结论按 `gc-memory.md` 晋升或下沉。
 
 ## 4. 编码三纪律 (Engineering Discipline)
 - **简单优先**：先写最简正确版；三行重复优于过早抽象；不引入"以后可能用得上"的抽象层/配置/依赖。

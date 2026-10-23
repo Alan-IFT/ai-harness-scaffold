@@ -34,14 +34,14 @@
   - 完成判据：§4 复用检索、§5 独立设计审查字段及填写说明存在；②③默认审查与跨宿主换上下文方式写明；AGENTS 未超限。
   - 验证命令：`bash scripts/ai-verify.sh --quick --spec feat-t-000005 README.md`
 
-- [ ] **Task 3: 记忆捕获、纠正替换与晋升** `[<<< CURRENT ACTIVE TASK]`
-  - 涉及文件：`template/MEMORY.md`、`template/.agents/skills/gc-memory.md`
+- [x] **Task 3: 记忆捕获、纠正替换与晋升**
+  - 涉及文件：`template/AGENTS.md`、`template/MEMORY.md`、`template/.agents/skills/gc-memory.md`
   - 对应需求 / 验收：REQ-03 / AC-03
   - 对应设计：design.md §2
   - 完成判据：三类信号、写纠正前删同主题旧条、晋升后删原条均写明。
   - 验证命令：`bash scripts/ai-verify.sh --quick --spec feat-t-000005 README.md`
 
-- [ ] **Task 4: 同步活文档并完成回归**
+- [ ] **Task 4: 同步活文档并完成回归** `[<<< CURRENT ACTIVE TASK]`
   - 涉及文件：`docs/architecture/modules/guidance.md`、`docs/architecture/modules/template-mechanism.md`
   - 对应需求 / 验收：REQ-01, REQ-02 / AC-05
   - 对应设计：design.md §2、§4
@@ -55,12 +55,12 @@
 
 ## 4. Current WIP & Handoff
 
-- 当前正在执行的任务：Task 3
+- 当前正在执行的任务：Task 4
 - 前置依赖 / 并行关系：Task 2、3 互不依赖；Task 4 依赖前三项
 - 已完成的小步进展：G1~G3 已通过（独立设计审查首轮需修改，已改入设计）；Task 1 完成，自检需在 `LC_ALL=C.UTF-8` 下运行
 - 正在编辑的文件：
-  - `template/AGENTS.md`、`template/.agents/skills/gc-memory.md`、`template/MEMORY.md`
+  - `docs/architecture/modules/guidance.md`、`docs/architecture/modules/template-mechanism.md`
 - 已排除的死胡同：宿主专属 hook（维护者否决）
 - 上次验证与未验证改动：尚未正式验证
-- 下一步立即执行的唯一动作：AGENTS.md §3 加记忆捕获行，gc-memory.md 加晋升步骤
+- 下一步立即执行的唯一动作：同步 guidance.md 与 template-mechanism.md，然后正式验证
 - knowledge_feedback：无
