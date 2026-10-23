@@ -483,9 +483,11 @@ function counted_before(p) {
   p = rtrim(p)
   return substr(p, length(p), 1) ~ /[0-9.,:\/+A-Za-z_#-]/ || ends_with_any(p, "０ １ ２ ３ ４ ５ ６ ７ ８ ９ 第 、")
 }
-# 第一式：「失败」前面（跳过空格）紧挨数字时是「N 失败」，后面的 0 不代表失败数为零
-function number_before(p) {
+# 第一式：「失败」前面（跳过空格与一个单位词）是数字时是「N 项失败」，后面的 0 不代表失败数为零
+function number_before(p,    k, n, u, l) {
   p = rtrim(p)
+  n = split("项 个 条 次 例", u, " ")
+  for (k = 1; k <= n; k++) { l = length(u[k]); if (l <= length(p) && substr(p, length(p) - l + 1) == u[k]) { p = rtrim(substr(p, 1, length(p) - l)); break } }
   return substr(p, length(p), 1) ~ /[0-9]/ || ends_with_any(p, "０ １ ２ ３ ４ ５ ６ ７ ８ ９")
 }
 # 零计数之后（跳过空格）只允许行尾或句读，其他文字（含「|」后接内容）一律不豁免
