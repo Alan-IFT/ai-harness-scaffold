@@ -18,7 +18,7 @@
 4. 审核 `.ai-harness/suggested/harness/allowed-write-dirs.txt`；由有权限的人决定是否合并进 `harness/redlines.conf` 并更新基线。不要把目录扫描结果当权限事实。
 5. 接入一条能运行的增量检查到 `harness/verify.conf`，沿用现有 CI 的完整测试；`verification.md` 只记录本地增量结论。
 
-已安装项目后续获取新版脚手架时，运行 `bash <脚手架路径>/bin/ai-harness upgrade <项目路径> --dry-run` 查看计划，再运行 `upgrade <项目路径>`。安装基线记录在 `.ai-harness/manifest.tsv`；未改过的机制文件自动更新，缺失文件自动补齐。项目状态与红线不自动替换。冲突时保留原文件并输出 `.ai-harness/suggested/` 建议文件；合并一处后用 `upgrade <项目路径> --accept-custom <相对路径>` 确认其当前定制基线。旧安装若无 manifest，已有不同内容均作为冲突处理。
+已安装项目后续获取新版脚手架时，运行 `bash <脚手架路径>/bin/ai-harness upgrade <项目路径> --dry-run` 查看计划，再运行 `upgrade <项目路径>`。安装基线记录在 `.ai-harness/manifest.tsv`；未改过的机制文件自动更新，缺失文件自动补齐。项目状态与红线不自动替换。冲突时保留原文件并输出 `.ai-harness/suggested/` 建议文件；合并一处后用 `upgrade <项目路径> --accept-custom <相对路径>` 确认其当前定制基线。旧安装若无 manifest，已有不同内容均作为冲突处理。升级时若有已过 G3 的在途 Spec，新版门禁可能改变解析或快照算法（例如委托行的全角空格会先归一），G6 若报「委托与 G3 授权快照不一致」，由人确认委托内容后重过 G3 即可；门禁不会因升级而放宽。
 
 ## 3. 小范围试点与扩展
 

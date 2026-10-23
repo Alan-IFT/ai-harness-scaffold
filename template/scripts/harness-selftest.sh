@@ -508,6 +508,7 @@ add_delegation() {
 }
 add_delegation docs/specs/active/t-delegated/design.md
 expect_fail "G6 拒绝 G3 后补写的委托" "授权快照不一致" bash scripts/ai-gate.sh check t-delegated g6
+expect_fail "G6 快照不一致时提示升级后重过 G3" "刚升级过脚手架" bash scripts/ai-gate.sh check t-delegated g6
 bash scripts/ai-gate.sh reset t-delegated g3 --reason '测试 G3 重新确认委托' >/dev/null || exit 1
 for g in g3 g4 g5; do bash scripts/ai-gate.sh pass t-delegated "$g" >/dev/null || exit 1; done
 expect_ok "G6 接受 G3 明确限定范围的委托" bash scripts/ai-gate.sh check t-delegated g6

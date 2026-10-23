@@ -504,7 +504,7 @@ ck_g6() {
         recorded_delegation=$(awk -F'\t' '$1=="g3" { h=$5 } END { print h }' "$DIR/.gates")
         [ -n "$recorded_delegation" ] && [ "$recorded_delegation" != none ] \
           && [ "$recorded_delegation" = "$(printf '%s' "$delegation" | hash_text)" ] \
-          || { say "G6 委托与 G3 授权快照不一致；事后补写须重过 G3"; return 1; }
+          || { say "G6 委托与 G3 授权快照不一致；事后补写须重过 G3（若 G3 后刚升级过脚手架，快照算法可能变化，同样重过 G3 即可）"; return 1; }
         printf '%s\n' "$nv" | grep -qE '^[[:space:]]*[-*][[:space:]]*需人判断的风险 / 遗留:[[:space:]]*无[[:space:]]*$' \
           || { say "G6 委托仍有需人判断的风险，须取得当次决定"; return 1; }
         [ "$(field_value "$nv" 人工决定)" = '预先授权' ] \
