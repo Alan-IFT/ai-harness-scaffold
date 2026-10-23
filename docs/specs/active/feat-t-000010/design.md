@@ -47,7 +47,7 @@
 - **只读依赖契约**：
   - `template/scripts/ai-config.sh`
 
-- 间接消费者 / 副作用：`nonblank` 只在 add / intake 的原话与 update 的补充处调用（第 117、144 行），无其他调用方。
+- 间接消费者 / 副作用：`nonblank` 只在 add / intake 的原话与 update 的补充处调用（第 118、145 行），无其他调用方。
 - 检索依据：`grep -n "nonblank" template/scripts/*.sh` 只命中 ai-task-pool.sh 的定义与两处调用。
 - 复用检索：与 ai-gate.sh 的全角空格归一同一做法（K-0001），不抽公共函数，因为脚本之间不共享库。
 
