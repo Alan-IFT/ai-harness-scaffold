@@ -20,7 +20,7 @@
 
 ## 2. 原子任务序列
 
-- [ ] **Task 1: G2 四类自检用例与跨 awk 实测记录** `[<<< CURRENT ACTIVE TASK]`
+- [x] **Task 1: G2 四类自检用例与跨 awk 实测记录**
   - 涉及文件：`template/scripts/harness-selftest.sh`、`docs/architecture/modules/template-mechanism.md`
   - 对应需求 / 验收：REQ-01, REQ-02, ERR-01, ERR-02 / AC-01, AC-02, AC-03, AC-04
   - 对应设计：design.md §2
@@ -33,12 +33,12 @@
 
 ## 4. Current WIP & Handoff
 
-- 当前正在执行的任务：Task 1
+- 当前正在执行的任务：G5 独立 CR
 - 前置依赖 / 并行关系：无
 - 已完成的小步进展：G1~G3 通过；调查阶段已在 WSL mawk 1.3.4 与 Docker onetrue-awk 20250116 下跑通现有自检 230/230
 - 正在编辑的文件：
   - `template/scripts/harness-selftest.sh`
 - 已排除的死胡同：wsl.exe 直接传 `bash -c` 会被 WSL 默认 shell 提前展开变量；Git Bash 会改写 `/mnt/c` 路径，需 `MSYS_NO_PATHCONV=1` 并用脚本文件
-- 上次验证与未验证改动：尚未验证
-- 下一步立即执行的唯一动作：在 t-vague 用例组追加 4 项
+- 上次验证与未验证改动：无 locale 正式验证 PASS（256s）；自检 235/235；四处逻辑逐项改坏后对应用例均报出
+- 下一步立即执行的唯一动作：新上下文运行 `ai-resume.sh review feat-t-000009 8471ce8` 写 review.md
 - knowledge_feedback：无
