@@ -20,7 +20,7 @@
 
 ## 2. 原子任务序列
 
-- [ ] **Task 1: nonblank 全角空格归一与自检** `[<<< CURRENT ACTIVE TASK]`
+- [x] **Task 1: nonblank 全角空格归一与自检**
   - 涉及文件：`template/scripts/ai-task-pool.sh`、`template/scripts/harness-selftest.sh`
   - 对应需求 / 验收：REQ-01, ERR-01 / AC-01, AC-02, AC-03
   - 对应设计：design.md §2
@@ -33,12 +33,12 @@
 
 ## 4. Current WIP & Handoff
 
-- 当前正在执行的任务：Task 1
+- 当前正在执行的任务：G5 独立 CR
 - 前置依赖 / 并行关系：无
 - 已完成的小步进展：G1~G3 通过；修法已在 C 与 C.UTF-8 下实测
 - 正在编辑的文件：
   - `template/scripts/ai-task-pool.sh`
 - 已排除的死胡同：无
-- 上次验证与未验证改动：尚未验证
-- 下一步立即执行的唯一动作：改 ai-task-pool.sh 第 27 行
+- 上次验证与未验证改动：无 locale 正式验证 PASS；自检 237/237；旧 nonblank 下两项新用例报出（另有因空任务占号导致的连锁失败）
+- 下一步立即执行的唯一动作：新上下文运行 `ai-resume.sh review feat-t-000010 HEAD~1` 写 review.md
 - knowledge_feedback：无
