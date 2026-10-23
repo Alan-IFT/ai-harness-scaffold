@@ -34,14 +34,14 @@
   - 完成判据：检查点 1 的两种 locale 结论一致。
   - 验证命令：`env -u LC_ALL bash scripts/harness-selftest.sh`
 
-- [ ] **Task 3: 自检字节 locale 回归** `[<<< CURRENT ACTIVE TASK]`
+- [x] **Task 3: 自检字节 locale 回归**
   - 涉及文件：`template/scripts/harness-selftest.sh`
   - 对应需求 / 验收：REQ-03 / AC-02, AC-03, AC-04
   - 对应设计：design.md §2
   - 完成判据：新用例在旧脚本上失败、在新脚本上通过。
   - 验证命令：`env -u LC_ALL bash scripts/harness-selftest.sh`
 
-- [ ] **Task 4: 活文档、知识卡与回归**
+- [ ] **Task 4: 活文档、知识卡与回归** `[<<< CURRENT ACTIVE TASK]`
   - 涉及文件：`docs/architecture/modules/template-mechanism.md`、`.knowledge/cards/K-0001.md`、`.knowledge/INDEX.md`
   - 对应需求 / 验收：REQ-01, REQ-03 / AC-01, AC-05
   - 对应设计：design.md §2、§4
@@ -54,12 +54,12 @@
 
 ## 4. Current WIP & Handoff
 
-- 当前正在执行的任务：Task 3
+- 当前正在执行的任务：Task 4
 - 前置依赖 / 并行关系：Task 3 依赖 Task 1、2；Task 4 依赖前三项
 - 已完成的小步进展：G1~G3 通过；独立设计审查首轮需修改，已改入设计
 - 正在编辑的文件：
-  - `template/scripts/harness-selftest.sh`
+  - `docs/architecture/modules/template-mechanism.md`、`.knowledge/cards/K-0001.md`
 - 已排除的死胡同：脚本强制 LC_ALL（维护者否决）；只修自检（会掩盖缺陷）
 - 上次验证与未验证改动：尚未验证
-- 下一步立即执行的唯一动作：在自检加「字节 locale 回归」节
+- 下一步立即执行的唯一动作：更新 template-mechanism.md 与 K-0001，然后在无 locale 环境下正式验证
 - knowledge_feedback：无

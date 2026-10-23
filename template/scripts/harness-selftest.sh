@@ -347,6 +347,17 @@ sed -i '/^- 边界样本：/d' docs/specs/active/t-noboundary/design.md
 expect_fail "②③的 G3 拒绝缺少边界样本" "边界样本" bash scripts/ai-gate.sh check t-noboundary g3
 printf '%s\n' '- 边界样本：无' >>docs/specs/active/t-noboundary/design.md
 expect_fail "②③的 G3 拒绝占位边界样本" "边界样本" bash scripts/ai-gate.sh check t-noboundary g3
+# 字节 locale 回归：多字节字符放进 [] 会被拆成字节，宿主未设 UTF-8 时门禁结论必须不变（显式 LC_ALL=C，UTF-8 环境也会执行）
+expect_fail "LC_ALL=C：象限②缺前置决策仍被 G3 拒绝" "人工前置决策" env LC_ALL=C bash scripts/ai-gate.sh check t-nodecision g3
+expect_fail "LC_ALL=C：②③占位边界样本仍被 G3 拒绝" "边界样本" env LC_ALL=C bash scripts/ai-gate.sh check t-noboundary g3
+expect_ok "LC_ALL=C：象限①仍允许单步设计" env LC_ALL=C bash scripts/ai-gate.sh check t-quad1 g3
+expect_ok "LC_ALL=C：象限④仍可只完成分类" env LC_ALL=C bash scripts/ai-gate.sh check t-quad4 g1
+mk_spec t-badquad
+sed -i 's/^- 需求分级（象限）：.*/- 需求分级（象限）：⑤ 自造等级/' docs/specs/active/t-badquad/requirements.md
+expect_fail "G3 拒绝无效象限而不是放行" "象限无效" env LC_ALL=C bash scripts/ai-gate.sh check t-badquad g3
+mk_spec t-fwspace
+sed -i 's/^- 人工前置决策：.*/- 人工前置决策：　/' docs/specs/active/t-fwspace/design.md
+expect_fail "LC_ALL=C：冒号后只有全角空格的前置决策被拒" "前置决策" env LC_ALL=C bash scripts/ai-gate.sh check t-fwspace g3
 
 # 新格式追溯链；上面的旧格式夹具继续验证兼容性。
 mk_spec t-trace
@@ -522,6 +533,13 @@ cat >docs/specs/active/t-worker-collision/tasks.md <<'MD'
   - 涉及文件：`src/export/other.ts`
 MD
 expect_fail "worker 不把标题正文的 Task 1 当成任务编号" "找不到 Task 1" bash scripts/ai-resume.sh worker t-worker-collision 1
+expect_out "LC_ALL=C：worker 识别全角冒号分隔" "限定文件" env LC_ALL=C bash scripts/ai-resume.sh worker t-worker 1
+cat >docs/specs/active/t-worker-collision/tasks.md <<'MD'
+## 2. 原子任务序列
+- [ ] **Task 1（括号不是分隔符）**
+  - 涉及文件：`src/export/other.ts`
+MD
+expect_fail "LC_ALL=C：worker 不把全角括号当分隔符" "找不到 Task 1" env LC_ALL=C bash scripts/ai-resume.sh worker t-worker-collision 1
 mk_spec t-real-verify
 printf "CUSTOM_CHECK='test -f \"\$TARGET_FILE\"'\n" >harness/verify.conf
 expect_ok "真实 ai-verify 为指定 Spec 生成摘要" bash scripts/ai-verify.sh --spec t-real-verify src/export/service.ts
@@ -620,6 +638,21 @@ legacy_before=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh --spec legacy source
 printf 'legacy unrelated\n' >>"$GIT_SB/other.txt"
 legacy_after=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh --spec legacy source.txt)
 if [ "$legacy_before" != "$legacy_after" ]; then ok_msg "旧 Spec 无精确清单时保守全仓"; else ng_msg "旧 Spec 被错误缩小指纹范围"; fi
+# 字节 locale：全角冒号的确认行启用 scoped，全角括号不算确认（「（」与「：」首字节相同）
+(cd "$GIT_SB" && git add -A && git -c user.name=selftest -c user.email=selftest@example.invalid commit -qm locale-baseline)
+mkdir -p "$GIT_SB/docs/specs/active/bytec" "$GIT_SB/docs/specs/active/paren"
+printf '## 4. 影响面与涉及文件清单\n- 指纹范围确认：已核对验证命令及其脚本、配置、测试依赖\n- `source.txt`：本任务\n' >"$GIT_SB/docs/specs/active/bytec/design.md"
+printf '## 4. 影响面与涉及文件清单\n- 指纹范围确认（已核对验证命令及其脚本、配置、测试依赖）\n- `source.txt`：本任务\n' >"$GIT_SB/docs/specs/active/paren/design.md"
+base=$(cd "$GIT_SB" && git rev-parse HEAD)
+printf 'g3\tagent\t2026-10-20T00:00:00Z\t%s\n' "$base" >"$GIT_SB/docs/specs/active/bytec/.gates"
+printf 'g3\tagent\t2026-10-20T00:00:00Z\t%s\n' "$base" >"$GIT_SB/docs/specs/active/paren/.gates"
+bytec_before=$(cd "$GIT_SB" && LC_ALL=C bash scripts/ai-state-id.sh --spec bytec source.txt)
+paren_before=$(cd "$GIT_SB" && LC_ALL=C bash scripts/ai-state-id.sh --spec paren source.txt)
+printf 'claimed by spec two\n' >>"$GIT_SB/other.txt"
+bytec_after=$(cd "$GIT_SB" && LC_ALL=C bash scripts/ai-state-id.sh --spec bytec source.txt)
+paren_after=$(cd "$GIT_SB" && LC_ALL=C bash scripts/ai-state-id.sh --spec paren source.txt)
+if [ "$bytec_before" = "$bytec_after" ]; then ok_msg "LC_ALL=C：全角冒号确认行启用 scoped"; else ng_msg "LC_ALL=C：全角冒号确认行未启用 scoped"; fi
+if [ "$paren_before" != "$paren_after" ]; then ok_msg "LC_ALL=C：全角括号不算指纹范围确认"; else ng_msg "LC_ALL=C：全角括号被误当成确认"; fi
 
 RESUME_SB="$TMP/resume-review"
 mkdir -p "$RESUME_SB/scripts" "$RESUME_SB/docs/specs/active/demo"
