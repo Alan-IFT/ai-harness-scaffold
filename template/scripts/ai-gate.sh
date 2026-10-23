@@ -82,7 +82,9 @@ delegation_fields() {
 #   1. section_body：覆盖按章节抽取的文本（需求四项、AC 表、设计各节、items、委托字段）。
 #   2. field_ok / field_value：还会直接收整份文件或单行原文（ck_g1 的原始问题、象限行、分级依据），
 #      这些不经 section_body，必须自己归一。
-#   直接读文件、不走上面两层的入口各自归一：需求覆盖矩阵（ck_trace_g3）、G5 / G6 的 nv。
+#   直接读文件、不走上面两层且要判空的入口各自归一：需求覆盖矩阵（ck_trace_g3）、G5 / G6 的 nv。
+#   其余直接读文件的入口只抽取固定符号或编号、不做空白判断，无需归一：quadrant（①~④）、
+#   trace_requirement_ids 与 G6 的 ac_ids（REQ / ERR / AC 编号）。新增判空入口时须归一。
 #   自检「LC_ALL=C：原始问题只有全角空格被拒」守住第 2 层。
 section_body() {
   [ -f "$1" ] || return 0

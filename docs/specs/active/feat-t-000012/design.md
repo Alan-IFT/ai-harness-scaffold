@@ -48,7 +48,7 @@
   - `template/harness/redlines.conf`
 
 - 间接消费者 / 副作用：无。
-- 检索依据：`grep -n "s/　/ /g" template/scripts/ai-gate.sh` 列出 6 处 sed 归一与 1 处 awk gsub；`grep -n 'field_ok "$(cat' template/scripts/ai-gate.sh` 等确认 field_ok 的原文入口为第 150、158、163 行。
+- 检索依据：`grep -n "s/　/ /g" template/scripts/ai-gate.sh` 列出 6 处 sed 归一与 1 处 awk gsub；`grep -n 'field_ok "$(cat' template/scripts/ai-gate.sh` 等确认 field_ok 的原文入口为ck_g1 中原始问题、象限行、分级依据三处调用。
 - 复用检索：沿用 t-noorigin 夹具的改写方式（mk_spec 后 sed 原始问题行）。
 
 ## 5. 对抗自审
