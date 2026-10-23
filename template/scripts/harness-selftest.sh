@@ -320,6 +320,19 @@ case "$vague_check" in
 esac
 sed -i 's/^| AC-01 | .*/| AC-01 | 文案 | 按钮显示「尽快处理。」与 `ASAP` | 文案不符 | 合理性校验返回 400 |/' docs/specs/active/t-vague/requirements.md
 expect_ok "G2 放行引号内原文与复合词（字节 locale）" env LC_ALL=C bash scripts/ai-gate.sh check t-vague g2
+sed -i '/^## 3\./a\> 说明：尽量写成可计数的条件（说明行不是 AC 行）。' docs/specs/active/t-vague/requirements.md
+expect_ok "G2 不扫描 AC 行以外的说明文字" env LC_ALL=C bash scripts/ai-gate.sh check t-vague g2
+sed -i 's/^| AC-01 | .*/| AC-01 | 文案 | 提示显示『适当休息』 | 文案不符 | 截图 |/' docs/specs/active/t-vague/requirements.md
+expect_ok "G2 放行『』内的被测原文" env LC_ALL=C bash scripts/ai-gate.sh check t-vague g2
+sed -i 's/^| AC-01 | .*/| AC-01 | 导出 | 「尽量 2 秒内返回 | 超时 | 计时 |/' docs/specs/active/t-vague/requirements.md
+expect_fail "G2 未闭合的引号不豁免" "含糊词：尽量" env LC_ALL=C bash scripts/ai-gate.sh check t-vague g2
+# 只让含糊词扫描那一次 awk 出错（识别 ck_g2 独有的 function strip），其余调用转给真实 awk
+mkdir -p "$TMP/fail-awk"
+printf '#!/bin/sh\ncase "$*" in *"function strip"*) exit 2 ;; esac\nexec "%s" "$@"\n' "$(command -v awk)" >"$TMP/fail-awk/awk"
+chmod +x "$TMP/fail-awk/awk"
+sed -i 's/^| AC-01 | .*/| AC-01 | 导出 | 2 秒内返回 | 超时 | 计时 |/' docs/specs/active/t-vague/requirements.md
+expect_fail "G2 含糊词扫描出错时按未通过处理" "检查执行失败" env PATH="$TMP/fail-awk:$PATH" bash scripts/ai-gate.sh check t-vague g2
+expect_ok "G2 同一 AC 在 awk 正常时通过" bash scripts/ai-gate.sh check t-vague g2
 expect_fail "G3 拒绝模板占位路径 path/to/" "path/to" bash scripts/ai-gate.sh check t-empty g3
 expect_fail "G4 拒绝模板占位路径 path/to/" "path/to" bash scripts/ai-gate.sh check t-empty g4
 expect_fail "G5 拒绝缺失的 review.md" "review.md" bash scripts/ai-gate.sh check t-empty g5
