@@ -212,10 +212,9 @@ ck_g2() {
       low = tolower(s)
       n = split("appropriate reasonable as_needed asap etc", en, " ")
       for (k = 1; k <= n; k++) {
-        # 字母、数字、下划线算词内字符：ASAP_mode 这类标识符片段不算含糊词；etc 以句点收尾即可
-        w = en[k]; gsub(/_/, " ", w)
-        re = (w == "etc") ? "etc[.]" : w "([^a-z0-9_]|$)"
-        if (low ~ ("(^|[^a-z0-9_])" re)) { print w "\t" $0; exit }
+        # 字母、数字、下划线算词内字符：ASAP_mode、config.etc.json 这类标识符片段不算含糊词
+        w = en[k]; gsub(/_/, " ", w); re = (w == "etc") ? "etc[.]" : w
+        if (low ~ ("(^|[^a-z0-9_])" re "([^a-z0-9_]|$)")) { print w "\t" $0; exit }
       }
     }') || { say "AC 含糊词检查执行失败（awk 出错），按未通过处理"; return 1; }
   [ -z "$bad" ] || {
