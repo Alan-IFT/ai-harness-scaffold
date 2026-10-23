@@ -27,7 +27,7 @@
   - 完成判据：扫描程序存于具名变量；三处关键词判断用 scan 结果，两处正向判定用 strip 结果；awk 失败不放宽。
   - 验证命令：`bash scripts/ai-verify.sh --quick --spec feat-t-000013 template/scripts/ai-gate.sh`
 
-- [ ] **Task 2: 自检 41 例矩阵与 G6 端到端用例，文档说明** `[<<< CURRENT ACTIVE TASK]`
+- [x] **Task 2: 自检 41 例矩阵与 G6 端到端用例，文档说明**
   - 涉及文件：`template/scripts/harness-selftest.sh`、`template/docs/specs/_templates/acceptance.md`、`docs/architecture/modules/template-mechanism.md`
   - 对应需求 / 验收：REQ-01, REQ-02, ERR-01, ERR-02 / AC-01, AC-02, AC-03, AC-04
   - 对应设计：design.md §2
@@ -40,12 +40,12 @@
 
 ## 4. Current WIP & Handoff
 
-- 当前正在执行的任务：Task 2
+- 当前正在执行的任务：G5 独立 CR
 - 前置依赖 / 并行关系：Task 2 依赖 Task 1
 - 已完成的小步进展：G1~G3 通过；独立设计审查三轮，原型 41 例在 gawk、mawk、onetrue-awk 的两种 locale 下符合期望
 - 正在编辑的文件：
   - `template/scripts/harness-selftest.sh`
 - 已排除的死胡同：gsub 连带删除边界字符（可吞掉关键词）；正向判定直接匹配 `0 失败` 子串（可被「10 失败」命中）
-- 上次验证与未验证改动：尚未验证
-- 下一步立即执行的唯一动作：自检加 41 例矩阵（从 G6_SCAN_AWK 取程序）与 G6 端到端用例
+- 上次验证与未验证改动：无 locale 正式验证 PASS（327s）；自检 245/245；旧 ai-gate 下新用例报出
+- 下一步立即执行的唯一动作：新上下文 G5 审查
 - knowledge_feedback：无
