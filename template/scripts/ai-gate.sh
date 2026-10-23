@@ -48,7 +48,8 @@ gate_name() {
 quadrant() { # 当前 Spec 的需求象限；只读取字段行，避免把说明文字当作决定
   local line
   line=$(grep -E '^[[:space:]]*-[[:space:]]*需求分级（象限）' "$DIR/requirements.md" 2>/dev/null | head -n 1)
-  printf '%s' "$line" | grep -oE '[①②③④]' | head -n 1
+  # 多字节字符不能放进 []：字节 locale 下会被拆成单个字节，象限识别失败并跳过②③检查。
+  printf '%s' "$line" | grep -oE '①|②|③|④' | head -n 1
 }
 
 feat_dir() {          # active 优先，其次 archive/YYYY-MM/<feat>
@@ -72,7 +73,7 @@ hash_text() {
   else cksum | awk '{print $1 "-" $2}'; fi
 }
 delegation_fields() {
-  section_body "$DIR/design.md" "0." | sed 's/：/:/g' \
+  section_body "$DIR/design.md" "0." | sed 's/：/:/g; s/　/ /g' \
     | grep -E '^[[:space:]]*-[[:space:]]*条件委托(决策人|来源|范围|结论):' || true
 }
 
@@ -84,7 +85,7 @@ section_body() {
       if (index(substr($0,4), p)==1) { inb=1; next }
       else if (inb) { exit }
     }
-    inb { print }
+    inb { gsub("　", " "); print }
   ' "$1"
 }
 
@@ -96,9 +97,10 @@ items() {
 }
 
 field_ok() {         # $1=section 正文 $2=标签：冒号后必须有实质内容且非占位符
-  # 先把全角冒号归一化为半角：全角字符放进 [] 会被按字节拆开，导致空值被误判为已填
+  # 先把全角冒号归一化为半角：全角字符放进 [] 会被按字节拆开，导致空值被误判为已填。
+  # 全角空格在字节 locale 下不属于 [[:space:]]，同样先归一，否则「冒号后只有全角空格」会被当成已填。
   local line val nv
-  nv=$(printf '%s\n' "$1" | sed 's/：/:/g')
+  nv=$(printf '%s\n' "$1" | sed 's/：/:/g; s/　/ /g')
   line=$(printf '%s\n' "$nv" | grep -E "^[[:space:]]*[-*][[:space:]]*$2[[:space:]]*:" | head -n 1)
   [ -n "$line" ] || return 1
   val=$(printf '%s' "$line" | sed -E 's/^[^:]*:[[:space:]]*//; s/[[:space:]]+$//')
@@ -107,7 +109,7 @@ field_ok() {         # $1=section 正文 $2=标签：冒号后必须有实质内
   return 0
 }
 field_value() {
-  printf '%s\n' "$1" | sed 's/：/:/g' \
+  printf '%s\n' "$1" | sed 's/：/:/g; s/　/ /g' \
     | sed -nE "s/^[[:space:]]*[-*][[:space:]]*$2[[:space:]]*:[[:space:]]*(.*)$/\1/p" \
     | head -n 1 | sed -E 's/[[:space:]]+$//'
 }
@@ -154,7 +156,7 @@ ck_g1() {
   q=$(grep -E '需求分级' "$f" | head -n 1)
   [ -n "$q" ] || { say "requirements.md 缺少「需求分级（象限）」行（①~④ 之一 + 一句理由）"; return 1; }
   field_ok "$q" "需求分级（象限）" || { say "需求分级未填（①直接做 / ②人机协同·风险侧 / ③人机协同·复杂度侧 / ④暂不支持）"; return 1; }
-  printf '%s' "$q" | grep -qE '[①②③④]' || { say "需求分级未选象限（①/②/③/④）"; return 1; }
+  printf '%s' "$q" | grep -qE '①|②|③|④' || { say "需求分级未选象限（①/②/③/④）"; return 1; }
   case "$q" in *④*)
     printf '%s' "$q" | grep -qE '人工接管|转人工|不进入' || { say "象限④（暂不支持）必须写明「人工接管 / 转人工 / 不进入 AI 流水线」"; return 1; } ;;
   esac
@@ -312,6 +314,7 @@ ck_g3() {
   fi
   grep -q 'path/to/' "$f" && { say "design.md 仍是模板占位路径（path/to/...），先替换成真实文件"; return 1; }
   q=$(quadrant)
+  case "$q" in ①|②|③|④) ;; *) say "需求象限无效（须为 ①/②/③/④）"; return 1 ;; esac
   steps=2; [ "$q" = '①' ] && steps=1
   need_items "$f" "2." "$steps" "实现顺序（①可单步，其余至少 2 步）" || return 1
   need_items "$f" "4." 2 "影响面与文件清单" || return 1
@@ -414,7 +417,7 @@ ck_g4() {
 ck_g5() {
   local f="$DIR/review.md" nv rounds reviewed_state verified_state g3_format
   [ -f "$f" ] || { say "缺少 review.md：用独立上下文执行 .agents/skills/code-review.md 产出"; return 1; }
-  nv=$(sed 's/：/:/g' <"$f")
+  nv=$(sed 's/：/:/g; s/　/ /g' <"$f")
   printf '%s\n' "$nv" | grep -q '^## 结论' || { say "review.md 缺少「## 结论」"; return 1; }
   printf '%s' "$nv" | grep -qE '关键问题.*:[[:space:]]*(0|无)' || { say "关键问题未清零（结论写「关键问题（必须修）：0」）"; return 1; }
   grep -q '审查者' "$f" || { say "review.md 缺少「审查者」署名（独立上下文标识）"; return 1; }
@@ -455,7 +458,7 @@ ck_g6() {
   ck_g5 || { say "G5 审查结论已失效，先更新独立审查"; return 1; }
   # Agent 记录自己执行的客观核验；②③把人作出的决定与执行动作分开留痕。
   [ -f "$a" ] || { say "缺少 acceptance.md：G6 核验与决策必须留痕"; return 1; }
-  nv=$(sed 's/：/:/g' <"$a")
+  nv=$(sed 's/：/:/g; s/　/ /g' <"$a")
   for label in 核验执行者 测试环境; do
     line=$(printf '%s\n' "$nv" | grep -E "^[[:space:]]*[-*][[:space:]]*$label[[:space:]]*:" | head -n 1)
     val=$(printf '%s' "$line" | sed -E 's/^[^:]*:[[:space:]]*//; s/[[:space:]]+$//')
