@@ -46,8 +46,9 @@ case "$ROLE" in
         sub(/^- \[[ xX]\] (\*\*)?Task /, "", title)
         if (match(title,/^[0-9]+/)) {
           number=substr(title,RSTART,RLENGTH)
-          suffix=substr(title,RLENGTH+1,1)
-          if (number == task && suffix ~ /[：: ]/) found=1
+          # 全角冒号不能放进 []：字节 locale 下会把「（」等同首字节的字符误当分隔符。
+          rest=substr(title,RLENGTH+1); suffix=substr(rest,1,1)
+          if (number == task && (suffix == ":" || suffix == " " || index(rest, "：") == 1)) found=1
         }
       }
       found { print }

@@ -34,7 +34,7 @@ scope_confirmed() {
   awk '
     /^## 4[. ]/ { inside=1; next }
     /^## / { if (inside) exit }
-    inside && /^[[:space:]]*-[[:space:]]*指纹范围确认[：:]/ && /已核对验证命令及其脚本、配置、测试依赖/ { found=1 }
+    inside && /^[[:space:]]*-[[:space:]]*指纹范围确认(：|:)/ && /已核对验证命令及其脚本、配置、测试依赖/ { found=1 }
     END { exit !found }
   ' "$1"
 }

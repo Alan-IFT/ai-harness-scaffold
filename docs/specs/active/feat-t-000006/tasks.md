@@ -27,14 +27,14 @@
   - 完成判据：无 locale 下现有自检全过。
   - 验证命令：`env -u LC_ALL bash scripts/harness-selftest.sh`
 
-- [ ] **Task 2: ai-resume 与 ai-state-id 的冒号分隔** `[<<< CURRENT ACTIVE TASK]`
+- [x] **Task 2: ai-resume 与 ai-state-id 的冒号分隔**
   - 涉及文件：`template/scripts/ai-resume.sh`、`template/scripts/ai-state-id.sh`
   - 对应需求 / 验收：REQ-02, ERR-02 / AC-04
   - 对应设计：design.md §2
   - 完成判据：检查点 1 的两种 locale 结论一致。
   - 验证命令：`env -u LC_ALL bash scripts/harness-selftest.sh`
 
-- [ ] **Task 3: 自检字节 locale 回归**
+- [ ] **Task 3: 自检字节 locale 回归** `[<<< CURRENT ACTIVE TASK]`
   - 涉及文件：`template/scripts/harness-selftest.sh`
   - 对应需求 / 验收：REQ-03 / AC-02, AC-03, AC-04
   - 对应设计：design.md §2
@@ -54,12 +54,12 @@
 
 ## 4. Current WIP & Handoff
 
-- 当前正在执行的任务：Task 2
+- 当前正在执行的任务：Task 3
 - 前置依赖 / 并行关系：Task 3 依赖 Task 1、2；Task 4 依赖前三项
 - 已完成的小步进展：G1~G3 通过；独立设计审查首轮需修改，已改入设计
 - 正在编辑的文件：
-  - `template/scripts/ai-gate.sh`
+  - `template/scripts/harness-selftest.sh`
 - 已排除的死胡同：脚本强制 LC_ALL（维护者否决）；只修自检（会掩盖缺陷）
 - 上次验证与未验证改动：尚未验证
-- 下一步立即执行的唯一动作：改 ai-resume.sh 第 50 行与 ai-state-id.sh 第 37 行
+- 下一步立即执行的唯一动作：在自检加「字节 locale 回归」节
 - knowledge_feedback：无
