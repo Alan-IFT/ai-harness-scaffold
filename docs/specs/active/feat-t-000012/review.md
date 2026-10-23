@@ -4,15 +4,15 @@
 
 - **审查者**：Claude Code G5 独立审查 subagent（Opus 5.5，新上下文，只读）
 - **未参与实现**：是
-- **审查时间**：2026-10-23
+- **审查时间**：2026-10-23（第 1 轮；第 2 轮增量复审同日）
 - **审查范围**：`git diff 2800a1e...HEAD`（`template/scripts/ai-gate.sh`、`template/scripts/harness-selftest.sh` 与本 Spec 文档）；工作区与暂存区无改动；对应 design.md §4 文件清单
-- **CR 轮次**：1 / 4
-- 审查状态：7994d96998c00ea84b5a925d189dd987acd7867e925b62495fdd517c8529b13b
+- **CR 轮次**：2 / 4
+- 审查状态：8d4fefda3fa031b704ec91b39a8e270b386dbd2d226e36cbf4e13a6aa74df017
 
 ## 结论
 - 关键问题（必须修）：0
-- 改进建议（非阻塞）：3
-- 判定：通过
+- 改进建议（非阻塞）：第 1 轮 3 条已处理；第 2 轮新增 1 条
+- 判定：通过（第 2 轮复审）
 
 ## 关键问题（bug / 崩溃 / 安全 / 数据损坏 / 功能缺失 / 越权）
 无
@@ -43,3 +43,11 @@
 - 沙箱（selftest 前 261 行夹具 + mk_spec）：原脚本 `LC_ALL=C` G1 → rc=1「原始问题 / 原话未填」；删掉 `ai-gate.sh:110` 的 `s/　/ /g` 后 → rc=0（G1 通过），新用例会报 NG
 
 knowledge_feedback: 无
+
+## 第 2 轮增量复审（范围：`git show 1babd0f` + 工作区 `.gates` / `verification.md`）
+- 上轮建议 1：已处理。`git show HEAD -- template/scripts/ai-gate.sh` 只改了第 85~87 行的注释；`git diff 2800a1e...HEAD -- template/scripts/ai-gate.sh` 里非注释行为 0，判定代码未动。
+- 上轮建议 2：可以接受。两种夹具下现象不同（最小夹具没有象限行，改报象限缺失；完整夹具下 G1 exit 0），但用例都会报出。acceptance.md 如实写明两种现象即可。
+- 上轮建议 3：已处理。requirements §1、design §4、tasks §4 的固定行号已改成按调用描述，WIP 已更新。
+- 增量其他内容：`.violations` 记录了 g4 reset，原因写明是 G5 第 1 轮；之后重新做了正式验证，`ai-gate.sh check feat-t-000012 g4` 通过，state 8d4fefda… 与 verification.md 一致。第 1 轮 review.md 被一并提交，正文没有被改动。
+- 新增改进建议 4（非阻塞）：`ai-gate.sh:86-87` 说 quadrant、trace_requirement_ids、ac_ids「不做空白判断，无需归一」，这个说法不严谨。这三处的正则或 trim 都依赖 `[[:space:]]` / `[ \t]`。我在沙箱里复核：把列表符后的空格换成全角空格后，`quadrant()` 取不到象限，REQ 行和表格单元格里的 AC 编号也会被漏掉。端到端看，② 夹具 G1 能通过，但 G3 会报「需求象限无效」，属于误拒、不放行；trace 和 G6 的 ac_ids 漏掉部分编号时，校验会变松。这些都是基线已有的行为，不是本次 diff 引入的。建议把注释改成「这些入口目前未归一，列表符或单元格边界用全角空格会漏匹配；象限漏匹配时误拒，编号漏匹配时校验变松」，并把它收进任务池，不在本 Spec 扩范围。
+- 第 2 轮结论：关键问题 0，判定通过。
