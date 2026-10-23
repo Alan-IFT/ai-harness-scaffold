@@ -20,7 +20,7 @@
 
 ## 2. 原子任务序列
 
-- [ ] **Task 1: 英文标识符边界与「大概率」提示** `[<<< CURRENT ACTIVE TASK]`
+- [x] **Task 1: 英文标识符边界与「大概率」提示**
   - 涉及文件：`template/scripts/ai-gate.sh`、`template/scripts/harness-selftest.sh`、`docs/architecture/modules/template-mechanism.md`
   - 对应需求 / 验收：REQ-01, REQ-02, ERR-01 / AC-01, AC-02, AC-03, AC-04
   - 对应设计：design.md §2
@@ -33,12 +33,12 @@
 
 ## 4. Current WIP & Handoff
 
-- 当前正在执行的任务：Task 1
+- 当前正在执行的任务：G5 独立 CR
 - 前置依赖 / 并行关系：无
 - 已完成的小步进展：G1~G3 通过
 - 正在编辑的文件：
   - `template/scripts/ai-gate.sh`
 - 已排除的死胡同：把「大概率」加入放行复合词（维护者否决）
-- 上次验证与未验证改动：尚未验证
-- 下一步立即执行的唯一动作：改 ck_g2 词表顺序与英文边界
+- 上次验证与未验证改动：无 locale 正式验证 PASS（248s）；两种 locale 自检 228/228；旧 ai-gate 跑新用例有 3 项不成立
+- 下一步立即执行的唯一动作：新上下文运行 `ai-resume.sh review feat-t-000007 d7a07b4` 写 review.md
 - knowledge_feedback：无
