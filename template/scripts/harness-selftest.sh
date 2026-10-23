@@ -481,6 +481,75 @@ for g in g1 g2 g3 g4 g5; do bash scripts/ai-gate.sh pass t-multi-ac "$g" >/dev/n
 expect_fail "G6 拒绝遗漏第二条 AC" "AC-02" bash scripts/ai-gate.sh check t-multi-ac g6
 printf '%s\n' '- AC-02：通过，见权限自动化检查' >>docs/specs/active/t-multi-ac/acceptance.md
 expect_ok "G6 要求逐条 AC 均有证据" bash scripts/ai-gate.sh check t-multi-ac g6
+# G6 证据扫描：从 ai-gate.sh 取出扫描程序逐例核对（P=应放行 R=应拦截），字节 locale 与默认 locale 都跑
+g6_prog=$(awk "/^G6_SCAN_AWK='\$/{f=1;next} f&&/^}'\$/{print \"}\";exit} f" scripts/ai-gate.sh)
+g6_bad=""; g6_n=0
+while IFS='|' read -r want sample; do
+  [ -n "$sample" ] || continue
+  for loc in C default; do
+    if [ "$loc" = C ]; then out=$(printf '%s\n' "$sample" | LC_ALL=C awk -v mode=scan "$g6_prog") || out=$sample
+    else out=$(printf '%s\n' "$sample" | awk -v mode=scan "$g6_prog") || out=$sample; fi
+    case "$out" in *未执行*|*未检查*|*失败*|*不通过*) got=R ;; *) got=P ;; esac
+    g6_n=$((g6_n + 1)); [ "$got" = "$want" ] || g6_bad="$g6_bad [$loc 期望$want] $sample"
+  done
+done <<'CASES'
+P|自检 239 项，失败 0 项
+P|0 项失败
+P|失败:0
+P|0 失败，3 通过
+P|0 项失败，3 通过
+P|修复前基线「21 项失败」
+P|自检 0 失败
+P|失败 0 项
+R|通过，但测试失败
+R|10 项失败
+R|失败 3 项
+R|失败 05
+R|失败 0.5 项
+R|失败 0,5 项
+R|失败 0/3
+R|共 10 失败
+R|失败 0 项失败
+R|失败 0失败
+R|用例未执行0 项失败
+R|不通过0 项失败
+R|未检查0失败
+R|重试第 0 次失败
+R|第0次失败
+R|失败 0 5 项
+R|共 1 0 项失败
+R|１0 失败
+R|v0 失败
+R|-0 失败
+R|失败 0 次后又失败
+R|失败 0 项）但功能失败
+R|失败 0|失败
+R|不通失败 0 过
+R|未执失败 0 行
+R|失败 0 cases
+R|失败 0 3
+R|失败 0 项，但功能失败
+R|0 失败败
+R|用例 #0 失败
+R|case_0 失败
+R|失败 0；另 2 项失败
+R|失败 0 项|但不通过
+CASES
+if [ -n "$g6_prog" ] && [ -z "$g6_bad" ]; then ok_msg "G6 证据扫描 $g6_n 次判断均符合期望"; else ng_msg "G6 证据扫描不符：${g6_bad:-未取到扫描程序}"; fi
+# 端到端：零计数与引号原文放行，矛盾记录与非零计数仍拒绝
+cp docs/specs/active/t-multi-ac/acceptance.md "$TMP/multi-acc.bak"
+sed -i 's/^- AC-02：.*/- AC-02：通过；自检 239 项，失败 0 项，修复前基线「21 项失败」/' docs/specs/active/t-multi-ac/acceptance.md
+expect_ok "G6 放行零计数与引号内的基线" env LC_ALL=C bash scripts/ai-gate.sh check t-multi-ac g6
+sed -i 's/^- AC-02：.*/- AC-02：通过，但测试失败/' docs/specs/active/t-multi-ac/acceptance.md
+expect_fail "G6 仍拒绝「通过，但测试失败」" "AC-02 仍有未通过项" env LC_ALL=C bash scripts/ai-gate.sh check t-multi-ac g6
+sed -i 's/^- AC-02：.*/- AC-02：通过；不通过0 项失败/' docs/specs/active/t-multi-ac/acceptance.md
+expect_fail "G6 不让零计数吞掉相邻关键词" "AC-02 仍有未通过项" env LC_ALL=C bash scripts/ai-gate.sh check t-multi-ac g6
+cp "$TMP/multi-acc.bak" docs/specs/active/t-multi-ac/acceptance.md
+sed -i 's/^- 冒烟或 E2E 证据：.*/- 冒烟或 E2E 证据：自检 0 失败/' docs/specs/active/t-multi-ac/acceptance.md
+expect_ok "G6 冒烟证据接受独立的 0 失败" env LC_ALL=C bash scripts/ai-gate.sh check t-multi-ac g6
+sed -i 's/^- 冒烟或 E2E 证据：.*/- 冒烟或 E2E 证据：「10 失败」/' docs/specs/active/t-multi-ac/acceptance.md
+expect_fail "G6 冒烟证据不让「10 失败」借子串当通过" "缺少通过结果" env LC_ALL=C bash scripts/ai-gate.sh check t-multi-ac g6
+cp "$TMP/multi-acc.bak" docs/specs/active/t-multi-ac/acceptance.md
 sed -i '/^- 人工决定：/d' docs/specs/active/t-good/acceptance.md
 expect_fail "②的 G6 拒绝缺少人的决定" "人的明确通过决定" bash scripts/ai-gate.sh check t-good g6
 printf '%s\n' '- 人工决定：通过' >>docs/specs/active/t-good/acceptance.md
