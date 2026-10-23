@@ -534,12 +534,27 @@ R|用例 #0 失败
 R|case_0 失败
 R|失败 0；另 2 项失败
 R|失败 0 项|但不通过
+R|1 失败 0 项
+R|共 3 失败 0
+R|失败:0|3
+R|2、0 失败
+R|3:0 失败
+R|１ 失败 0
+P|通过 12，失败 0
+P|（失败 0）
 CASES
 if [ -n "$g6_prog" ] && [ -z "$g6_bad" ]; then ok_msg "G6 证据扫描 $g6_n 次判断均符合期望"; else ng_msg "G6 证据扫描不符：${g6_bad:-未取到扫描程序}"; fi
 # 端到端：零计数与引号原文放行，矛盾记录与非零计数仍拒绝
 cp docs/specs/active/t-multi-ac/acceptance.md "$TMP/multi-acc.bak"
 sed -i 's/^- AC-02：.*/- AC-02：通过；自检 239 项，失败 0 项，修复前基线「21 项失败」/' docs/specs/active/t-multi-ac/acceptance.md
 expect_ok "G6 放行零计数与引号内的基线" env LC_ALL=C bash scripts/ai-gate.sh check t-multi-ac g6
+# 扫描 awk 出错或对非空输入给出空输出时，回退原文判断，同一条零计数证据不再被豁免
+mkdir -p "$TMP/g6-fail-awk" "$TMP/g6-empty-awk"
+printf '#!/bin/sh\ncase "$*" in *mode=scan*drop_zero*) exit 2 ;; esac\nexec "%s" "$@"\n' "$(command -v awk)" >"$TMP/g6-fail-awk/awk"
+printf '#!/bin/sh\ncase "$*" in *mode=scan*drop_zero*) cat >/dev/null; exit 0 ;; esac\nexec "%s" "$@"\n' "$(command -v awk)" >"$TMP/g6-empty-awk/awk"
+chmod +x "$TMP/g6-fail-awk/awk" "$TMP/g6-empty-awk/awk"
+expect_fail "G6 扫描 awk 出错时不放宽" "AC-02 仍有未通过项" env PATH="$TMP/g6-fail-awk:$PATH" bash scripts/ai-gate.sh check t-multi-ac g6
+expect_fail "G6 扫描 awk 输出为空时不放宽" "AC-02 仍有未通过项" env PATH="$TMP/g6-empty-awk:$PATH" bash scripts/ai-gate.sh check t-multi-ac g6
 sed -i 's/^- AC-02：.*/- AC-02：通过，但测试失败/' docs/specs/active/t-multi-ac/acceptance.md
 expect_fail "G6 仍拒绝「通过，但测试失败」" "AC-02 仍有未通过项" env LC_ALL=C bash scripts/ai-gate.sh check t-multi-ac g6
 sed -i 's/^- AC-02：.*/- AC-02：通过；不通过0 项失败/' docs/specs/active/t-multi-ac/acceptance.md

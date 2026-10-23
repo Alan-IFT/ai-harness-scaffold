@@ -473,18 +473,25 @@ function strip(s, lq, rq,    i, j, rest) {
 }
 function rtrim(s) { sub(/[ \t]+$/, "", s); return s }
 function ltrim(s) { sub(/^[ \t]+/, "", s); return s }
-# 0 前面（跳过空格）若是数字（含全角）、小数点、逗号、斜杠、正负号、字母、_、# 或「第」，就不是零计数
-function counted_before(p,    k, n, fw, l) {
-  p = rtrim(p)
-  if (substr(p, length(p), 1) ~ /[0-9.,\/+A-Za-z_#-]/) return 1
-  n = split("０ １ ２ ３ ４ ５ ６ ７ ８ ９ 第", fw, " ")
-  for (k = 1; k <= n; k++) { l = length(fw[k]); if (l <= length(p) && substr(p, length(p) - l + 1) == fw[k]) return 1 }
+function ends_with_any(p, list,    k, n, w, l) {
+  n = split(list, w, " ")
+  for (k = 1; k <= n; k++) { l = length(w[k]); if (l <= length(p) && substr(p, length(p) - l + 1) == w[k]) return 1 }
   return 0
 }
-# 零计数之后（跳过空格）只允许行尾或句读，其他文字一律不豁免
+# 第二式：0 前面（跳过空格）若是数字（含全角）、小数点、逗号、冒号、斜杠、正负号、字母、_、#、「、」或「第」，就不是零计数
+function counted_before(p) {
+  p = rtrim(p)
+  return substr(p, length(p), 1) ~ /[0-9.,:\/+A-Za-z_#-]/ || ends_with_any(p, "０ １ ２ ３ ４ ５ ６ ７ ８ ９ 第 、")
+}
+# 第一式：「失败」前面（跳过空格）紧挨数字时是「N 失败」，后面的 0 不代表失败数为零
+function number_before(p) {
+  p = rtrim(p)
+  return substr(p, length(p), 1) ~ /[0-9]/ || ends_with_any(p, "０ １ ２ ３ ４ ５ ６ ７ ８ ９")
+}
+# 零计数之后（跳过空格）只允许行尾或句读，其他文字（含「|」后接内容）一律不豁免
 function clean_after(r) {
   r = ltrim(r)
-  return r == "" || substr(r, 1, 1) ~ /[;)|]/ || index(r, "，") == 1 || index(r, "。") == 1 \
+  return r == "" || substr(r, 1, 1) ~ /[;)]/ || index(r, "，") == 1 || index(r, "。") == 1 \
     || index(r, "；") == 1 || index(r, "、") == 1 || index(r, "）") == 1
 }
 # 只替换命中的那一段，前后字符原样保留（gsub 连带边界会吞掉相邻关键词）
@@ -492,7 +499,7 @@ function drop_zero(s, re, form,    out, pre, seg, rest, keep) {
   out = ""
   while (match(s, re)) {
     pre = substr(s, 1, RSTART - 1); seg = substr(s, RSTART, RLENGTH); rest = substr(s, RSTART + RLENGTH)
-    keep = !clean_after(rest) || (form == 2 && counted_before(out pre))
+    keep = !clean_after(rest) || (form == 1 && number_before(out pre)) || (form == 2 && counted_before(out pre))
     out = out pre (keep ? seg : " "); s = rest
   }
   return out s
@@ -507,9 +514,10 @@ function drop_zero(s, re, form,    out, pre, seg, rest, keep) {
 }'
 # 正向判定：只剥引号后的文本里要有通过结果；零失败须是独立的 0，避免「10 失败」借子串命中
 G6_PASS_RE='通过|PASS|成功|(^|[^0-9.,/])0 *(项|个|条|次)? *失败'
-g6_scan() {   # $1=scan|strip $2=文本；awk 出错时 scan 回退原文、strip 回退为空，都不放宽
+g6_scan() {   # $1=scan|strip $2=文本；awk 出错或对非空输入给出空输出时，scan 回退原文、strip 回退为空，都不放宽
   local out
-  if out=$(printf '%s\n' "$2" | awk -v mode="$1" "$G6_SCAN_AWK"); then printf '%s' "$out"
+  if out=$(printf '%s\n' "$2" | awk -v mode="$1" "$G6_SCAN_AWK") && { [ -n "$out" ] || [ -z "$2" ]; }; then
+    printf '%s' "$out"
   elif [ "$1" = scan ]; then printf '%s' "$2"; fi
 }
 
