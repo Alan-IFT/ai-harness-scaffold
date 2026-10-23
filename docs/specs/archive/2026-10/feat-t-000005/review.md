@@ -4,8 +4,8 @@
 - **未参与实现**：是
 - **审查时间**：2026-10-22
 - **审查范围**：`git diff 1dee735...HEAD`（5 个提交，20 个文件）+ 第 2 轮工作区增量（`git diff`：INDEX.md、ai-gate.sh:217、design.md、tasks.md §3、verification.md）；对照 design.md §4 文件清单
-- **CR 轮次**：2 / 4
-- 审查状态：dc9812168d538141386923f123834fdecd325186cbf7fadc622c7593c51e22b2
+- **CR 轮次**：3 / 4
+- 审查状态：b183ae7f6974d68c7e2099adacd58733fedd30f36b673c71393709a9bcbd888c
 
 ## 结论
 - 关键问题（必须修）：0
@@ -64,3 +64,9 @@ knowledge_feedback: .knowledge/INDEX.md K-0001 摘要含 0x08 控制字符，与
   - 建议 4~6：按「改善即批准」记入 `tasks.md` §3「发现但不碰」，本轮不要求修改。
 - 修复增量审查：无新增行为、无范围外改动；`.violations` 记录了 reset g4，g4 已用新状态指纹重新 pass；verification.md state 已更新为 dc981216…，与本报告「审查状态」一致。
 - 第 2 轮结论：关键问题 0，判定通过。
+
+## 第 3 轮复审（仅验证状态变化）
+- 增量核对：`git diff --stat b4a172b HEAD -- . ':!docs/specs'` 只显示 4 个新文件 `docs/task-pool/T-000006.md`~`T-000009.md`（52 行新增）。没有代码、模板或指南改动；docs/specs 外的工作区是干净的。
+- 内容核对：T-000006 对应 locale 自检基线问题，T-000007 对应建议 4（误报），T-000008 对应建议 6（词表三处重复），T-000009 对应建议 5 和 mawk/BSD awk 未实测的遗留。四项与第 1 轮报告一致，没有夸大或遗漏，队列状态都是待办，也没有挂到任何 Spec。
+- 状态：verification.md state 更新为 b183ae7f…，变化原因是这 4 个文件计入了全仓指纹；本报告「审查状态」已同步。
+- 第 3 轮结论：关键问题 0，判定通过。
