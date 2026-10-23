@@ -27,14 +27,14 @@
   - 完成判据：裸词 AC 被拒并显示命中词；引号内同词通过；自检全绿。
   - 验证命令：`bash scripts/harness-selftest.sh`
 
-- [ ] **Task 2: 设计与需求模板、澄清指南、AGENTS** `[<<< CURRENT ACTIVE TASK]`
+- [x] **Task 2: 设计与需求模板、澄清指南、AGENTS**
   - 涉及文件：`template/docs/specs/_templates/design.md`、`template/docs/specs/_templates/requirements.md`、`template/.agents/skills/new-spec.md`、`template/AGENTS.md`
   - 对应需求 / 验收：REQ-01, REQ-04 / AC-02, AC-04
   - 对应设计：design.md §2、§4
   - 完成判据：§4 复用检索、§5 独立设计审查字段及填写说明存在；②③默认审查与跨宿主换上下文方式写明；AGENTS 未超限。
   - 验证命令：`bash scripts/ai-verify.sh --quick --spec feat-t-000005 README.md`
 
-- [ ] **Task 3: 记忆捕获、纠正替换与晋升**
+- [ ] **Task 3: 记忆捕获、纠正替换与晋升** `[<<< CURRENT ACTIVE TASK]`
   - 涉及文件：`template/MEMORY.md`、`template/.agents/skills/gc-memory.md`
   - 对应需求 / 验收：REQ-03 / AC-03
   - 对应设计：design.md §2
@@ -55,12 +55,12 @@
 
 ## 4. Current WIP & Handoff
 
-- 当前正在执行的任务：Task 2
+- 当前正在执行的任务：Task 3
 - 前置依赖 / 并行关系：Task 2、3 互不依赖；Task 4 依赖前三项
 - 已完成的小步进展：G1~G3 已通过（独立设计审查首轮需修改，已改入设计）；Task 1 完成，自检需在 `LC_ALL=C.UTF-8` 下运行
 - 正在编辑的文件：
-  - `template/docs/specs/_templates/design.md`、`requirements.md`、`template/.agents/skills/new-spec.md`、`template/AGENTS.md`
+  - `template/AGENTS.md`、`template/.agents/skills/gc-memory.md`、`template/MEMORY.md`
 - 已排除的死胡同：宿主专属 hook（维护者否决）
 - 上次验证与未验证改动：尚未正式验证
-- 下一步立即执行的唯一动作：改 design.md 模板 §4/§5
+- 下一步立即执行的唯一动作：AGENTS.md §3 加记忆捕获行，gc-memory.md 加晋升步骤
 - knowledge_feedback：无
