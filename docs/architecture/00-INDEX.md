@@ -11,4 +11,5 @@
 
 ## 架构决策记录
 
-- `docs/architecture/decisions/ADR-0001-process-state-gates-verification.md`：流程状态布局与指纹、自然语言门禁、验证结构、任务分诊（2026-10-23 已决定，迁移分 5 个阶段推进）。
+- `docs/architecture/decisions/ADR-0001-process-state-gates-verification.md`：流程状态布局与指纹、自然语言门禁、验证结构、任务分诊（已被 ADR-0002 替代，问题分析仍可参考）。
+- `docs/architecture/decisions/ADR-0002-subtract-to-portable-core.md`：做减法，只保留跨宿主核心；功能清单、删除与简化决定、R1/R2 迁移（2026-10-23 已决定）。

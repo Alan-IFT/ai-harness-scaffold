@@ -11,35 +11,35 @@
 
 ## 1. 上下文清单
 
-- 必读：本 Spec、`docs/architecture/decisions/ADR-0001-process-state-gates-verification.md`、`docs/metrics.md`、`docs/task-pool/T-000015.md`~`T-000027.md`。
-- 条件读：`template/scripts/ai-gate.sh`、`ai-state-id.sh`、`ai-task-pool.sh`、`tests/verify-repo.sh`（只核对 ADR 引用的位置）。
-- 明确不读：归档 Spec 全文（只读 review.md 结论与 metrics 行）。
+- 必读：本 Spec、`docs/architecture/decisions/ADR-0002-subtract-to-portable-core.md`、`docs/metrics.md`、暂缓与待办任务原件。
+- 条件读：`template/scripts/*.sh`、`bin/ai-harness`（只取子命令、检查项与行数）；参考博客 `本地参考博客目录` 5 篇及配图（外部资料，只取原则）。
+- 明确不读：归档 Spec 全文（只统计 `acceptance.md` 验收方式与 `.gates` 记录者）。
 - 注入知识：无相关卡片
-- 知识检索：`ai-knowledge.sh suggest 模板机制` 只返回 K-0001（locale 无关的文本匹配），本 Spec 只写决策文档，不涉及脚本匹配，不注入。
-- 本次不变量：不修改 `template/`、`bin/`、`scripts/`；架构结论只记录维护者明确决定。
+- 知识检索：全仓唯一卡 K-0001 讲门禁正则写法，本 Spec 只写决策文档，不注入；ADR-0002 决定删除知识卡系统。
+- 本次不变量：不修改 `template/`、`bin/`、`scripts/`；取舍依据维护者委托与可核对证据。
 
 ## 2. 原子任务序列
 
-- [x] **Task 1: ADR 草案与独立审查**
-  - 涉及文件：`docs/architecture/decisions/ADR-0001-process-state-gates-verification.md`、`docs/architecture/00-INDEX.md`
-  - 对应需求 / 验收：REQ-01, REQ-03 / AC-01, AC-03
-  - 对应设计：design.md §2 步骤 1、2
-  - 完成判据：四问题各有证据、不少于 2 个方案、代价与推荐；独立审查无关键问题。
-  - 验证命令：`bash scripts/ai-verify.sh --quick --spec feat-t-000027 docs/architecture/decisions/ADR-0001-process-state-gates-verification.md`
+- [x] **Task 1: 功能清单与证据**
+  - 涉及文件：`docs/architecture/decisions/ADR-0002-subtract-to-portable-core.md`
+  - 对应需求 / 验收：REQ-01, ERR-02 / AC-01
+  - 对应设计：design.md §2
+  - 完成判据：脚本子命令、各门检查项、CLI 子命令均在保留 / 删除 / 简化表中，每项有依据。
+  - 验证命令：`bash scripts/ai-verify.sh --quick --spec feat-t-000027 docs/architecture/decisions/ADR-0002-subtract-to-portable-core.md`
 
-- [x] **Task 2: 维护者逐项决定**
-  - 涉及文件：`docs/architecture/decisions/ADR-0001-process-state-gates-verification.md`
-  - 对应需求 / 验收：REQ-02, ERR-01 / AC-02, AC-03
-  - 对应设计：design.md §2 步骤 3
-  - 完成判据：决定记录表四行均有决定与原话来源或经确认的待定；迁移表去掉依赖待定问题的阶段。
-  - 验证命令：`bash scripts/ai-verify.sh --quick --spec feat-t-000027 docs/architecture/decisions/ADR-0001-process-state-gates-verification.md`
+- [x] **Task 2: 依据参考博客定稿决定**
+  - 涉及文件：`docs/architecture/decisions/ADR-0002-subtract-to-portable-core.md`
+  - 对应需求 / 验收：REQ-02, ERR-01 / AC-02
+  - 对应设计：design.md §2
+  - 完成判据：§1 列出博客原则 B1~B6；每项决定写依据；§5 记录委托原话；改判项写明理由。
+  - 验证命令：`bash scripts/ai-verify.sh --quick --spec feat-t-000027 docs/architecture/decisions/ADR-0002-subtract-to-portable-core.md`
 
-- [x] **Task 3: 待办分诊落地**
-  - 涉及文件：`docs/task-pool/T-000015.md`~`docs/task-pool/T-000026.md`、`docs/task-pool/T-000028.md`、`docs/task-pool/NEXT`、新收录的阶段入口任务、`docs/architecture/decisions/ADR-0001-process-state-gates-verification.md`
-  - 对应需求 / 验收：REQ-04, ERR-02 / AC-04, AC-05
-  - 对应设计：design.md §2 步骤 4、检查点
-  - 完成判据：13 条补充与状态一致；阶段入口已收录并回填 ADR；`NEXT` 指向第一个阶段入口且它是唯一未关联待办；正式验证 PASS。
-  - 验证命令：`bash scripts/ai-verify.sh --spec feat-t-000027 docs/architecture/decisions/ADR-0001-process-state-gates-verification.md`
+- [x] **Task 3: 迁移与任务分诊**
+  - 涉及文件：`docs/architecture/decisions/ADR-0002-subtract-to-portable-core.md`、`docs/architecture/decisions/ADR-0001-process-state-gates-verification.md`、`docs/architecture/00-INDEX.md`、`docs/task-pool/T-000015.md`、`docs/task-pool/T-000020.md`、`docs/task-pool/T-000025.md`、`docs/task-pool/T-000028.md`~`docs/task-pool/T-000033.md`、`docs/task-pool/NEXT`
+  - 对应需求 / 验收：REQ-03, REQ-04 / AC-03, AC-04, AC-05
+  - 对应设计：design.md §2
+  - 完成判据：R1/R2 字段齐全且入口为 T-000032/T-000033；ADR-0001 被替代；暂缓 / 待办各有分诊；NEXT 为 T-000032；正式验证 PASS。
+  - 验证命令：`bash scripts/ai-verify.sh --spec feat-t-000027 docs/architecture/decisions/ADR-0002-subtract-to-portable-core.md`
 
 ## 3. 发现但不碰
 
@@ -47,12 +47,11 @@
 
 ## 4. Current WIP & Handoff
 
-- 当前正在执行的任务：正式验证与 G5 独立 CR
+- 当前正在执行的任务：正式验证，之后交维护者本人审查（G5）与决定（G6）
 - 前置依赖 / 并行关系：Task 2 依赖 Task 1；Task 3 依赖 Task 2
-- 已完成的小步进展：ADR 经 3 轮独立审查（第 3 轮通过）；维护者四项均选推荐方案（1B、2A、3B 先行再 3A、4A+4B+4C+4D）；收录阶段入口 T-000029~T-000031；13 条待办已分诊并改写队列状态；NEXT 为 T-000015，且为唯一未关联待办
-- 正在编辑的文件：
-  - `docs/architecture/decisions/ADR-0001-process-state-gates-verification.md`
-- 已排除的死胡同：隐藏目录 `.harness/` 作流程根；只用 update 追加分诊而不改队列状态；2A 保留旧检查（与删除扫描矛盾）
+- 已完成的小步进展：ADR-0001 G6 未通过，回退 G1 改为减法；ADR-0002 依博客与仓库证据定稿；T-000032/T-000033 收录，T-000015/20/31 作废、29/30 合并，25/28 暂缓；NEXT=T-000032
+- 正在编辑的文件：无
+- 已排除的死胡同：ADR-0001 五阶段重组（两次下游升级）；草案中删除连续失败计数与 G4 追溯校验（博客实践支持，改判保留）
 - 上次验证与未验证改动：尚未正式验证
-- 下一步立即执行的唯一动作：正式验证后提交摘要，进入 G5
+- 下一步立即执行的唯一动作：提交后跑正式验证
 - knowledge_feedback：无
