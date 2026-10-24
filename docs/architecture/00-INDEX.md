@@ -8,3 +8,7 @@
 | 本仓库自用状态 | 根目录 `AGENTS.md`、`scripts/**`、`docs/**`、`harness/**` | `AGENTS.md` | `docs/architecture/modules/self-hosting.md` |
 
 本索引用于定位当前代码，不描述模板中的示例业务模块。
+
+## 架构决策记录
+
+- `docs/architecture/decisions/ADR-0001-process-state-gates-verification.md`：流程状态布局与指纹、自然语言门禁、验证结构、任务分诊（提议中，待维护者决定）。

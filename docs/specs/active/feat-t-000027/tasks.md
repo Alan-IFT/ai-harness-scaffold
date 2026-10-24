@@ -1,72 +1,58 @@
-# 原子执行队列与跨工具接力棒 (Tasks & Handoff): feat-t-000027
+# 原子执行队列与接力：feat-t-000027
 
-- **需求文档**: `docs/specs/active/feat-t-000027/requirements.md`
-- **设计文档**: `docs/specs/active/feat-t-000027/design.md`
-- 追溯版本：1（与 design.md 配套；旧 Spec 无此行仍沿用旧门禁）
-- **当前阶段**: 以 `bash scripts/ai-gate.sh status feat-t-000027` 为准。`docs/specs/active/feat-t-000027/.gates` 由脚本维护，**禁止手改**。
+- 需求文档：`requirements.md`
+- 设计文档：`design.md`
+- 追溯版本：1
+- 当前阶段：以 `bash scripts/ai-gate.sh status feat-t-000027` 为准。
 
 ## 0. 阶段门
-以 `bash scripts/ai-gate.sh status feat-t-000027` 的 `.gates` 结果为准；规则见 `AGENTS.md`。此处只记未完成任务，不复制阶段表。回滚后用 `ai-gate.sh reset` 使受影响门失效。
 
-## 1. 上下文清单（开工前先填，避免乱读）
-- **必读**：`requirements.md`、`design.md`、本文件、涉及模块的活文档
-- **条件读**（命中才读）：其他模块公共契约（`index.ts` / `types.ts`）、`harness/redlines.conf`（涉及阈值时）
-- **明确不读**：`docs/specs/archive/**`、其他模块内部实现、全量测试输出
-- **注入知识**（先检索后选择；过期或待验证的卡片不能注入）：
-  - 注入知识：无相关卡片
-> 有采用时把上行改成真实卡片 ID；G4 会核对卡片存在且有效。不要在「无相关卡片」行保留示例 ID。
-> 先运行 `bash scripts/ai-knowledge.sh suggest <module>`，记录模块、候选及采用或排除理由；不能只写「无相关卡片」。
-- 知识检索：
-- **本次不变量**（改坏即视为回归，例如：「对外 API 路径不变」「旧数据无需迁移」）：
+由 `.gates` 和 `ai-gate.sh status` 记录，不手改。
 
-## 2. 原子任务序列 (Atomic Execution Queue)
-> 铁律：
-> 1. 每次只认领 **1 个** `[ ]`，粒度 5~15 分钟；单任务 >5 文件或跨 2 子系统必须拆。
-> 2. 先写 / 改关键测试 → 写实现 → 开发中用 `ai-verify.sh --quick --spec feat-t-000027 <file>`；G4 前用无 `--quick` 的正式验证。quick 不生成 G4 摘要。
-> 3. 完成后：勾 `[x]` → 清空 WIP → 原子 commit。
-> 4. 拆分出口：每个任务引用设计章节；实现入口：写代码前回读该章节和 requirements.md §2.3 的相关原文锚点。任务摘要与设计冲突时先修任务，不据摘要实现。
+## 1. 上下文清单
 
-- [ ] **Task 1: 定义数据结构与接口契约类型** `[<<< CURRENT ACTIVE TASK]`
-  - **涉及文件**: `path/to/types.ts`
-  - **对应需求 / 验收**: REQ-01 / AC-01
-  - **对应设计**: design.md §3.2
-  - **完成判据**: 
-  - **验证命令**: `bash scripts/ai-verify.sh --spec feat-t-000027 path/to/types.ts`
-  - **检查点**: 无 / 有（第 N 步后暂停，等谁确认）
+- 必读：本 Spec、`docs/architecture/decisions/ADR-0001-process-state-gates-verification.md`、`docs/metrics.md`、`docs/task-pool/T-000015.md`~`T-000027.md`。
+- 条件读：`template/scripts/ai-gate.sh`、`ai-state-id.sh`、`ai-task-pool.sh`、`tests/verify-repo.sh`（只核对 ADR 引用的位置）。
+- 明确不读：归档 Spec 全文（只读 review.md 结论与 metrics 行）。
+- 注入知识：无相关卡片
+- 知识检索：`ai-knowledge.sh suggest 模板机制` 只返回 K-0001（locale 无关的文本匹配），本 Spec 只写决策文档，不涉及脚本匹配，不注入。
+- 本次不变量：不修改 `template/`、`bin/`、`scripts/`；架构结论只记录维护者明确决定。
 
-- [ ] **Task 2: 编写核心业务逻辑与单元测试 (TDD)**
-  - **涉及文件**: `path/to/service.ts`, `path/to/service.test.ts`
-  - **对应需求 / 验收**: REQ-01, ERR-01 / AC-01
-  - **对应设计**: design.md §2、§3.2
-  - **完成判据**: 
-  - **验证命令**: `bash scripts/ai-verify.sh --spec feat-t-000027 path/to/service.test.ts`
+## 2. 原子任务序列
 
-- [ ] **Task 3: 暴露路由 / 控制器接口并完成收尾**
-  - **涉及文件**: `path/to/controller.ts`
-  - **对应需求 / 验收**: REQ-01 / AC-01
-  - **对应设计**: design.md §2、§3.2
-  - **完成判据**: 
-  - **验证命令**: `bash scripts/ai-verify.sh --spec feat-t-000027 path/to/controller.ts`
-  - **收尾动作**: 阅读并执行 `.agents/skills/code-review.md`、`.agents/skills/knowledge-distill.md` 与 `.agents/skills/archive-spec.md`
+- [ ] **Task 1: ADR 草案与独立审查**
+  - 涉及文件：`docs/architecture/decisions/ADR-0001-process-state-gates-verification.md`、`docs/architecture/00-INDEX.md`
+  - 对应需求 / 验收：REQ-01, REQ-03 / AC-01, AC-03
+  - 对应设计：design.md §2 步骤 1、2
+  - 完成判据：四问题各有证据、不少于 2 个方案、代价与推荐；独立审查无关键问题。
+  - 验证命令：`bash scripts/ai-verify.sh --quick --spec feat-t-000027 docs/architecture/decisions/ADR-0001-process-state-gates-verification.md`
 
-## 3. 发现但不碰（范围外问题，只记录不处理）
-> 编码时发现的越界问题写在这里，**不要顺手改**。格式：位置 / 现象 / 本次不处理的原因 / 建议归属。
+- [ ] **Task 2: 维护者逐项决定**
+  - 涉及文件：`docs/architecture/decisions/ADR-0001-process-state-gates-verification.md`
+  - 对应需求 / 验收：REQ-02, ERR-01 / AC-02, AC-03
+  - 对应设计：design.md §2 步骤 3
+  - 完成判据：决定记录表四行均有决定与原话来源或经确认的待定；迁移表去掉依赖待定问题的阶段。
+  - 验证命令：`bash scripts/ai-verify.sh --quick --spec feat-t-000027 docs/architecture/decisions/ADR-0001-process-state-gates-verification.md`
 
-- 记录：
+- [ ] **Task 3: 待办分诊落地**
+  - 涉及文件：`docs/task-pool/T-000015.md`~`docs/task-pool/T-000026.md`、`docs/task-pool/T-000028.md`、`docs/task-pool/NEXT`、新收录的阶段入口任务、`docs/architecture/decisions/ADR-0001-process-state-gates-verification.md`
+  - 对应需求 / 验收：REQ-04, ERR-02 / AC-04, AC-05
+  - 对应设计：design.md §2 步骤 4、检查点
+  - 完成判据：13 条补充与状态一致；阶段入口已收录并回填 ADR；`NEXT` 指向第一个阶段入口且它是唯一未关联待办；正式验证 PASS。
+  - 验证命令：`bash scripts/ai-verify.sh --spec feat-t-000027 docs/architecture/decisions/ADR-0001-process-state-gates-verification.md`
 
----
+## 3. 发现但不碰
 
-## 4. 🔄 Current WIP & Handoff Scratchpad (跨工具断点续传区)
+- 记录：无
 
-> **致下一个接手的 AI Agent (Claude / Codex / DeepSeek)**：
-> 上一个工具可能因额度耗尽（429）或超时中断。请结合 `git diff` 与本区继续，**严禁推倒重写已通过验证的代码**！
+## 4. Current WIP & Handoff
 
-- **当前正在执行的任务**: `Task 1`
-- **前置依赖 / 并行关系**: 无（并行任务须写明依赖和各自负责的文件）
-- **已完成的小步进展**: 尚未开始（随开发进度实时更新）
-- **正在编辑的文件**（下一个 Agent 必须**重新读**这些文件，不要凭记忆）：
-  - 
-- **已排除的死胡同 / 错误方案 (勿重复踩坑)**: 无
-- **上次验证与未验证改动**: 看 `verification.md`；G4 前若代码内容变化，重跑正式验证。`ai-resume.sh owner <feat>` 会提示摘要是否过期；G5 用 `review <feat> <base-ref>` 检查审查证据。
-- **下一步立即执行的唯一动作 (Next Immediate Action)**：按照 `design.md` 第 3.2 节定义接口类型并跑验证脚本。
-- **knowledge_feedback**（若 `MEMORY.md` / 知识卡 / 模块活文档与代码不符，记在这里，GC 时降权）：
+- 当前正在执行的任务：Task 1（设计审查第 2 轮）
+- 前置依赖 / 并行关系：Task 2 依赖 Task 1；Task 3 依赖 Task 2
+- 已完成的小步进展：G1、G2 通过（审查首轮后回退重过）；ADR 已按首轮 6 项关键问题修订
+- 正在编辑的文件：
+  - `docs/architecture/decisions/ADR-0001-process-state-gates-verification.md`
+- 已排除的死胡同：隐藏目录 `.harness/` 作流程根（rg 默认跳过、与 `harness/` 混淆）；只用 update 追加分诊而不改队列状态（next 仍会领取旧任务）
+- 上次验证与未验证改动：尚未验证
+- 下一步立即执行的唯一动作：等设计审查第 2 轮结论
+- knowledge_feedback：无
