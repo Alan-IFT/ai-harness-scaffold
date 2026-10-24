@@ -5,7 +5,6 @@
 ```bash
 bash scripts/harness-selftest.sh
 bash scripts/ai-check-bloat.sh
-bash scripts/ai-knowledge.sh check
 ```
 
 再按项目技术栈加入构建、单元测试、集成或冒烟测试、安全扫描。`harness/redlines.conf` 中的 `COVERAGE_MIN`、`MUTATION_SCORE_MIN`、`MUTATION_MODE` 是供项目 CI 选择接入的配置；仅填写这些键不会自动形成门禁。项目决定采用时，先核对：

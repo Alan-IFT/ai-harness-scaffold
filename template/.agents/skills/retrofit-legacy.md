@@ -1,6 +1,6 @@
 # 老项目渐进接入指南（跨 IDE 普通项目文件）
 
-适用：已有代码、CI 和团队约定的项目。以现有可运行系统为基线；只给**接入后的新变更**使用 Spec 与 G1~G7，不为历史提交补造 Spec、验证记录或知识卡。
+适用：已有代码、CI 和团队约定的项目。以现有可运行系统为基线；只给**接入后的新变更**使用 Spec 与 G1~G7，不为历史提交补造 Spec 或验证记录。
 
 ## 1. 只读摸底
 
@@ -18,7 +18,7 @@
 4. 审核 `.ai-harness/suggested/harness/allowed-write-dirs.txt`；由有权限的人决定是否合并进 `harness/redlines.conf` 并更新基线。不要把目录扫描结果当权限事实。
 5. 接入一条能运行的增量检查到 `harness/verify.conf`，沿用现有 CI 的完整测试；`verification.md` 只记录本地增量结论。
 
-已安装项目后续获取新版脚手架时，运行 `bash <脚手架路径>/bin/ai-harness upgrade <项目路径> --dry-run` 查看计划，再运行 `upgrade <项目路径>`。安装基线记录在 `.ai-harness/manifest.tsv`；未改过的机制文件自动更新，缺失文件自动补齐。项目状态与红线不自动替换。冲突时保留原文件并输出 `.ai-harness/suggested/` 建议文件；合并一处后用 `upgrade <项目路径> --accept-custom <相对路径>` 确认其当前定制基线。旧安装若无 manifest，已有不同内容均作为冲突处理。升级时若有已过 G3 的在途 Spec，新版门禁可能改变解析或快照算法（例如委托行的全角空格会先归一）；换到缺少 sha256sum / shasum 的机器时哈希会回落为 cksum，也会改变快照。G6 若报「委托与 G3 授权快照不一致」，由人确认委托内容后再重过 G3，Agent 不得自行重做授权；门禁不会因升级而放宽。升级会改动 `scripts/ai-state-id.sh`，它在全仓与精确清单两种指纹模式中都计入，已过 G4 的在途 Spec 须重跑正式验证再继续。
+已安装项目后续获取新版脚手架时，运行 `bash <脚手架路径>/bin/ai-harness upgrade <项目路径> --dry-run` 查看计划，再运行 `upgrade <项目路径>`。安装基线记录在 `.ai-harness/manifest.tsv`；未改过的机制文件自动更新，缺失文件自动补齐。项目状态与红线不自动替换。冲突时保留原文件并输出 `.ai-harness/suggested/` 建议文件；合并一处后用 `upgrade <项目路径> --accept-custom <相对路径>` 确认其当前定制基线。旧安装若无 manifest，已有不同内容均作为冲突处理。模板已删除的托管文件（如旧版的知识卡脚本与指南）：未改动的随升级删除；本地改过或经 `--accept-custom` 定制的保留、列出并以非零退出提示人工处理，此后归项目所有，再次升级不再报告。`.knowledge/` 属项目状态，不自动删除。在途 Spec 的 `acceptance.md` 须改为每项以「通过」开头，并去掉条件委托字段，否则 G6 会拒绝。升级会改动 `scripts/ai-state-id.sh`，它在全仓与精确清单两种指纹模式中都计入，已过 G4 的在途 Spec 须重跑正式验证再继续。
 
 ## 3. 小范围试点与扩展
 

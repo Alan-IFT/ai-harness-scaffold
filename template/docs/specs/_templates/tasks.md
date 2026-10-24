@@ -12,11 +12,7 @@
 - **必读**：`requirements.md`、`design.md`、本文件、涉及模块的活文档
 - **条件读**（命中才读）：其他模块公共契约（`index.ts` / `types.ts`）、`harness/redlines.conf`（涉及阈值时）
 - **明确不读**：`docs/specs/archive/**`、其他模块内部实现、全量测试输出
-- **注入知识**（先检索后选择；过期或待验证的卡片不能注入）：
-  - 注入知识：无相关卡片
-> 有采用时把上行改成真实卡片 ID；G4 会核对卡片存在且有效。不要在「无相关卡片」行保留示例 ID。
-> 先运行 `bash scripts/ai-knowledge.sh suggest <module>`，记录模块、候选及采用或排除理由；不能只写「无相关卡片」。
-- 知识检索：
+- **相关记忆**（`MEMORY.md` 中与本任务有关的条目；没有写「无」）：
 - **本次不变量**（改坏即视为回归，例如：「对外 API 路径不变」「旧数据无需迁移」）：
 
 ## 2. 原子任务序列 (Atomic Execution Queue)
@@ -47,7 +43,7 @@
   - **对应设计**: design.md §2、§3.2
   - **完成判据**: 
   - **验证命令**: `bash scripts/ai-verify.sh --spec {{FEATURE_NAME}} path/to/controller.ts`
-  - **收尾动作**: 阅读并执行 `.agents/skills/code-review.md`、`.agents/skills/knowledge-distill.md` 与 `.agents/skills/archive-spec.md`
+  - **收尾动作**: 阅读并执行 `.agents/skills/code-review.md` 与 `.agents/skills/archive-spec.md`
 
 ## 3. 发现但不碰（范围外问题，只记录不处理）
 > 编码时发现的越界问题写在这里，**不要顺手改**。格式：位置 / 现象 / 本次不处理的原因 / 建议归属。
@@ -69,4 +65,4 @@
 - **已排除的死胡同 / 错误方案 (勿重复踩坑)**: 无
 - **上次验证与未验证改动**: 看 `verification.md`；G4 前若代码内容变化，重跑正式验证。`ai-resume.sh owner <feat>` 会提示摘要是否过期；G5 用 `review <feat> <base-ref>` 检查审查证据。
 - **下一步立即执行的唯一动作 (Next Immediate Action)**：按照 `design.md` 第 3.2 节定义接口类型并跑验证脚本。
-- **knowledge_feedback**（若 `MEMORY.md` / 知识卡 / 模块活文档与代码不符，记在这里，GC 时降权）：
+- **knowledge_feedback**（若 `MEMORY.md`、规则或模块活文档与代码不符，记在这里，GC 时修正或删除）：

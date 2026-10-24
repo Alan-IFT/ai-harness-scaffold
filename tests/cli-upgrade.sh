@@ -133,4 +133,56 @@ fi
 grep -q '无法计算模板哈希' "$TMP/hash-failure-output"
 snapshot "$TARGET" > "$TMP/failure-after"
 cmp "$TMP/failure-before" "$TMP/failure-after"
+
+# Managed files removed from the template: delete untouched copies, keep and report edited or accepted ones.
+RSRC="$TMP/retire-source"
+mkdir -p "$RSRC"
+cp -R "$ROOT/bin" "$ROOT/template" "$RSRC/"
+RCLI="$RSRC/bin/ai-harness"
+printf '#!/usr/bin/env bash\necho old\n' > "$RSRC/template/scripts/ai-old.sh"
+for name in clean edited accepted dry legacy forged; do bash "$RCLI" init "$TMP/ret-$name" --no-git >/dev/null; done
+printf '\n# local edit\n' >> "$TMP/ret-edited/scripts/ai-old.sh"
+printf '\n# local edit\n' >> "$TMP/ret-accepted/scripts/ai-old.sh"
+if bash "$RCLI" upgrade "$TMP/ret-accepted" > "$TMP/ret-accept-pre" 2>&1; then
+  echo 'expected conflict before accepting customization' >&2; exit 1
+fi
+bash "$RCLI" upgrade "$TMP/ret-accepted" --accept-custom scripts/ai-old.sh > /dev/null
+rm "$TMP/ret-legacy/.ai-harness/manifest.tsv"
+mkdir -p "$TMP/ret-forged/src"
+cp "$TMP/ret-forged/scripts/ai-old.sh" "$TMP/ret-forged/src/app.sh"
+forged_hash=$(hash_one "$TMP/ret-forged/src/app.sh")
+printf '%s\t%s\t%s\n' "$forged_hash" "$forged_hash" src/app.sh >> "$TMP/ret-forged/.ai-harness/manifest.tsv"
+rm "$RSRC/template/scripts/ai-old.sh"
+
+bash "$RCLI" upgrade "$TMP/ret-clean" > "$TMP/ret-clean-output"
+test ! -e "$TMP/ret-clean/scripts/ai-old.sh"
+grep -q -- '- scripts/ai-old.sh' "$TMP/ret-clean-output"
+if grep -q $'\tscripts/ai-old.sh$' "$TMP/ret-clean/.ai-harness/manifest.tsv"; then echo 'retired file left in manifest' >&2; exit 1; fi
+
+if bash "$RCLI" upgrade "$TMP/ret-edited" > "$TMP/ret-edited-output" 2>&1; then
+  echo 'expected edited retired file to be reported' >&2; exit 1
+fi
+grep -q '# local edit' "$TMP/ret-edited/scripts/ai-old.sh"
+grep -q '转为项目文件' "$TMP/ret-edited-output"
+bash "$RCLI" upgrade "$TMP/ret-edited" > "$TMP/ret-edited-again"
+grep -q '# local edit' "$TMP/ret-edited/scripts/ai-old.sh"
+if grep -q 'ai-old.sh' "$TMP/ret-edited-again"; then echo 'retired file reported twice' >&2; exit 1; fi
+
+if bash "$RCLI" upgrade "$TMP/ret-accepted" > "$TMP/ret-accepted-output" 2>&1; then
+  echo 'expected accepted retired file to be reported' >&2; exit 1
+fi
+grep -q '# local edit' "$TMP/ret-accepted/scripts/ai-old.sh"
+
+snapshot "$TMP/ret-dry" > "$TMP/ret-dry-before"
+bash "$RCLI" upgrade "$TMP/ret-dry" --dry-run > "$TMP/ret-dry-output"
+snapshot "$TMP/ret-dry" > "$TMP/ret-dry-after"
+cmp "$TMP/ret-dry-before" "$TMP/ret-dry-after"
+grep -q '1 个待删除' "$TMP/ret-dry-output"
+
+bash "$RCLI" upgrade "$TMP/ret-legacy" > /dev/null 2>&1 || true
+test -f "$TMP/ret-legacy/scripts/ai-old.sh"
+
+bash "$RCLI" upgrade "$TMP/ret-forged" > /dev/null
+test -f "$TMP/ret-forged/src/app.sh"
+test ! -e "$TMP/ret-forged/scripts/ai-old.sh"
 echo 'cli-upgrade: PASS'

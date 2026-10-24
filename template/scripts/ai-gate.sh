@@ -7,7 +7,7 @@
 #   bash scripts/ai-gate.sh                                # 全局状态（含红线基线检查）
 #   bash scripts/ai-gate.sh status [<feat>]                # 某个 / 全部 spec 的门禁状态
 #   bash scripts/ai-gate.sh check <feat> <gate>            # 只校验，不推进
-#   bash scripts/ai-gate.sh pass  <feat> <gate> [--by human]   # 校验通过后记录
+#   bash scripts/ai-gate.sh pass  <feat> <gate> [--force]  # 校验通过后记录（--force 越过前置门会记审计）
 #   bash scripts/ai-gate.sh baseline                       # 人类确认红线后记录基线
 #   bash scripts/ai-gate.sh reset <feat> <gate> [--reason "why"]  # 回退：使该门及之后的门失效
 #
@@ -26,7 +26,7 @@ DIR=""
 
 # 阈值只从当前项目配置读取；缺失或无效时明确拒绝。
 . "$(dirname "${BASH_SOURCE[0]}")/ai-config.sh" || exit 1
-ai_config_load "$REDLINES" CR_MAX_ROUNDS FEASIBILITY_MIN KNOWLEDGE_TTL_DAYS || exit 1
+ai_config_load "$REDLINES" CR_MAX_ROUNDS || exit 1
 
 say() { printf '%s\n' "$*"; }
 die() { printf '❌ %s\n' "$*" >&2; exit 1; }
@@ -67,19 +67,10 @@ sha() {
   elif command -v shasum >/dev/null 2>&1; then shasum -a 256 "$1" | awk '{print $1}'
   else cksum "$1" | awk '{print $1"-"$2}'; fi
 }
-hash_text() {
-  if command -v sha256sum >/dev/null 2>&1; then sha256sum | awk '{print $1}'
-  elif command -v shasum >/dev/null 2>&1; then shasum -a 256 | awk '{print $1}'
-  else cksum | awk '{print $1 "-" $2}'; fi
-}
-delegation_fields() {
-  section_body "$DIR/design.md" "0." | sed 's/：/:/g; s/　/ /g' \
-    | grep -E '^[[:space:]]*-[[:space:]]*条件委托(决策人|来源|范围|结论):' || true
-}
 
 # --- 文本抽取：二级标题下、到下一个二级标题为止 ---
 # 全角空格归一分两层，不能只留一层（字节 locale 下全角空格不属于 [[:space:]]）：
-#   1. section_body：覆盖按章节抽取的文本（需求四项、AC 表、设计各节、items、委托字段）。
+#   1. section_body：覆盖按章节抽取的文本（需求四项、AC 表、设计各节、items）。
 #   2. field_ok / field_value：还会直接收整份文件或单行原文（ck_g1 的原始问题、象限行、分级依据），
 #      这些不经 section_body，必须自己归一。
 #   直接读文件、不走上面两层且要判空的入口各自归一：需求覆盖矩阵（ck_trace_g3）、G5 / G6 的 nv。
@@ -122,21 +113,6 @@ field_value() {
     | sed -nE "s/^[[:space:]]*[-*][[:space:]]*$2[[:space:]]*:[[:space:]]*(.*)$/\1/p" \
     | head -n 1 | sed -E 's/[[:space:]]+$//'
 }
-validate_delegation() {
-  local fields="$1" label count value
-  for label in 条件委托决策人 条件委托来源 条件委托范围 条件委托结论; do
-    count=$(printf '%s\n' "$fields" | grep -Ec "^[[:space:]]*[-*][[:space:]]*$label:" || true)
-    [ "$count" -eq 1 ] || return 1
-    field_ok "$fields" "$label" || return 1
-  done
-  for label in 条件委托决策人 条件委托来源; do
-    value=$(field_value "$fields" "$label")
-    case "$value" in ''|';'|'；'|无|不适用|待*|TODO*) return 1 ;; esac
-  done
-  [ "$(field_value "$fields" 条件委托范围)" = '仅 AC 全通过、G5 通过且无新增重大风险' ] || return 1
-  [ "$(field_value "$fields" 条件委托结论)" = '同意' ]
-}
-
 need_items() {       # $1=文件 $2=section 前缀 $3=最少项数 $4=说明
   local body n
   body=$(section_body "$1" "$2")
@@ -160,8 +136,8 @@ ck_g1() {
   if section_body "$f" "4." | grep -qE '^[[:space:]]*[-*][[:space:]]*\[ \]'; then
     say "待确认问题未清零（「## 4.」仍有未勾选项）"; return 1
   fi
-  # 需求分级（象限）+ 可行性加权总分（需求侧质量前移）
-  local q total calculated score_error
+  # 需求分级（象限）与分级依据：决定谁做 G6 判断
+  local q
   q=$(grep -E '需求分级' "$f" | head -n 1)
   [ -n "$q" ] || { say "requirements.md 缺少「需求分级（象限）」行（①~④ 之一 + 一句理由）"; return 1; }
   field_ok "$q" "需求分级（象限）" || { say "需求分级未填（①直接做 / ②人机协同·风险侧 / ③人机协同·复杂度侧 / ④暂不支持）"; return 1; }
@@ -170,25 +146,6 @@ ck_g1() {
     printf '%s' "$q" | grep -qE '人工接管|转人工|不进入' || { say "象限④（暂不支持）必须写明「人工接管 / 转人工 / 不进入 AI 流水线」"; return 1; } ;;
   esac
   field_ok "$(cat "$f")" "分级依据" || { say "分级依据未填：风险来自哪里、复杂度来自哪里"; return 1; }
-  [ "$(quadrant)" = '④' ] && return 0 # ④完成分类与人工移交，不为进入开发凑可行性分
-  total=$(section_body "$f" "6." | sed 's/：/:/g' | sed -nE 's/^[[:space:]]*-[[:space:]]*加权总分:[[:space:]]*([0-9]+([.][0-9]+)?)[[:space:]]*\/[[:space:]]*100[[:space:]]*$/\1/p' | head -n 1)
-  [ -n "$total" ] || { say "requirements.md §6 缺少有效的「- 加权总分：N / 100」字段"; return 1; }
-  calculated=$(section_body "$f" "6." | awk -F'|' '
-    function trim(s) { gsub(/^[[:space:]]+|[[:space:]]+$/, "", s); return s }
-    /^\|/ {
-      name=trim($2); weight=trim($3); score=trim($4); points=trim($5)
-      if (name=="维度" || name ~ /^:/ || name ~ /合计/) next
-      n++
-      expected=(n<=2 ? 20 : n<=4 ? 15 : 10)
-      if (weight !~ /^[0-9]+$/ || weight+0 != expected || score !~ /^[0-9]+([.][0-9]+)?$/ || points !~ /^[0-9]+([.][0-9]+)?$/) bad=1
-      if (score+0 < 0 || score+0 > 10 || score+0 <= 3) bad=1
-      if ((points+0)-(weight*score/10) > 0.01 || (weight*score/10)-(points+0) > 0.01) bad=1
-      sum+=weight*score/10
-    }
-    END { if (n!=7 || bad) exit 1; printf "%.2f", sum }
-  ') || { say "可行性表必须有 7 个有效评分，权重/加权分需一致，且单项得分不得低于 4"; return 1; }
-  awk -v declared="$total" -v actual="$calculated" -v minimum="$FEASIBILITY_MIN" 'BEGIN { exit ((declared-actual > .01 || actual-declared > .01 || declared > 100 || declared < minimum) ? 1 : 0) }' \
-    || { say "可行性总分 $total 与表格计算值 $calculated 不符，或低于门槛 $FEASIBILITY_MIN"; return 1; }
   return 0
 }
 
@@ -201,37 +158,6 @@ ck_g2() {
   printf '%s\n' "$body" | grep -q '不通过' || { say "AC 表缺少「不通过条件」"; return 1; }
   bad=$(printf '%s\n' "$body" | awk '/AC-[0-9][0-9]/ { n=split($0,a,"|"); for(i=2;i<n;i++) if (a[i] ~ /^[[:space:]]*$/) { print $0; break } }')
   [ -z "$bad" ] || { say "AC 表有空单元格（通过 / 不通过 / 量化证据必须填写）："; say "  $bad"; return 1; }
-  # 含糊词会让 AC 无法判定。引号内是被测文案原文，用 index/substr 成对剥离：
-  # 字符类在字节 locale 下会拆开多字节字符，英文词边界也不用 gawk 专属的 \b / \<。
-  bad=$(printf '%s\n' "$body" | awk '
-    function strip(s, lq, rq,    i, j, rest) {
-      while ((i = index(s, lq)) > 0) {
-        rest = substr(s, i + length(lq)); j = index(rest, rq)
-        if (!j) break
-        s = substr(s, 1, i - 1) " " substr(rest, j + length(rq))
-      }
-      return s
-    }
-    /AC-[0-9][0-9]/ {
-      s = strip(strip(strip($0, "「", "」"), "『", "』"), "`", "`")
-      gsub(/合理性|及时性/, "", s)
-      # 长词在前：命中「大概率」时报完整词，避免被误读为「大概」误判
-      n = split("适当 尽量 尽可能 合理 及时 尽快 大概率 大概 大约 酌情 视情况 若干 等等", zh, " ")
-      for (k = 1; k <= n; k++) if (index(s, zh[k])) { print zh[k] "\t" $0; exit }
-      low = tolower(s)
-      n = split("appropriate reasonable as_needed asap etc", en, " ")
-      for (k = 1; k <= n; k++) {
-        # 字母、数字、下划线算词内字符：ASAP_mode、config.etc.json 这类标识符片段不算含糊词
-        w = en[k]; gsub(/_/, " ", w); re = (w == "etc") ? "etc[.]" : w
-        if (low ~ ("(^|[^a-z0-9_])" re "([^a-z0-9_]|$)")) { print w "\t" $0; exit }
-      }
-    }') || { say "AC 含糊词检查执行失败（awk 出错），按未通过处理"; return 1; }
-  [ -z "$bad" ] || {
-    say "AC 含含糊词：${bad%%$'\t'*}（改成可判定的条件；被测文案原文用「」『』或反引号标出）："
-    say "  ${bad#*$'\t'}"
-    case "${bad%%$'\t'*}" in 大概率) say "  可改写为可计数的条件，例如「100 次中至少 95 次成功」。" ;; esac
-    return 1
-  }
   return 0
 }
 
@@ -351,12 +277,6 @@ ck_g3() {
     case "$boundary" in 无|不适用|待*|TODO*|没有|无边界*)
       say "象限$q 的边界样本仍是占位词，须列具体输入或失败路径"; return 1 ;;
     esac
-    local delegation
-    delegation=$(delegation_fields)
-    if [ -n "$delegation" ]; then
-      validate_delegation "$delegation" \
-        || { say "条件委托须有非空决策人和来源、限定范围及明确「同意」结论"; return 1; }
-    fi
   fi
   # 模块关联：引用的模块活文档必须存在且已在 00-INDEX 登记（选错模块 = 架构漂移）
   local mods m n=0
@@ -404,26 +324,6 @@ ck_g4() {
   [ -n "$saved_state" ] || { say "验证摘要缺少代码状态指纹"; return 1; }
   current_state=$(bash scripts/ai-state-id.sh --spec "$FEAT" "$target") || return 1
   [ "$saved_state" = "$current_state" ] || { say "验证摘要已过期：代码或 Git 暂存内容在验证后变化，请重新运行 ai-verify.sh"; return 1; }
-  # 前置强注入：§1 必须写明注入的知识卡（或「无相关卡片」），引用的卡必须真实存在
-  local inj ids id card ttl today lookup
-  lookup=$(section_body "$f" "1.")
-  field_ok "$lookup" '知识检索' || { say "tasks.md §1 缺少知识检索依据（模块、候选与取舍）"; return 1; }
-  inj=$(section_body "$f" "1." | grep -E '^[[:space:]]*[-*][[:space:]]*注入知识' | head -n 1)
-  [ -n "$inj" ] || { say "tasks.md §1 缺少「注入知识」行（列 .knowledge 卡片 ID，或写「无相关卡片」）"; return 1; }
-  case "$inj" in *'无相关卡片'*) ;;
-  *)
-    ids=$(printf '%s' "$inj" | grep -oE 'K-[0-9]{4}' | sort -u)
-    [ -n "$ids" ] || { say "「注入知识」既没写卡片 ID（K-xxxx）也没写「无相关卡片」"; return 1; }
-    for id in $ids; do
-      grep -qF "$id" .knowledge/INDEX.md 2>/dev/null || { say "注入的知识卡 $id 不在 .knowledge/INDEX.md 中（先按 knowledge-distill 建卡）"; return 1; }
-      card=".knowledge/cards/$id.md"
-      [ -f "$card" ] || { say "注入的知识卡 $id 文件不存在"; return 1; }
-      ttl=$(sed -nE 's/^[[:space:]]*-[[:space:]]*\*\*复核期限\*\*[[:space:]]*(：|:)[[:space:]]*([0-9]{4}-[0-9]{2}-[0-9]{2}).*/\2/p' "$card" | head -n 1)
-      today=$(date +%Y-%m-%d)
-      [ -n "$ttl" ] && [[ "$ttl" > "$today" || "$ttl" = "$today" ]] || { say "注入的知识卡 $id 已过复核期限或期限缺失"; return 1; }
-      grep -q '#待验证' "$card" && { say "注入的知识卡 $id 标记为待验证，先复核"; return 1; }
-    done ;;
-  esac
   return 0
 }
 
@@ -452,75 +352,18 @@ ck_g5() {
       || { say "review.md 审查状态与当前 verification.md 不符，须重做独立审查"; return 1; }
   fi
   if trace_enabled; then
-    for label in 需求追溯核对 知识检索 'AI 协作文件审查' 审查范围限制; do
+    for label in 需求追溯核对 'AI 协作文件审查' 审查范围限制; do
       field_ok "$nv" "$label" || { say "新 Spec 的 review.md 缺少「$label」结论与证据"; return 1; }
     done
   fi
   return 0
 }
 
-# G6 证据扫描：关键词检查前剥离「」『』与反引号内的被测原文，并只豁免数量恰为 0 的失败写法。
-# mode=scan 供关键词检查；mode=strip 只剥引号，供正向判定。边界规则经三轮独立设计审查，
-# 自检从本变量取出程序逐例核对；修改时同步 harness-selftest.sh 的样本表。
-G6_SCAN_AWK='
-function strip(s, lq, rq,    i, j, rest) {
-  while ((i = index(s, lq)) > 0) {
-    rest = substr(s, i + length(lq)); j = index(rest, rq)
-    if (!j) break
-    s = substr(s, 1, i - 1) " " substr(rest, j + length(rq))
-  }
-  return s
-}
-function rtrim(s) { sub(/[ \t]+$/, "", s); return s }
-function ltrim(s) { sub(/^[ \t]+/, "", s); return s }
-function ends_with_any(p, list,    k, n, w, l) {
-  n = split(list, w, " ")
-  for (k = 1; k <= n; k++) { l = length(w[k]); if (l <= length(p) && substr(p, length(p) - l + 1) == w[k]) return 1 }
-  return 0
-}
-# 第二式：0 前面（跳过空格）若是数字（含全角）、小数点、逗号、冒号、斜杠、正负号、字母、_、#、「、」或「第」，就不是零计数
-function counted_before(p) {
-  p = rtrim(p)
-  return substr(p, length(p), 1) ~ /[0-9.,:\/+A-Za-z_#-]/ || ends_with_any(p, "０ １ ２ ３ ４ ５ ６ ７ ８ ９ 第 、")
-}
-# 第一式：「失败」前面（跳过空格与一个单位词）是数字时是「N 项失败」，后面的 0 不代表失败数为零
-function number_before(p,    k, n, u, l) {
-  p = rtrim(p)
-  n = split("项 个 条 次 例", u, " ")
-  for (k = 1; k <= n; k++) { l = length(u[k]); if (l <= length(p) && substr(p, length(p) - l + 1) == u[k]) { p = rtrim(substr(p, 1, length(p) - l)); break } }
-  return substr(p, length(p), 1) ~ /[0-9]/ || ends_with_any(p, "０ １ ２ ３ ４ ５ ６ ７ ８ ９")
-}
-# 零计数之后（跳过空格）只允许行尾或句读，其他文字（含「|」后接内容）一律不豁免
-function clean_after(r) {
-  r = ltrim(r)
-  return r == "" || substr(r, 1, 1) ~ /[;)]/ || index(r, "，") == 1 || index(r, "。") == 1 \
-    || index(r, "；") == 1 || index(r, "、") == 1 || index(r, "）") == 1
-}
-# 只替换命中的那一段，前后字符原样保留（gsub 连带边界会吞掉相邻关键词）
-function drop_zero(s, re, form,    out, pre, seg, rest, keep) {
-  out = ""
-  while (match(s, re)) {
-    pre = substr(s, 1, RSTART - 1); seg = substr(s, RSTART, RLENGTH); rest = substr(s, RSTART + RLENGTH)
-    keep = !clean_after(rest) || (form == 1 && number_before(out pre)) || (form == 2 && counted_before(out pre))
-    out = out pre (keep ? seg : " "); s = rest
-  }
-  return out s
-}
-{
-  s = strip(strip(strip($0, "「", "」"), "『", "』"), "`", "`")
-  if (mode == "scan") {
-    s = drop_zero(s, "失败 *:? *0( *(项|个|条|次))?", 1)
-    s = drop_zero(s, "0 *(项|个|条|次)? *失败", 2)
-  }
-  print s
-}'
-# 正向判定：只剥引号后的文本里要有通过结果；零失败须是独立的 0，避免「10 失败」借子串命中
-G6_PASS_RE='通过|PASS|成功|(^|[^0-9.,/])0 *(项|个|条|次)? *失败'
-g6_scan() {   # $1=scan|strip $2=文本；awk 出错或对非空输入给出空输出时，scan 回退原文、strip 回退为空，都不放宽
-  local out
-  if out=$(printf '%s\n' "$2" | awk -v mode="$1" "$G6_SCAN_AWK") && { [ -n "$out" ] || [ -z "$2" ]; }; then
-    printf '%s' "$out"
-  elif [ "$1" = scan ]; then printf '%s' "$2"; fi
+verdict_ok() { # $1=字段值：以「通过」开头，其后只能是行尾、空白或标点
+  case "$1" in
+    通过|'通过 '*|通过\;*|通过,*|通过.*|'通过('*|通过；*|通过，*|通过。*|通过、*|通过（*) return 0 ;;
+  esac
+  return 1
 }
 
 ck_g6() {
@@ -542,51 +385,28 @@ ck_g6() {
     case "$val" in ''|'<'*|'__'*) miss="$miss $label" ;; esac
   done
   [ -z "$miss" ] || { say "acceptance.md 未填:$miss"; return 1; }
-  line=$(printf '%s\n' "$nv" | grep -E '^[[:space:]]*[-*][[:space:]]*冒烟或 E2E 证据:' | head -n 1)
-  val=$(printf '%s' "$line" | sed -E 's/^[^:]*:[[:space:]]*//; s/[[:space:]]+$//')
-  case "$val" in ''|'<'*) say "acceptance.md 缺少已通过的冒烟 / E2E 客观证据"; return 1 ;; esac
-  case "$(g6_scan scan "$val")" in *未执行*|*未检查*|*待填写*|*失败*|*不通过*) say "acceptance.md 缺少已通过的冒烟 / E2E 客观证据"; return 1 ;; esac
-  g6_scan strip "$val" | grep -Eq "$G6_PASS_RE" || { say "acceptance.md 冒烟 / E2E 证据缺少通过结果"; return 1; }
-  line=$(printf '%s\n' "$nv" | grep -E '^[[:space:]]*[-*][[:space:]]*对照 AC 的检查结果:' | head -n 1)
-  val=$(printf '%s' "$line" | sed -E 's/^[^:]*:[[:space:]]*//; s/[[:space:]]+$//')
-  case "$val" in ''|'<'*) say "acceptance.md 缺少已完成的 AC 核验摘要"; return 1 ;; esac
-  case "$(g6_scan scan "$val")" in *未执行*|*未检查*|*待填写*|*失败*|*不通过*) say "acceptance.md 缺少已完成的 AC 核验摘要"; return 1 ;; esac
-  g6_scan strip "$val" | grep -Eq "$G6_PASS_RE" || { say "acceptance.md AC 核验摘要缺少通过结果"; return 1; }
+  # 三处只认行首结构化结论「通过」，后接证据文本不扫描；「通过率」「不通过」等不算。
+  verdict_ok "$(field_value "$nv" '冒烟或 E2E 证据')" \
+    || { say "acceptance.md「冒烟或 E2E 证据」须以「通过」开头，再写证据（旧格式请改写为「通过；<证据>」）"; return 1; }
+  verdict_ok "$(field_value "$nv" '对照 AC 的检查结果')" \
+    || { say "acceptance.md「对照 AC 的检查结果」须以「通过」开头，再写摘要"; return 1; }
   ac_ids=$(awk -F'|' '{ id=$2; gsub(/^[ \t]+|[ \t]+$/, "", id); if (id ~ /^AC-[A-Za-z0-9_-]+$/) print id }' "$DIR/requirements.md" | sort -u)
   [ -n "$ac_ids" ] || { say "requirements.md 缺少可逐项核验的 AC 编号"; return 1; }
   while IFS= read -r ac; do
     [ -n "$ac" ] || continue
-    line=$(printf '%s\n' "$nv" | grep -E "^[[:space:]]*[-*][[:space:]]*$ac:[[:space:]]*通过" | head -n 1)
-    [ -n "$line" ] || { say "acceptance.md 缺少 $ac 的通过证据"; return 1; }
-    case "$(g6_scan scan "$line")" in *未执行*|*未检查*|*失败*|*不通过*) say "acceptance.md 的 $ac 仍有未通过项"; return 1 ;; esac
+    verdict_ok "$(field_value "$nv" "$ac")" || { say "acceptance.md 的 $ac 须以「通过」开头，再写证据"; return 1; }
   done <<<"$ac_ids"
   printf '%s' "$nv" | grep -qE '结论:[[:space:]]*通过' || { say "acceptance.md 判定未写「结论：通过」"; return 1; }
   case "$(quadrant)" in
     ②|③)
-      local mode delegation
-      mode=$(printf '%s\n' "$nv" | sed -nE 's/^[[:space:]]*[-*][[:space:]]*验收方式:[[:space:]]*(.*)$/\1/p' | head -n 1)
       for label in 人工决策人 决策来源; do
         line=$(printf '%s\n' "$nv" | grep -E "^[[:space:]]*[-*][[:space:]]*$label[[:space:]]*:" | head -n 1)
         val=$(printf '%s' "$line" | sed -E 's/^[^:]*:[[:space:]]*//; s/[[:space:]]+$//')
         case "$val" in ''|'<'*|'__'*) miss="$miss $label" ;; esac
       done
       [ -z "$miss" ] || { say "acceptance.md 未填:$miss"; return 1; }
-      if [ "$mode" = '预授权委托' ]; then
-        delegation=$(delegation_fields)
-        validate_delegation "$delegation" \
-          || { say "G6 预授权委托缺少 G3 明确授权"; return 1; }
-        local recorded_delegation
-        recorded_delegation=$(awk -F'\t' '$1=="g3" { h=$5 } END { print h }' "$DIR/.gates")
-        [ -n "$recorded_delegation" ] && [ "$recorded_delegation" != none ] \
-          && [ "$recorded_delegation" = "$(printf '%s' "$delegation" | hash_text)" ] \
-          || { say "G6 委托与 G3 授权快照不一致；事后补写须重过 G3（若 G3 后刚升级过脚手架或换了哈希工具，快照可能变化；须由人确认委托内容后再重过 G3，Agent 不得自行重做授权）"; return 1; }
-        printf '%s\n' "$nv" | grep -qE '^[[:space:]]*[-*][[:space:]]*需人判断的风险 / 遗留:[[:space:]]*无[[:space:]]*$' \
-          || { say "G6 委托仍有需人判断的风险，须取得当次决定"; return 1; }
-        [ "$(field_value "$nv" 人工决定)" = '预先授权' ] \
-          || { say "G6 委托应记录预先授权，不能伪称当次人工决定"; return 1; }
-      else
-      printf '%s' "$nv" | grep -qE '人工决定:[[:space:]]*通过' || { say "象限②③需要人的明确通过决定，Agent 不能代作决定"; return 1; }
-      fi
+      printf '%s' "$nv" | grep -qE '人工决定:[[:space:]]*通过' \
+        || { say "象限②③需要人的明确通过决定，Agent 不能代作决定（旧格式请去掉委托字段，人工决定写「通过」）"; return 1; }
       ;;
     ①) ;;
     *) say "G6 缺少有效需求象限"; return 1 ;;
@@ -648,22 +468,18 @@ cmd_check() {
 }
 
 cmd_pass() {
-  [ $# -ge 2 ] || die "用法：ai-gate.sh pass <feat> <gate> [--by human]"
+  [ $# -ge 2 ] || die "用法：ai-gate.sh pass <feat> <gate> [--force]"
   FEAT="$1"; local gate; gate=$(printf '%s' "$2" | tr 'A-Z' 'a-z')
   shift 2
-  local by="agent" force=0
+  local force=0
   while [ $# -gt 0 ]; do
     case "$1" in
-      --by) by="${2:-agent}"; shift 2 ;;
       --force) force=1; shift ;;
       *) die "未知参数 $1" ;;
     esac
   done
   case " g1 g2 g3 g4 g5 g6 g7 " in *" $gate "*) ;; *) die "未知门 $gate（可选 g1~g7）" ;; esac
   DIR=$(feat_dir "$FEAT") || die "找不到 spec: $FEAT（先 bash scripts/ai-new-spec.sh $FEAT）"
-  if [ "$by" = "human" ] && [ ! -t 0 ]; then
-    die "人工门需要在交互终端（TTY）执行；此检查只防误操作，不提供身份认证"
-  fi
   guard_redlines || exit 1
   local n i
   n=${gate#g}; i=1
@@ -680,15 +496,14 @@ cmd_pass() {
   done
   if ! check_gate "$gate" >/dev/null 2>&1; then check_gate "$gate"; die "门禁校验未通过，拒绝推进 $gate"; fi
   if [ "$gate" = g3 ]; then
-    local base="-" delegation="none" line
+    # G3 记录第 4 列为基准提交；第 5 列为保留列（恒为 none），G5 按 5 列格式绑定审查状态。
+    local base="-"
     if git rev-parse --verify -q HEAD >/dev/null 2>&1; then base=$(git rev-parse HEAD); fi
-    line=$(delegation_fields)
-    [ -n "$line" ] && delegation=$(printf '%s' "$line" | hash_text)
-    printf '%s\t%s\t%s\t%s\t%s\n' "$gate" "$by" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$base" "$delegation" >> "$DIR/.gates"
+    printf '%s\t%s\t%s\t%s\t%s\n' "$gate" agent "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$base" none >> "$DIR/.gates"
   else
-    printf '%s\t%s\t%s\n' "$gate" "$by" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$DIR/.gates"
+    printf '%s\t%s\t%s\n' "$gate" agent "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$DIR/.gates"
   fi
-  ok "$FEAT 已通过 $gate（$(gate_name "$gate")，by $by）"
+  ok "$FEAT 已通过 $gate（$(gate_name "$gate")）"
   say "   下一步：bash scripts/ai-gate.sh status $FEAT"
 }
 

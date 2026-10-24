@@ -23,7 +23,7 @@ MARK_BEGIN="# >>> ai-harness managed block（勿手改，升级整体替换）>>
 MARK_END="# <<< ai-harness managed block <<<"
 
 DRY=0; NOGIT=0; FORCE=0; SKIP_DOCTOR=0
-CONFLICTS=0; COPIED=0; SKIPPED=0; SUGGESTED=""
+CONFLICTS=0; COPIED=0; SKIPPED=0; REMOVED=0; RETIRED_KEPT=0; SUGGESTED=""
 IGNORE_FILES=".gitignore .gitattributes .cursorignore .claudeignore"
 
 say()  { printf '%s\n' "$*"; }
@@ -44,8 +44,9 @@ ai-harness v$VERSION — 跨工具防膨胀 AI 辅助开发脚手架
   ai-harness upgrade  <dir> [--dry-run] [--accept-custom <relative-path>]
       已安装项目：自动更新未改过的机制文件并补缺；定制文件保留并生成冲突建议。
       人工合并一处定制文件后，可用 --accept-custom 记录本次模板基线。
+      模板已删除的机制文件：未改动的删除；改过或已定制的保留、报告并转为项目文件。
   ai-harness doctor   <dir>
-      体检：上下文体积、知识卡一致性、门禁自检、当前门状态、verify 配置。
+      体检：上下文体积、门禁自检、当前门状态、verify 配置。
   ai-harness install-skill [--host dsh|codex|claude] [--dest DIR]
       安装可发现的技能入口；默认 DSH，Codex/Claude 使用指向本仓库的薄入口。
   ai-harness version | help
@@ -392,7 +393,7 @@ cmd_retrofit() {
 }
 
 cmd_upgrade() {
-  local tgt="" accept="" a f rel src dst current old_source old_local new suggestion manifest tmp mode installed files seen=0
+  local tgt="" accept="" a f rel src dst current old_source old_local new suggestion manifest tmp mode installed files seen=0 retired=""
   while [ $# -gt 0 ]; do
     case $1 in
       --dry-run) DRY=1 ;;
@@ -422,6 +423,19 @@ cmd_upgrade() {
     new=$(file_hash "$f") || die "无法计算模板哈希: $rel"
     safe_path "$tgt" ".ai-harness/suggested/$rel.upgrade-${new:0:12}" || die "建议文件路径不安全: $rel"
   done <<< "$files"
+  # 模板已删除的托管文件：manifest 来自磁盘不可信，只处理托管路径、模板中确实不存在、哈希格式有效的记录。
+  if [ -f "$manifest" ]; then
+    retired=$(awk -F '\t' 'NF == 3 && $1 ~ /^[0-9a-f]+$/ && length($1) == 64 && $2 ~ /^[0-9a-f]+$/ && length($2) == 64 { print }' "$manifest") \
+      || die "无法读取 manifest"
+    retired=$(while IFS=$'\t' read -r old_source old_local rel; do
+      [ -n "$rel" ] && managed_file "$rel" && [ ! -e "$TPL/$rel" ] && [ ! -L "$TPL/$rel" ] || continue
+      printf '%s\t%s\t%s\n' "$old_source" "$old_local" "$rel"
+    done <<< "$retired")
+    while IFS=$'\t' read -r old_source old_local rel; do
+      [ -n "$rel" ] || continue
+      safe_path "$tgt" "$rel" || die "升级路径不安全: $rel"
+    done <<< "$retired"
+  fi
   if [ "$DRY" -eq 0 ]; then
     tmp=$(mktemp "$tgt/.ai-harness/.manifest.XXXXXX") || die "无法创建 manifest 临时文件"
   fi
@@ -468,6 +482,21 @@ cmd_upgrade() {
       CONFLICTS=$((CONFLICTS+1))
     fi
   done <<< "$files"
+  # 记录一律不写回 manifest：删除的文件不再托管，保留的文件转为项目文件，下次升级不再报告。
+  while IFS=$'\t' read -r old_source old_local rel; do
+    [ -n "$rel" ] || continue
+    dst="$tgt/$rel"
+    if [ ! -e "$dst" ] && [ ! -L "$dst" ]; then continue; fi
+    current=""
+    if [ -f "$dst" ] && [ ! -L "$dst" ]; then current=$(file_hash "$dst") || die "无法计算目标哈希: $rel"; fi
+    if [ "$old_source" = "$old_local" ] && [ "$current" = "$old_local" ]; then
+      [ "$DRY" -eq 1 ] || rm -f -- "$dst" || die "无法删除已退役文件: $rel"
+      info "- $rel（模板已删除）"; REMOVED=$((REMOVED+1))
+    else
+      info "! $rel（模板已删除，本地有改动或已定制，已转为项目文件，请人工处理）"
+      RETIRED_KEPT=$((RETIRED_KEPT+1)); CONFLICTS=$((CONFLICTS+1))
+    fi
+  done <<< "$retired"
   [ -z "$accept" ] || [ "$seen" -eq 1 ] || die "未找到待确认的机制文件: $accept"
   if [ "$DRY" -eq 0 ]; then
     mv -f "$tmp" "$manifest" || die "无法更新 manifest"
@@ -481,9 +510,11 @@ cmd_upgrade() {
       mv -f "$tmp" "$tgt/.ai-harness/version" || die "无法更新版本"
     fi
   fi
-  if [ "$DRY" -eq 1 ]; then say "只读预演：$COPIED 个待新增/更新，$SKIPPED 个已是新版，$CONFLICTS 个冲突。"
-  else say "升级完成：$COPIED 个新增/更新，$SKIPPED 个已是新版，$CONFLICTS 个冲突。"; fi
-  [ "$CONFLICTS" -eq 0 ] || { warn "冲突需合并；版本标记保留旧值，合并后重跑 upgrade。"; return 1; }
+  if [ "$DRY" -eq 1 ]; then say "只读预演：$COPIED 个待新增/更新，$SKIPPED 个已是新版，$REMOVED 个待删除，$CONFLICTS 个冲突。"
+  else say "升级完成：$COPIED 个新增/更新，$SKIPPED 个已是新版，$REMOVED 个已删除，$CONFLICTS 个冲突。"; fi
+  [ "$RETIRED_KEPT" -eq 0 ] || warn "$RETIRED_KEPT 个模板已删除的文件有本地改动，已保留为项目文件；请人工决定删除或保留后重跑 upgrade。"
+  [ "$CONFLICTS" -eq "$RETIRED_KEPT" ] || warn "冲突需合并；版本标记保留旧值，合并后重跑 upgrade。"
+  [ "$CONFLICTS" -eq 0 ] || return 1
 }
 
 doctor_core() { # <dir>
@@ -492,7 +523,6 @@ doctor_core() { # <dir>
   say "🩺 doctor → $tgt"
   [ -f "$tgt/scripts/ai-gate.sh" ] || { warn "没有 scripts/ai-gate.sh，先 init/retrofit"; return 1; }
   ( cd "$tgt" && bash scripts/ai-check-bloat.sh ) || rc=1
-  ( cd "$tgt" && bash scripts/ai-knowledge.sh check ) || rc=1
   ( cd "$tgt" && bash scripts/ai-gate.sh status | tail -3 ) || rc=1
   ( cd "$tgt" && bash scripts/harness-selftest.sh >/tmp/ai-harness-selftest.log 2>&1 ); local sr=$?
   if [ "$sr" -eq 0 ]; then info "🟢 门禁自检通过（$(grep '自检结果：' /tmp/ai-harness-selftest.log | tail -n 1)）"

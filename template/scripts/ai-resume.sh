@@ -168,20 +168,6 @@ else
   echo "  (尚未初始化 Git 仓库；建议 git init，否则无法用 diff 接力)"
 fi
 
-# 5. 知识库（前置强注入 / 清理候选）
-echo -e "\n[5] 知识库（前置强注入 / 清理候选）"
-if [ -f scripts/ai-knowledge.sh ]; then
-  bash scripts/ai-knowledge.sh ttl || true
-else
-  echo "  (缺少 scripts/ai-knowledge.sh)"
-fi
-for spec in docs/specs/active/*/; do
-  [ -f "$spec/tasks.md" ] || continue
-  [ -z "$FEATURE" ] || [ "$(basename "$spec")" = "$FEATURE" ] || continue
-  inj=$(grep -E '注入知识' "$spec/tasks.md" | head -n 1 || true)
-  [ -n "$inj" ] && echo "  ${spec%/} → $inj"
-done
-
 echo ""
 echo "=="
 echo "💡 [给当前 AI Agent 的接力指令]"
@@ -189,5 +175,5 @@ echo "1. 先看 [1] 的「下一门」：门禁未过，不要开始编码。"
 echo "2. 有未提交改动 → 先 git diff 看懂上一步；结合 [2] 的 WIP 区继续，严禁推倒重写已通过验证的代码。"
 echo "3. 按任务的代码路径读 docs/architecture/00-INDEX.md 和相关模块活文档。"
 echo "4. 本地跑 bash scripts/ai-verify.sh --spec <feat> <file>；摘要写入 verification.md，详细日志留本机。"
-echo "5. G6 由 Agent 核验；②③按当次人的决定或 G3 的明确条件委托推进，不推断授权。"
+echo "5. G6 由 Agent 核验；②③按当次人的决定推进，不推断授权。"
 echo "=="

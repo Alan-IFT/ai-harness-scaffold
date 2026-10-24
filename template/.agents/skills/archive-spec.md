@@ -1,7 +1,7 @@
-# Skill: 功能完结后的合并、蒸馏与防膨胀归档 (Spec Merge, Distill & Archive)
+# Skill: 功能完结后的合并与防膨胀归档 (Spec Merge & Archive)
 
-**前置条件**：`bash scripts/ai-gate.sh status <feat>` 显示 G1~G6 全绿；实现相关活文档、知识卡与路线图已在最后一次正式 G4 验证前同步，G6 后不再改动这些文件。
-**产出**：已复核的活文档与知识卡 + 归档目录 + 度量行 + 一个干净的 commit。
+**前置条件**：`bash scripts/ai-gate.sh status <feat>` 显示 G1~G6 全绿；实现相关活文档与路线图已在最后一次正式 G4 验证前同步，G6 后不再改动这些文件。
+**产出**：已复核的活文档 + 归档目录 + 度量行 + 一个干净的 commit。
 正式 G4 的验证目标须选归档后路径不变的项目文件；`docs/specs/**`、`docs/metrics.md` 和 `docs/task-pool/**` 是流程记录，不计入状态指纹，也不能作为正式目标；Spec 进行中收录或补充任务不会使验证摘要过期。
 
 象限④是分析与人工移交，不走本技能的 G6/G7 交付归档：在关联任务文件记录人工接管决定；若已经建立 Spec，G1 后将其移到 `docs/specs/archive/YYYY-MM/`，不写交付度量行。保留需求和分析作为依据，但不让它长期占用 active 名额。
@@ -11,11 +11,10 @@
 2. 如仍须修改模块活文档或 `00-INDEX.md`，先修改并按门禁回退、重跑正式验证与后续门；不要在 G6 后悄悄使验证摘要过期。
 3. 任务文件只存稳定 Spec ID，物理归档时不更新路径或阶段；由 `ai-gate.sh status <feat>` 定位。旧 `docs/INTAKE.md` 历史无需迁移。
 
-## Step 2: 复核知识卡与路线图
-1. 可复用结论应已在最后一次正式 G4 前按 `.agents/skills/knowledge-distill.md` 蒸馏，至多 3 条；没有可复用结论可为 0 条。此时只核对 `.knowledge/cards/` 与 `.knowledge/INDEX.md`。
-2. `bash scripts/ai-knowledge.sh check` 必须通过，并用 `bash scripts/ai-knowledge.sh impact <本次变更路径...>` 复核关联卡。
-3. 若本次涉及里程碑，核对 `docs/roadmap/ROADMAP.md` 已在最后一次正式 G4 前更新。
-4. 若 G5 审查或 G6 核验产生必须写入知识卡、路线图或其他非流程文件的新结论，先按门禁规则回退并重跑正式 G4 与后续门；不能在归档时补写后仍沿用旧摘要。
+## Step 2: 复核记忆与路线图
+1. 本需求中被纠正的做法、反复尝试才解决的问题应已按 `AGENTS.md` §3 写进 `MEMORY.md`；稳定结论晋升到模块活文档。没有可复用结论可为 0 条。
+2. 若本次涉及里程碑，核对 `docs/roadmap/ROADMAP.md` 已在最后一次正式 G4 前更新。
+3. 若 G5 审查或 G6 核验产生必须写入 `MEMORY.md`、路线图或其他非流程文件的新结论，先按门禁规则回退并重跑正式 G4 与后续门；不能在归档时补写后仍沿用旧摘要。
 
 ## Step 3: 记录度量（`docs/metrics.md` 追加一行）
 先运行 `bash scripts/ai-gate.sh metrics <feat>`，从 `.gates` 自动得到门间耗时；再从关联任务文件（或旧 `docs/INTAKE.md`）、当前 Spec、`review.md`、`.violations` 和本地 `reports/` 补充非门禁事实。不要另算一份时间或美化；缺少时间戳写「未知」：
@@ -36,11 +35,10 @@ bash scripts/ai-task-pool.sh archive <feat>
 
 ## Step 6: 收尾体检与提交
 1. `bash scripts/ai-check-bloat.sh`：确认 AGENTS.md / MEMORY.md / active spec 数量都在预算内。
-2. `bash scripts/ai-knowledge.sh check`：确认知识库索引一致。
-3. 提交，建议拆成两个 commit：
+2. 提交，建议拆成两个 commit：
    - `docs(archive): merge living docs and archive <feat>`
    - `chore(memory): distill reusable lessons from <feat>`
-4. 若发现 archive 里还有未走完流程的 spec：**不要顺手删**，记入新 spec 的「发现但不碰」并告知人类。
+3. 若发现 archive 里还有未走完流程的 spec：**不要顺手删**，记入新 spec 的「发现但不碰」并告知人类。
 
 ## Step 7: 交接下一项
 

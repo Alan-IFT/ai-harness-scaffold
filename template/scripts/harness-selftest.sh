@@ -23,8 +23,7 @@ cp -r "$ROOT/scripts" "$SB/scripts"
 cp -r "$ROOT/docs/specs/_templates" "$SB/docs/specs/_templates"
 cp "$ROOT/harness/redlines.conf" "$SB/harness/redlines.conf"
 # 自检用固定夹具阈值；目标项目可以合法选择不同数值。
-sed -i -e 's/^FEASIBILITY_MIN=.*/FEASIBILITY_MIN=60/' \
-       -e 's/^CR_MAX_ROUNDS=.*/CR_MAX_ROUNDS=4/' \
+sed -i -e 's/^CR_MAX_ROUNDS=.*/CR_MAX_ROUNDS=4/' \
        -e 's/^VERIFY_MAX_ATTEMPTS=.*/VERIFY_MAX_ATTEMPTS=3/' "$SB/harness/redlines.conf"
 cp "$SB/harness/redlines.conf" "$TMP/redlines.fixture"
 # 架构路由表与模块活文档（G3 模块关联校验需要）
@@ -153,17 +152,6 @@ WHEN 用户点击导出，THE SYSTEM SHALL 生成 CSV 下载任务。
 ## 5. 非功能性约束
 安全：仅本人可下载自己的导出文件。
 
-## 6. 可行性自评（7 维加权）
-| 维度 | 权重 | 分数(0~10) | 得分 |
-| :-- | :-- | :-- | :-- |
-| 需求清晰度 | 20 | 9 | 18 |
-| 仓库·模块匹配度 | 20 | 8 | 16 |
-| 改动范围可控度 | 15 | 8 | 12 |
-| 技术复杂度 | 15 | 8 | 12 |
-| 外部依赖就绪度 | 10 | 8 | 8 |
-| 风险等级 | 10 | 6 | 6 |
-| 交付形态清晰度 | 10 | 8 | 8 |
-- 加权总分：80 / 100
 MD
   cat >"$d/design.md" <<'MD'
 # 技术架构与接口设计 (Design): selftest
@@ -204,8 +192,6 @@ MD
 
 ## 1. 上下文清单
 - 必读：requirements.md、design.md、本文件
-- 注入知识：无相关卡片
-- 知识检索：模块 export；当前无候选，已核对模块活文档。
 
 ## 2. 原子任务序列
 - [x] Task 1: 建导出任务表与索引
@@ -240,10 +226,10 @@ MD
 - 核验执行者：selftest-agent
 - 核验时间：2026-10-20
 - 测试环境：测试环境 t-env（部署记录见 reports/）
-- 冒烟或 E2E 证据：verification.md 的两项检查通过；本机日志见 reports/
+- 冒烟或 E2E 证据：通过；verification.md 的两项检查，本机日志见 reports/
 
 ## 1. 核验摘要
-- 对照 AC 的检查结果：逐项通过，见 verification.md
+- 对照 AC 的检查结果：通过；逐项核对，见 verification.md
 - AC-01：通过，见 verification.md
 - 需人判断的风险 / 遗留：导出权限由运营负责人决定
 
@@ -276,69 +262,12 @@ expect_fail "G1 拒绝未澄清的需求" "四项必答" bash scripts/ai-gate.sh
 expect_fail "G2 拒绝空 AC 表" "AC 表有空单元格" bash scripts/ai-gate.sh check t-empty g2
 mk_spec t-vague
 sed -i 's/^| AC-01 | .*/| AC-01 | 导出 | 尽量 2s 内返回 | 超时 | 计时 |/' docs/specs/active/t-vague/requirements.md
-expect_fail "G2 拒绝 AC 含糊词并指出命中词" "含糊词：尽量" bash scripts/ai-gate.sh check t-vague g2
-sed -i 's/^| AC-01 | .*/| AC-01 | 导出 | Etc. 格式都支持 | 报错 | 样例 |/' docs/specs/active/t-vague/requirements.md
-expect_fail "G2 英文含糊词不分大小写" "含糊词：etc" bash scripts/ai-gate.sh check t-vague g2
-sed -i "s/^| AC-01 | .*/| AC-01 | 导出 | 开启 ASAP_mode、my_etc. 与 config.etc.json | 选项缺失 | 配置快照 |/" docs/specs/active/t-vague/requirements.md
-expect_ok "G2 不拦标识符里的英文片段" env LC_ALL=C bash scripts/ai-gate.sh check t-vague g2
-sed -i "s/^| AC-01 | .*/| AC-01 | 导出 | 标记 ASAP 处理 | 未标记 | 日志 |/" docs/specs/active/t-vague/requirements.md
-expect_fail "G2 仍拦独立出现的英文含糊词" "含糊词：asap" env LC_ALL=C bash scripts/ai-gate.sh check t-vague g2
-sed -i "s/^| AC-01 | .*/| AC-01 | 导出 | 大概率成功 | 报错 | 日志 |/" docs/specs/active/t-vague/requirements.md
-expect_fail "G2 报出完整的「大概率」" "含糊词：大概率" env LC_ALL=C bash scripts/ai-gate.sh check t-vague g2
-expect_fail "G2 对「大概率」给出改写示例" "至少 95 次" bash scripts/ai-gate.sh check t-vague g2
-sed -i "s/^| AC-01 | .*/| AC-01 | 导出 | 大概 2s 返回 | 超时 | 计时 |/" docs/specs/active/t-vague/requirements.md
-vague_out=$(bash scripts/ai-gate.sh check t-vague g2 2>&1 || true)
-case "$vague_out" in *"含糊词：大概（"*) case "$vague_out" in *"至少 95 次"*) ng_msg "G2 对「大概」误给大概率示例" ;; *) ok_msg "G2 只对「大概率」给改写示例" ;; esac ;; *) ng_msg "G2 未拦「大概」" ;; esac
-# 完整词表只在 ai-gate.sh；模板举的例子必须都在词表里，改词表忘了同步模板会在这里报出
-# 按完整词精确比对（忽略大小写），只取 split("…") 引号内的词表；awk 出错按未通过处理
-vague_check=$(awk '
-  FNR == NR {
-    if (i = index($0, "split(\"")) {
-      rest = substr($0, i + 7); list = substr(rest, 1, index(rest, "\"") - 1)
-      m = split(list, ws, " "); for (x = 1; x <= m; x++) { listed++; vocab[tolower(ws[x])] = 1 }
-    }
-    next
-  }
-  index($0, "G2 拒绝 AC 行里的含糊词") {
-    n = split($0, part, "「")
-    for (k = 2; k <= n; k++) {
-      j = index(part[k], "」"); if (j <= 1) continue
-      w = tolower(substr(part[k], 1, j - 1)); sub(/[.]$/, "", w); checked++
-      if (!(w in vocab)) missing = missing " " w
-    }
-  }
-  END {
-    if (!listed) print "未读到 ai-gate.sh 词表"
-    else if (!checked) print "未从模板抽到例子"
-    else if (missing != "") print "不在词表中：" missing
-    else print "OK " checked
-  }
-' scripts/ai-gate.sh docs/specs/_templates/requirements.md) || vague_check="检查执行失败（awk 出错或文件缺失）"
-case "$vague_check" in
-  "OK "*) ok_msg "模板 ${vague_check#OK } 个含糊词例子都在 ai-gate.sh 词表中" ;;
-  *) ng_msg "模板含糊词例子与 ai-gate.sh 词表不一致：$vague_check" ;;
-esac
-sed -i 's/^| AC-01 | .*/| AC-01 | 文案 | 按钮显示「尽快处理。」与 `ASAP` | 文案不符 | 合理性校验返回 400 |/' docs/specs/active/t-vague/requirements.md
-expect_ok "G2 放行引号内原文与复合词（字节 locale）" env LC_ALL=C bash scripts/ai-gate.sh check t-vague g2
-sed -i '/^## 3\./a\> 说明：尽量写成可计数的条件（说明行不是 AC 行）。' docs/specs/active/t-vague/requirements.md
-expect_ok "G2 不扫描 AC 行以外的说明文字" env LC_ALL=C bash scripts/ai-gate.sh check t-vague g2
-sed -i '/^> 说明：尽量写成可计数的条件/d' docs/specs/active/t-vague/requirements.md
-sed -i 's/^| AC-01 | .*/| AC-01 | 文案 | 提示显示『适当休息』 | 文案不符 | 截图 |/' docs/specs/active/t-vague/requirements.md
-expect_ok "G2 放行『』内的被测原文" env LC_ALL=C bash scripts/ai-gate.sh check t-vague g2
-sed -i 's/^| AC-01 | .*/| AC-01 | 导出 | 「尽量 2 秒内返回 | 超时 | 计时 |/' docs/specs/active/t-vague/requirements.md
-expect_fail "G2 未闭合的引号不豁免" "含糊词：尽量" env LC_ALL=C bash scripts/ai-gate.sh check t-vague g2
-# 只让含糊词扫描那一次 awk 出错（识别 ck_g2 独有的 function strip），其余调用转给真实 awk
-mkdir -p "$TMP/fail-awk"
-printf '#!/bin/sh\ncase "$*" in *"function strip"*) exit 2 ;; esac\nexec "%s" "$@"\n' "$(command -v awk)" >"$TMP/fail-awk/awk"
-chmod +x "$TMP/fail-awk/awk"
-sed -i 's/^| AC-01 | .*/| AC-01 | 导出 | 2 秒内返回 | 超时 | 计时 |/' docs/specs/active/t-vague/requirements.md
-expect_fail "G2 含糊词扫描出错时按未通过处理" "检查执行失败" env PATH="$TMP/fail-awk:$PATH" bash scripts/ai-gate.sh check t-vague g2
-expect_ok "G2 同一 AC 在 awk 正常时通过" bash scripts/ai-gate.sh check t-vague g2
+expect_ok "G2 不扫描措辞（含糊词交给独立审查）" env LC_ALL=C bash scripts/ai-gate.sh check t-vague g2
 expect_fail "G3 拒绝模板占位路径 path/to/" "path/to" bash scripts/ai-gate.sh check t-empty g3
 expect_fail "G4 拒绝模板占位路径 path/to/" "path/to" bash scripts/ai-gate.sh check t-empty g4
 expect_fail "G5 拒绝缺失的 review.md" "review.md" bash scripts/ai-gate.sh check t-empty g5
 
-# 需求分级 / 可行性总分 / 待确认清零（需求侧质量前移）
+# 需求分级 / 待确认清零（需求侧质量前移）
 mk_spec t-pending
 sed -i 's/^- 无$/- 无\n- [ ] Q1：是否需要断点续传？/' docs/specs/active/t-pending/requirements.md
 expect_fail "G1 拒绝待确认问题未清零" "待确认" bash scripts/ai-gate.sh check t-pending g1
@@ -347,19 +276,11 @@ sed -i '/^- 原始问题 \/ 原话：/d' docs/specs/active/t-noorigin/requiremen
 expect_fail "G1 拒绝丢失提出者原意" "原始问题" bash scripts/ai-gate.sh check t-noorigin g1
 printf '%s\n' '- 原始问题 / 原话：　' >>docs/specs/active/t-noorigin/requirements.md
 expect_fail "LC_ALL=C：原始问题只有全角空格被拒" "原始问题" env LC_ALL=C bash scripts/ai-gate.sh check t-noorigin g1
-mk_spec t-lowfeas
-sed -i 's/^- 加权总分：.*/- 加权总分：30 \/ 100/' docs/specs/active/t-lowfeas/requirements.md
-sed -i '/^- 加权总分：/i\> 门禁说明中的加权总分：<60 或 >100 直接拒绝。' docs/specs/active/t-lowfeas/requirements.md
-expect_fail "G1 拒绝可行性 <60" "60" bash scripts/ai-gate.sh check t-lowfeas g1
-mk_spec t-score-mismatch
-sed -i 's/^- 加权总分：.*/- 加权总分：90 \/ 100/' docs/specs/active/t-score-mismatch/requirements.md
-expect_fail "G1 拒绝自报总分与表格不一致" "计算值" bash scripts/ai-gate.sh check t-score-mismatch g1
 mk_spec t-quad4
 sed -i 's/^- 需求分级（象限）：.*/- 需求分级（象限）：④暂不支持 —— 理由：跨仓库联动/' docs/specs/active/t-quad4/requirements.md
 expect_fail "G1 象限④必须写明人工接管" "人工接管" bash scripts/ai-gate.sh check t-quad4 g1
 sed -i 's/^- 需求分级（象限）：.*/- 需求分级（象限）：④暂不支持，人工接管跨仓库联动/' docs/specs/active/t-quad4/requirements.md
-sed -i '/^- 加权总分：/d' docs/specs/active/t-quad4/requirements.md
-expect_ok "G1 允许④完成分类移交，无需凑可行性评分" bash scripts/ai-gate.sh check t-quad4 g1
+expect_ok "G1 允许④完成分类移交" bash scripts/ai-gate.sh check t-quad4 g1
 expect_fail "象限④不得进入 G2" "人工移交" bash scripts/ai-gate.sh check t-quad4 g2
 expect_fail "象限④即使用 --force 也不能推进 G3" "人工移交" bash scripts/ai-gate.sh pass t-quad4 g3 --force
 expect_ok "象限④可记录 G1 分类" bash scripts/ai-gate.sh pass t-quad4 g1
@@ -448,13 +369,12 @@ expect_fail "G4 拒绝任务缺设计章节" "任务与需求编号或设计章�
 expect_fail "G5 拒绝缺需求追溯审查结论" "需求追溯核对" bash scripts/ai-gate.sh check t-trace g5
 cat >>docs/specs/active/t-trace/review.md <<'MD'
 
-## 需求追溯与项目知识
+## 需求追溯
 - 需求追溯核对：REQ-01 与 AC-01 均落在设计 §2；上限已核对。
-- 知识检索：export 模块无相关卡，已读模块文档。
 - AI 协作文件审查：本次 diff 无此类文件。
 - 审查范围限制：无。
 MD
-expect_ok "G5 接受有范围和知识结论的审查" bash scripts/ai-gate.sh check t-trace g5
+expect_ok "G5 接受有追溯与范围结论的审查" bash scripts/ai-gate.sh check t-trace g5
 
 section "3. 好样例必须通过 G1~G5"
 mk_spec t-good
@@ -470,104 +390,48 @@ mv docs/specs/active/t-good/acceptance.md "$TMP/acc.bak"
 expect_fail "G6 拒绝缺少 acceptance.md" "acceptance.md" bash scripts/ai-gate.sh check t-good g6
 mv "$TMP/acc.bak" docs/specs/active/t-good/acceptance.md
 sed -i 's/^- 冒烟或 E2E 证据：.*/- 冒烟或 E2E 证据：<待填写>/' docs/specs/active/t-good/acceptance.md
-expect_fail "G6 拒绝缺少客观证据" "冒烟 / E2E" bash scripts/ai-gate.sh check t-good g6
-sed -i 's/^- 冒烟或 E2E 证据：.*/- 冒烟或 E2E 证据：verification.md 的两项检查通过/' docs/specs/active/t-good/acceptance.md
+expect_fail "G6 拒绝缺少客观证据" "冒烟或 E2E 证据" bash scripts/ai-gate.sh check t-good g6
+sed -i 's/^- 冒烟或 E2E 证据：.*/- 冒烟或 E2E 证据：通过；verification.md 的两项检查/' docs/specs/active/t-good/acceptance.md
 sed -i 's/^- 对照 AC 的检查结果：.*/- 对照 AC 的检查结果：未检查/' docs/specs/active/t-good/acceptance.md
-expect_fail "G6 拒绝未检查的 AC" "AC 核验摘要" bash scripts/ai-gate.sh check t-good g6
-sed -i 's/^- 对照 AC 的检查结果：.*/- 对照 AC 的检查结果：AC-01 通过，见 verification.md/' docs/specs/active/t-good/acceptance.md
+expect_fail "G6 拒绝未检查的 AC" "对照 AC 的检查结果" bash scripts/ai-gate.sh check t-good g6
+sed -i 's/^- 对照 AC 的检查结果：.*/- 对照 AC 的检查结果：通过；AC-01 见 verification.md/' docs/specs/active/t-good/acceptance.md
 mk_spec t-multi-ac
 sed -i '/| AC-01 |/a | AC-02 | 失败处理 | 拒绝无权限请求 | 泄漏数据 | 自动化检查 |' docs/specs/active/t-multi-ac/requirements.md
 for g in g1 g2 g3 g4 g5; do bash scripts/ai-gate.sh pass t-multi-ac "$g" >/dev/null || exit 1; done
 expect_fail "G6 拒绝遗漏第二条 AC" "AC-02" bash scripts/ai-gate.sh check t-multi-ac g6
 printf '%s\n' '- AC-02：通过，见权限自动化检查' >>docs/specs/active/t-multi-ac/acceptance.md
 expect_ok "G6 要求逐条 AC 均有证据" bash scripts/ai-gate.sh check t-multi-ac g6
-# G6 证据扫描：从 ai-gate.sh 取出扫描程序逐例核对（P=应放行 R=应拦截），字节 locale 与默认 locale 都跑
-g6_prog=$(awk "/^G6_SCAN_AWK='\$/{f=1;next} f&&/^}'\$/{print \"}\";exit} f" scripts/ai-gate.sh)
+# G6 只认行首结构化结论「通过」，证据文本不扫描（P=应放行 R=应拒绝），字节 locale 与默认 locale 都跑
+cp docs/specs/active/t-multi-ac/acceptance.md "$TMP/multi-acc.bak"
 g6_bad=""; g6_n=0
 while IFS='|' read -r want sample; do
   [ -n "$sample" ] || continue
+  sed -i "s/^- AC-02：.*/- AC-02：$sample/" docs/specs/active/t-multi-ac/acceptance.md
   for loc in C default; do
-    if [ "$loc" = C ]; then out=$(printf '%s\n' "$sample" | LC_ALL=C awk -v mode=scan "$g6_prog") || out=$sample
-    else out=$(printf '%s\n' "$sample" | awk -v mode=scan "$g6_prog") || out=$sample; fi
-    case "$out" in *未执行*|*未检查*|*失败*|*不通过*) got=R ;; *) got=P ;; esac
+    if [ "$loc" = C ]; then LC_ALL=C bash scripts/ai-gate.sh check t-multi-ac g6 >/dev/null 2>&1 && got=P || got=R
+    else bash scripts/ai-gate.sh check t-multi-ac g6 >/dev/null 2>&1 && got=P || got=R; fi
     g6_n=$((g6_n + 1)); [ "$got" = "$want" ] || g6_bad="$g6_bad [$loc 期望$want] $sample"
   done
 done <<'CASES'
-P|自检 239 项，失败 0 项
-P|0 项失败
-P|失败:0
-P|0 失败，3 通过
-P|0 项失败，3 通过
-P|修复前基线「21 项失败」
-P|自检 0 失败
-P|失败 0 项
-R|通过，但测试失败
-R|10 项失败
-R|失败 3 项
-R|失败 05
-R|失败 0.5 项
-R|失败 0,5 项
-R|失败 0/3
-R|共 10 失败
-R|失败 0 项失败
-R|失败 0失败
-R|用例未执行0 项失败
-R|不通过0 项失败
-R|未检查0失败
-R|重试第 0 次失败
-R|第0次失败
-R|失败 0 5 项
-R|共 1 0 项失败
-R|１0 失败
-R|v0 失败
-R|-0 失败
-R|失败 0 次后又失败
-R|失败 0 项）但功能失败
-R|失败 0|失败
-R|不通失败 0 过
-R|未执失败 0 行
-R|失败 0 cases
-R|失败 0 3
-R|失败 0 项，但功能失败
-R|0 失败败
-R|用例 #0 失败
-R|case_0 失败
-R|失败 0；另 2 项失败
-R|失败 0 项|但不通过
-R|1 失败 0 项
-R|共 3 失败 0
-R|失败:0|3
-R|2、0 失败
-R|3:0 失败
-R|１ 失败 0
-P|通过 12，失败 0
-P|（失败 0）
-R|3 项失败 0
-R|共 3 个失败 0 项
-R|3 次 失败 0
-P|用例失败 0 项
+P|通过；自检 239 项，失败 0 项
+P|通过，见权限自动化检查
+P|通过 见权限自动化检查
+P|通过
+P|通过（修复前基线 21 项失败）
+P|通过; see log
+R|通过率 80%
+R|通过了一部分
+R|不通过；权限检查失败
+R|`通过`
+R|见权限检查，通过
 CASES
-if [ -n "$g6_prog" ] && [ -z "$g6_bad" ]; then ok_msg "G6 证据扫描 $g6_n 次判断均符合期望"; else ng_msg "G6 证据扫描不符：${g6_bad:-未取到扫描程序}"; fi
-# 端到端：零计数与引号原文放行，矛盾记录与非零计数仍拒绝
-cp docs/specs/active/t-multi-ac/acceptance.md "$TMP/multi-acc.bak"
-sed -i 's/^- AC-02：.*/- AC-02：通过；自检 239 项，失败 0 项，修复前基线「21 项失败」/' docs/specs/active/t-multi-ac/acceptance.md
-expect_ok "G6 放行零计数与引号内的基线" env LC_ALL=C bash scripts/ai-gate.sh check t-multi-ac g6
-# 扫描 awk 出错或对非空输入给出空输出时，回退原文判断，同一条零计数证据不再被豁免
-mkdir -p "$TMP/g6-fail-awk" "$TMP/g6-empty-awk"
-printf '#!/bin/sh\ncase "$*" in *mode=scan*drop_zero*) exit 2 ;; esac\nexec "%s" "$@"\n' "$(command -v awk)" >"$TMP/g6-fail-awk/awk"
-printf '#!/bin/sh\ncase "$*" in *mode=scan*drop_zero*) cat >/dev/null; exit 0 ;; esac\nexec "%s" "$@"\n' "$(command -v awk)" >"$TMP/g6-empty-awk/awk"
-chmod +x "$TMP/g6-fail-awk/awk" "$TMP/g6-empty-awk/awk"
-expect_fail "G6 扫描 awk 出错时不放宽" "AC-02 仍有未通过项" env PATH="$TMP/g6-fail-awk:$PATH" bash scripts/ai-gate.sh check t-multi-ac g6
-expect_fail "G6 扫描 awk 输出为空时不放宽" "AC-02 仍有未通过项" env PATH="$TMP/g6-empty-awk:$PATH" bash scripts/ai-gate.sh check t-multi-ac g6
-sed -i 's/^- AC-02：.*/- AC-02：通过，但测试失败/' docs/specs/active/t-multi-ac/acceptance.md
-expect_fail "G6 仍拒绝「通过，但测试失败」" "AC-02 仍有未通过项" env LC_ALL=C bash scripts/ai-gate.sh check t-multi-ac g6
-sed -i 's/^- AC-02：.*/- AC-02：通过；不通过0 项失败/' docs/specs/active/t-multi-ac/acceptance.md
-expect_fail "G6 不让零计数吞掉相邻关键词" "AC-02 仍有未通过项" env LC_ALL=C bash scripts/ai-gate.sh check t-multi-ac g6
+if [ -z "$g6_bad" ]; then ok_msg "G6 结构化结论 $g6_n 次判断均符合期望"; else ng_msg "G6 结构化结论判断不符：$g6_bad"; fi
+cp "$TMP/multi-acc.bak" docs/specs/active/t-multi-ac/acceptance.md
+sed -i 's/^- AC-02：.*/- AC-02：不通过；权限检查失败/' docs/specs/active/t-multi-ac/acceptance.md
+expect_fail "G6 拒绝时指出具体 AC" "AC-02 须以「通过」开头" bash scripts/ai-gate.sh check t-multi-ac g6
 cp "$TMP/multi-acc.bak" docs/specs/active/t-multi-ac/acceptance.md
 sed -i 's/^- 冒烟或 E2E 证据：.*/- 冒烟或 E2E 证据：自检 0 失败/' docs/specs/active/t-multi-ac/acceptance.md
-expect_ok "G6 冒烟证据接受独立的 0 失败" env LC_ALL=C bash scripts/ai-gate.sh check t-multi-ac g6
-sed -i 's/^- 冒烟或 E2E 证据：.*/- 冒烟或 E2E 证据：「10 失败」/' docs/specs/active/t-multi-ac/acceptance.md
-expect_fail "G6 冒烟证据不让「10 失败」借子串当通过" "缺少通过结果" env LC_ALL=C bash scripts/ai-gate.sh check t-multi-ac g6
+expect_fail "G6 拒绝旧格式冒烟证据并提示改写" "旧格式" bash scripts/ai-gate.sh check t-multi-ac g6
 cp "$TMP/multi-acc.bak" docs/specs/active/t-multi-ac/acceptance.md
 sed -i '/^- 人工决定：/d' docs/specs/active/t-good/acceptance.md
 expect_fail "②的 G6 拒绝缺少人的决定" "人的明确通过决定" bash scripts/ai-gate.sh check t-good g6
@@ -580,40 +444,13 @@ sed -i 's/②人机协同/①低风险小改动/' docs/specs/active/t-auto/requi
 sed -i '/^- 人工决策人：/d; /^- 人工决定：/d; /^- 决策来源：/d' docs/specs/active/t-auto/acceptance.md
 for g in g1 g2 g3 g4 g5; do bash scripts/ai-gate.sh pass t-auto "$g" >/dev/null || exit 1; done
 expect_ok "①有证据可由 Agent 推进 G6" bash scripts/ai-gate.sh pass t-auto g6
-mk_spec t-delegated
-for g in g1 g2 g3 g4 g5; do bash scripts/ai-gate.sh pass t-delegated "$g" >/dev/null || exit 1; done
-sed -i 's/^- 人工决定：.*/- 人工决定：预先授权/' docs/specs/active/t-delegated/acceptance.md
-sed -i 's#^- 需人判断的风险 / 遗留：.*#- 需人判断的风险 / 遗留：无#' docs/specs/active/t-delegated/acceptance.md
-printf '%s\n' '- 验收方式：预授权委托' >>docs/specs/active/t-delegated/acceptance.md
-expect_fail "G6 拒绝无 G3 授权的委托" "缺少 G3 明确授权" bash scripts/ai-gate.sh check t-delegated g6
-add_delegation() {
-  local design="$1"
-  awk '{ print; if ($0 ~ /^- 人工前置决策：/) {
-    print "- 条件委托决策人：运营负责人"
-    print "- 条件委托来源：模拟对话"
-    print "- 条件委托范围：仅 AC 全通过、G5 通过且无新增重大风险"
-    print "- 条件委托结论：同意"
-  }}' "$design" >"$design.tmp"
-  mv "$design.tmp" "$design"
-}
-add_delegation docs/specs/active/t-delegated/design.md
-# 只跑一次：同一条报错须拒绝、提示升级成因，并要求由人确认委托（Agent 不得自行重做授权）
-deleg_rc=0; deleg_out=$(bash scripts/ai-gate.sh check t-delegated g6 2>&1) || deleg_rc=$?
-if [ "$deleg_rc" -ne 0 ] && case "$deleg_out" in *"授权快照不一致"*) true ;; *) false ;; esac; then ok_msg "G6 拒绝 G3 后补写的委托"; else ng_msg "G6 未拒绝 G3 后补写的委托"; fi
-case "$deleg_out" in *"刚升级过脚手架"*"须由人确认委托内容"*) ok_msg "G6 快照不一致时提示升级成因并要求人确认" ;; *) ng_msg "G6 快照不一致的提示缺少升级成因或人工确认" ;; esac
-bash scripts/ai-gate.sh reset t-delegated g3 --reason '测试 G3 重新确认委托' >/dev/null || exit 1
-for g in g3 g4 g5; do bash scripts/ai-gate.sh pass t-delegated "$g" >/dev/null || exit 1; done
-expect_ok "G6 接受 G3 明确限定范围的委托" bash scripts/ai-gate.sh check t-delegated g6
-sed -i 's#^- 需人判断的风险 / 遗留：无#- 需人判断的风险 / 遗留：出现新增重大风险#' docs/specs/active/t-delegated/acceptance.md
-expect_fail "G6 拒绝委托后的新增重大风险" "仍有需人判断的风险" bash scripts/ai-gate.sh check t-delegated g6
-mk_spec t-denied-delegation
-add_delegation docs/specs/active/t-denied-delegation/design.md
-sed -i 's/^- 条件委托结论：同意/- 条件委托结论：不同意/' docs/specs/active/t-denied-delegation/design.md
-expect_fail "G3 拒绝不同意的委托" "明确「同意」" bash scripts/ai-gate.sh check t-denied-delegation g3
-mk_spec t-empty-delegation-source
-add_delegation docs/specs/active/t-empty-delegation-source/design.md
-sed -i 's/^- 条件委托来源：模拟对话/- 条件委托来源：/' docs/specs/active/t-empty-delegation-source/design.md
-expect_fail "G3 拒绝空来源的委托" "非空决策人和来源" bash scripts/ai-gate.sh check t-empty-delegation-source g3
+mk_spec t-legacy-delegation
+for g in g1 g2 g3 g4 g5; do bash scripts/ai-gate.sh pass t-legacy-delegation "$g" >/dev/null || exit 1; done
+sed -i 's/^- 人工决定：.*/- 人工决定：预先授权/' docs/specs/active/t-legacy-delegation/acceptance.md
+printf '%s\n' '- 验收方式：预授权委托' >>docs/specs/active/t-legacy-delegation/acceptance.md
+expect_fail "G6 不再接受预授权委托并提示旧格式" "旧格式" bash scripts/ai-gate.sh check t-legacy-delegation g6
+expect_out "G3 记录保持 5 列（第 5 列为保留列）" "none" awk -F'\t' '$1=="g3" && NF==5 { print $5 }' docs/specs/active/t-legacy-delegation/.gates
+expect_fail "pass 不再接受 --by" "未知参数" bash scripts/ai-gate.sh pass t-legacy-delegation g6 --by agent
 
 section "4. 验证摘要必须有目标、真实检查和当前代码状态"
 mk_spec t-fake-hand
@@ -908,12 +745,10 @@ for g in g1 g2 g3 g4; do bash scripts/ai-gate.sh pass t-stalereview "$g" >/dev/n
 sed -i 's/^- 审查状态：.*/- 审查状态：old-state/' docs/specs/active/t-stalereview/review.md
 expect_fail "G5 拒绝与验证摘要不符的旧审查" "审查状态" bash scripts/ai-gate.sh check t-stalereview g5
 
-section "6. Agent 记录与人工身份标记的本地防误操作"
+section "6. Agent 记录与红线基线的本地防误操作"
 call_g6_agent() { bash scripts/ai-gate.sh pass t-good g6; }
-call_g6_human() { bash scripts/ai-gate.sh pass t-good g6 --by human </dev/null; }
 call_baseline() { bash scripts/ai-gate.sh baseline </dev/null; }
 expect_ok "②有人决定与客观证据后可由 Agent 记录 G6" call_g6_agent
-expect_fail "G6 拒绝非 TTY 的 --by human" "TTY" call_g6_human
 expect_fail "baseline 拒绝非 TTY 确认" "TTY" call_baseline
 
 section "7. 红线漂移必须阻断推进"
@@ -957,97 +792,21 @@ n=$(tr -dc '0-9' <"$ONLY/docs/specs/active/only/.attempts" 2>/dev/null)
 if [ "${n:-}" = "3" ]; then ok_msg "连续失败计数 = 3"; else ng_msg "连续失败计数应为 3，实际 ${n:-空}"; fi
 if grep -q '黄卡' "$ONLY/out3" 2>/dev/null; then ok_msg "第 3 次失败输出黄卡"; else ng_msg "第 3 次失败未输出黄卡"; fi
 
-# ---------------------------------------------------------------- 知识飞轮 ----
-section "11. 知识卡体检与前置强注入"
-mkdir -p .knowledge/cards
-cat >.knowledge/cards/K-0001.md <<'MD'
-# K-0001 导出任务幂等
-- **类型**：技术方案
-- **模块**：export
-- **置信度**：0.7
-- **创建日期**：2026-10-20
-- **最近复核**：2026-10-20
-- **复核期限**：2099-12-31
-- **标签**：#自动沉淀
-- **关联路径**：src/export/
-MD
-cat >.knowledge/INDEX.md <<'MD'
-# 知识索引（Index）
-| ID | 类型 | 模块 | 置信度 | 复核期限 | 结论摘要 |
-| :-- | :-- | :-- | :-- | :-- | :-- |
-| K-0001 | 技术方案 | export | 0.7 | 2099-12-31 | 导出任务幂等 |
-MD
-expect_out "knowledge check 索引与卡片一致" "一致" bash scripts/ai-knowledge.sh check
-expect_out "suggest 按模块列有效卡" "K-0001" bash scripts/ai-knowledge.sh suggest export
-expect_out "impact 按变更路径提示复核" "K-0001" bash scripts/ai-knowledge.sh impact src/export/service.ts
-
-mk_spec t-inj
-sed -i 's/^- 注入知识：.*/- 注入知识：`K-0001`/' docs/specs/active/t-inj/tasks.md
-expect_ok "G4 通过：注入的知识卡存在" bash scripts/ai-gate.sh check t-inj g4
-sed -i 's/`K-0001`/`K-0001`, `K-0001`/' docs/specs/active/t-inj/tasks.md
-for g in g1 g2 g3 g4; do bash scripts/ai-gate.sh pass t-inj "$g" >/dev/null || exit 1; done
-sed -i 's/无相关卡片/无相关卡片（示例 K-0001）/' docs/specs/active/t-good/tasks.md
-expect_out "usage 按 Spec 去重采用次数" "K-0001  1 个 Spec：t-inj" bash scripts/ai-knowledge.sh usage
-mkdir -p docs/specs/archive/2026-10
-mv docs/specs/active/t-inj docs/specs/archive/2026-10/
-expect_out "usage 归档后仍计同一 Spec" "K-0001  1 个 Spec：t-inj" bash scripts/ai-knowledge.sh usage
-mk_spec t-badcard
-sed -i 's/^- 注入知识：.*/- 注入知识：`K-9999`/' docs/specs/active/t-badcard/tasks.md
-expect_fail "G4 拒绝注入不存在的知识卡" "K-9999" bash scripts/ai-gate.sh check t-badcard g4
-mk_spec t-noknow
-sed -i '/^- 注入知识/d' docs/specs/active/t-noknow/tasks.md
-expect_fail "G4 拒绝缺少注入知识行" "注入知识" bash scripts/ai-gate.sh check t-noknow g4
-mk_spec t-nolookup
-sed -i '/^- 知识检索：/d' docs/specs/active/t-nolookup/tasks.md
-expect_fail "G4 拒绝无知识检索依据" "知识检索" bash scripts/ai-gate.sh check t-nolookup g4
-mk_spec t-stalecard
-sed -i 's/^- 注入知识：.*/- 注入知识：`K-0001`/' docs/specs/active/t-stalecard/tasks.md
-sed -i 's/^- \*\*复核期限\*\*：.*/- **复核期限**：2000-01-01/' .knowledge/cards/K-0001.md
-expect_fail "G4 拒绝过期知识卡" "复核期限" bash scripts/ai-gate.sh check t-stalecard g4
-sed -i 's/^- \*\*复核期限\*\*：.*/- **复核期限**：2099-12-31/' .knowledge/cards/K-0001.md
-printf '\n#待验证\n' >>.knowledge/cards/K-0001.md
-expect_fail "G4 拒绝待验证知识卡" "待验证" bash scripts/ai-gate.sh check t-stalecard g4
-sed -i '/^#待验证$/d' .knowledge/cards/K-0001.md
-
-# 过期卡 → 清理候选（只提醒不失败）；非法置信度 → 硬失败
-cat >.knowledge/cards/K-0002.md <<'MD'
-# K-0002 过期卡
-- **类型**：踩坑
-- **模块**：export
-- **置信度**：0.5
-- **创建日期**：2026-10-20
-- **最近复核**：2026-10-20
-- **复核期限**：2000-01-01
-- **标签**：#踩坑
-MD
-printf '| K-0002 | 踩坑 | export | 0.5 | 2000-01-01 | 过期卡 |\n' >>.knowledge/INDEX.md
-expect_out "usage 列出未采用卡片" "K-0002  0 个 Spec（未采用）" bash scripts/ai-knowledge.sh usage
-expect_out "ttl 列出清理候选" "清理候选" bash scripts/ai-knowledge.sh ttl
-sed -i 's/^- \*\*置信度\*\*：0.5/- **置信度**：1.5/' .knowledge/cards/K-0002.md
-expect_fail "knowledge check 拒绝置信度 >1" "置信度" bash scripts/ai-knowledge.sh check
-sed -i 's/^- \*\*置信度\*\*：1.5/- **置信度**：0.5/' .knowledge/cards/K-0002.md
-rm -f .knowledge/cards/K-0002.md
-expect_fail "knowledge check 拒绝索引引用不存在卡片" "不存在" bash scripts/ai-knowledge.sh check
-sed -i '/K-0002/d' .knowledge/INDEX.md
-expect_out "删卡并删索引后恢复一致" "一致" bash scripts/ai-knowledge.sh check
-
 # ---------------------------------------------------------- 单一配置来源 ----
 section "12. 阈值只从项目配置读取"
 cp harness/redlines.conf "$TMP/redlines.original"
-sed -i 's/^FEASIBILITY_MIN=.*/FEASIBILITY_MIN=81/' harness/redlines.conf
+sed -i 's/^CR_MAX_ROUNDS=.*/CR_MAX_ROUNDS=1/' harness/redlines.conf
 mk_spec t-config-threshold
-expect_fail "修改可行性阈值后 G1 使用新值" "81" bash scripts/ai-gate.sh check t-config-threshold g1
+sed -i 's/^- \*\*CR 轮次\*\*：.*/- **CR 轮次**：2 \/ 4/' docs/specs/active/t-config-threshold/review.md
+expect_fail "修改 CR 轮次上限后 G5 使用新值" "上限 1" bash scripts/ai-gate.sh check t-config-threshold g5
 cp "$TMP/redlines.original" harness/redlines.conf
 sed -i 's/^AGENTS_MAX_LINES=.*/AGENTS_MAX_LINES=17/' harness/redlines.conf
 printf 'line\n%.0s' {1..18} >AGENTS.md
 expect_fail "体积体检按项目配置的新上限拒绝" "硬上限 17 行" bash scripts/ai-check-bloat.sh
 rm AGENTS.md
 cp "$TMP/redlines.original" harness/redlines.conf
-sed -i 's/^KNOWLEDGE_TTL_DAYS=.*/KNOWLEDGE_TTL_DAYS=29/' harness/redlines.conf
-expect_out "知识保鲜显示项目配置的新期限" "TTL 29 天" bash scripts/ai-knowledge.sh ttl
-cp "$TMP/redlines.original" harness/redlines.conf
-sed -i '/^FEASIBILITY_MIN=/d' harness/redlines.conf
-expect_fail "缺失必要配置键时 gate 拒绝" "FEASIBILITY_MIN" bash scripts/ai-gate.sh check t-config-threshold g1
+sed -i '/^CR_MAX_ROUNDS=/d' harness/redlines.conf
+expect_fail "缺失必要配置键时 gate 拒绝" "CR_MAX_ROUNDS" bash scripts/ai-gate.sh check t-config-threshold g1
 cp "$TMP/redlines.original" harness/redlines.conf
 sed -i 's/^VERIFY_MAX_SECONDS=.*/VERIFY_MAX_SECONDS=invalid/' harness/redlines.conf
 expect_fail "非法验证预算时 verify 拒绝" "VERIFY_MAX_SECONDS" bash scripts/ai-verify.sh --spec t-config-threshold src/export/service.ts
@@ -1057,9 +816,6 @@ expect_fail "非法体积预算时 bloat 拒绝" "AGENTS_MAX_LINES" bash scripts
 cp "$TMP/redlines.original" harness/redlines.conf
 sed -i 's/^AGENTS_MAX_LINES=.*/AGENTS_MAX_LINES=999999999999999999999999999/' harness/redlines.conf
 expect_fail "超大整数预算时 bloat 拒绝" "整数范围" bash scripts/ai-check-bloat.sh
-cp "$TMP/redlines.original" harness/redlines.conf
-sed -i 's/^KNOWLEDGE_TTL_DAYS=.*/KNOWLEDGE_TTL_DAYS=invalid/' harness/redlines.conf
-expect_fail "非法知识期限时 knowledge 拒绝" "KNOWLEDGE_TTL_DAYS" bash scripts/ai-knowledge.sh check
 rm harness/redlines.conf
 expect_fail "缺失项目配置时拒绝" "缺少配置" bash scripts/ai-gate.sh check t-config-threshold g1
 cp "$TMP/redlines.original" harness/redlines.conf

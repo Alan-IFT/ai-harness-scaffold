@@ -25,28 +25,24 @@
 ## 2. 质量门 G1~G7（由 `scripts/ai-gate.sh` 机械校验）
 | 门 | 名称 | 通过条件 | 失败回到 | 谁推进 |
 | :-- | :-- | :-- | :-- | :-- |
-| G1 | 需求澄清 | 原始问题与四项必答、待确认清零、象限已定；①~③可行性达到 `FEASIBILITY_MIN`，④转人工 | 重做访谈 / 拆小范围 | Agent |
-| G2 | 验收标准 | AC 表有通过 / 不通过 / 量化证据，AC 行无含糊词 | G1 补需求 | Agent |
+| G1 | 需求澄清 | 原始问题与四项必答、待确认清零、象限与分级依据已定；④转人工 | 重做访谈 / 拆小范围 | Agent |
+| G2 | 验收标准 | AC 表有通过 / 不通过 / 量化证据；措辞由独立审查把关 | G1 补需求 | Agent |
 | G3 | 方案设计 | 依赖序 + 文件与间接影响清单 + 检索与复用依据 + 对抗自审；①可单步，②③有前置决策、边界样本，并在 pass 前由独立上下文审设计 | G2 补 AC | Agent |
-| G4 | 实现完成 | tasks 全部 `[x]`、§1 知识检索与有效卡片、`verification.md` 对应当前代码且 PASS | G3 改设计 / 文件清单 | Agent |
+| G4 | 实现完成 | tasks 全部 `[x]`、`verification.md` 对应当前代码且 PASS | G3 改设计 / 文件清单 | Agent |
 | G5 | 独立 CR | 独立上下文产出 `review.md`，关键问题 = 0，CR 轮次不超 `CR_MAX_ROUNDS` | G4 补实现 / 测试 | Agent（换上下文） |
-| G6 | 交付核验 | Agent 执行检查并记录证据；①可自动，②③凭当次决定或 G3 明确的条件委托 | G5 补 CR / 补决策 | Agent；关键判断由人做 |
+| G6 | 交付核验 | Agent 执行检查并记录证据（每项以「通过」开头）；①可自动，②③凭当次人的决定 | G5 补 CR / 补决策 | Agent；关键判断由人做 |
 | G7 | 归档 | 已按 `archive-spec.md` 归档 | G6 补验收 | Agent |
 
 - 推进：`bash scripts/ai-gate.sh check <feat> <gate>` → 通过后 `bash scripts/ai-gate.sh pass <feat> <gate>`。
 - **④ 收尾**：G1 留下分析与人工移交结论后，把 Spec 移入 archive，并在关联任务文件的补充记录中写明人工接管决定；不计为交付，也不尝试 G2~G7。优先只用任务池记录这类想法，避免占用 active Spec。
 - **失败包络**：同一目标连续验证失败达到 `VERIFY_MAX_ATTEMPTS` 时停下，更新 WIP 并向人说明卡点；不要重复运行同一失败检查。
 - **门状态必须与代码同步**：回滚代码后跑 `bash scripts/ai-gate.sh reset <feat> <gate> --reason "..."`，让该门及之后的门失效；`--force` 跳过前置门会记入 `<spec>/.violations` 审计。
-- **G6 分工**：Agent 运行冒烟、核对 AC 并填写 `acceptance.md`；②③默认由人决定，若 G3 有明确条件委托且 AC 全通过、G5 无阻塞、无新增重大风险，可由 Agent 按授权范围收尾；超出范围仍向人呈现判断点。不让人填文档或跑机械命令。门禁无法认证对话身份；强制审批使用项目自己的权限机制。
+- **G6 分工**：Agent 运行冒烟、核对 AC 并填写 `acceptance.md`；②③由人当次决定，Agent 只呈现需判断的风险与结果。不让人填文档或跑机械命令。门禁无法认证对话身份；强制审批使用项目自己的权限机制。
 - **红线不可自改**：`harness/redlines.conf` 只允许人类修改；本地基线漂移会阻断 pass，跨工作区仍需用 Git 审查变更。
 
-## 3. 知识飞轮（让经验跨需求复用，而不是从零猜）
-- **知识蒸馏**：最后一次正式 G4 验证前按 `.agents/skills/knowledge-distill.md` 把可复用结论写成知识卡（`.knowledge/cards/K-XXXX.md`）并登记 `.knowledge/INDEX.md`；只留能跨需求复用的，不复述代码。归档时复核，不补写使验证摘要过期的文件。
-- **前置强注入**：写 `tasks.md` §1 时记录检索依据与采用的知识卡（没有就写「无相关卡片」及原因）；G4 校验卡片存在、有效且非待验证。
-- **检索与变更复核**：先用 `ai-knowledge.sh suggest <module>` 列候选并记取舍；改动关联路径后用 `ai-knowledge.sh impact <path...>` 找待复核卡。过期和 `#待验证` 卡不得注入。
-- **采用统计**：`ai-knowledge.sh usage` 从已通过 G4 的当前和归档 Spec 派生采用数与未采用卡，不在索引手改计数；它不代表真实读取次数。
-- **保鲜与降权**：复核期限按 `KNOWLEDGE_TTL_DAYS` 设置，过期卡视为清理候选；`knowledge_feedback` 连续反馈错误的知识卡要降置信度或删掉。体检：`bash scripts/ai-knowledge.sh check|ttl`。
-- **记忆捕获**：会话中出现用户纠正（「不对」「应该是」）、反复尝试才解决的问题、用户主动告知的关键事实时，当场按格式写进 `MEMORY.md`，换宿主后仍可读到。写纠正前先搜同主题旧条目并删除，同一件事只留一个当前答案，追溯交给 Git。稳定结论按 `gc-memory.md` 晋升或下沉。
+## 3. 经验积累（规则、模块文档、记忆三分）
+- **模块活文档**：设计决策与已知坑写进 `docs/architecture/modules/<module>.md`，只写「为什么」，不抄代码事实。
+- **记忆捕获**：会话中出现用户纠正（「不对」「应该是」）、反复尝试才解决的问题、用户主动告知的关键事实时，当场按格式写进 `MEMORY.md`，换宿主后仍可读到。写纠正前先搜同主题旧条目并删除，同一件事只留一个当前答案，追溯交给 Git。稳定结论按 `gc-memory.md` 晋升到模块活文档；同类问题反复出现且记忆防不住时，才由人决定升级为规则。
 
 ## 4. 编码三纪律 (Engineering Discipline)
 - **简单优先**：先写最简正确版；三行重复优于过早抽象；不引入"以后可能用得上"的抽象层/配置/依赖。
@@ -82,7 +78,5 @@
 | 体积体检 | `bash scripts/ai-check-bloat.sh` |
 | 门禁回退 | `bash scripts/ai-gate.sh reset <feat> <gate> --reason "..."` |
 | 门禁自检 | `bash scripts/harness-selftest.sh` |
-| 知识库体检 | `bash scripts/ai-knowledge.sh check\|ttl\|list` |
-| 知识候选 / 变更影响 / 采用统计 | `bash scripts/ai-knowledge.sh suggest <module>` / `impact <path...>` / `usage` |
 
-**阶段指南（按需读取普通项目文件）**：`.agents/skills/new-spec.md`、`retrofit-legacy.md`、`code-review.md`、`archive-spec.md`、`knowledge-distill.md`、`gc-memory.md`。踩坑池：`MEMORY.md`。
+**阶段指南（按需读取普通项目文件）**：`.agents/skills/new-spec.md`、`retrofit-legacy.md`、`code-review.md`、`archive-spec.md`、`gc-memory.md`。踩坑池：`MEMORY.md`。
