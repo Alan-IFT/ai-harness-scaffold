@@ -18,7 +18,7 @@
 - 推进：`bash scripts/ai-gate.sh check|pass <feat> <gate>`；g1 未过不写业务代码；三道门过后按 `archive-spec.md` 归档。需求、方案或代码回滚后用 `reset <feat> <gate> --reason "..."`。
 - 门只查骗不过的信号（字段已填、命令跑过、状态一致），文字质量交给独立审查和人。
 - **人的决定**：Agent 呈现风险与结果，人当次决定；不让人填文档或跑命令，也不推断授权。
-- **红线**：`harness/redlines.conf` 只允许人类修改，改后由人在交互终端运行 `bash scripts/ai-gate.sh baseline`；基线漂移会阻断 pass。
+- **红线**：`harness/redlines.conf` 只允许人类修改；AI 改动它视为越权，审查时按关键问题处理。
 
 ## 3. 编码
 - **简单优先**：先写最简正确版；不引入“以后可能用得上”的抽象、配置和依赖。

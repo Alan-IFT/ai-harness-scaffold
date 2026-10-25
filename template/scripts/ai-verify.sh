@@ -97,16 +97,6 @@ else
   rm -f "$ATT"
 fi
 
-mkdir -p "$SPEC_DIR/reports"
-OUT="$SPEC_DIR/reports/verify-$(date +%Y%m%d-%H%M%S)-$$.log"
-{
-  echo "# verify: ai-verify.sh"
-  echo "# target: $TARGET_FILE"
-  echo "# result: $RESULT"
-  echo "# checks: $CHECKS  failed: $FAIL  duration: ${DUR}s"
-  redact <"$LOG"
-} >"$OUT"
-echo "📄 验证报告: $OUT"
 STATE_ID=$(bash scripts/ai-state-id.sh "$TARGET_FILE") || { rm -f "$LOG"; exit 1; }
 SUMMARY="$SPEC_DIR/verification.md"
 {
@@ -120,7 +110,7 @@ SUMMARY="$SPEC_DIR/verification.md"
   echo "- command: bash scripts/ai-verify.sh --spec $SPEC_NAME $TARGET_FILE"
   echo "- verified_at_utc: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo ""
-  echo "详细输出仅在本地 reports/；代码内容或 Git 暂存状态变化后重新验证，同一索引内容提交后仍有效。"
+  echo "代码内容或 Git 暂存状态变化后重新验证；同一内容提交后仍有效。"
 } >"$SUMMARY"
 echo "📝 可交接摘要: $SUMMARY"
 rm -f "$LOG"

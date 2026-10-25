@@ -4,27 +4,24 @@
 # 原则：只认磁盘上骗不过的信号（字段已填、命令跑过、状态一致），不判断文字质量。
 #
 # 用法：
-#   bash scripts/ai-gate.sh                                # 全局状态（含红线基线检查）
+#   bash scripts/ai-gate.sh                                # 全部活跃 Spec 的门禁状态
 #   bash scripts/ai-gate.sh status [<feat>]                # 某个 / 全部 spec 的门禁状态
 #   bash scripts/ai-gate.sh check <feat> <gate>            # 只校验，不推进
 #   bash scripts/ai-gate.sh pass  <feat> <gate>            # 前置门已过且校验通过后记录
 #   bash scripts/ai-gate.sh reset <feat> <gate> [--reason "why"]  # 回退：使该门及之后的门失效
-#   bash scripts/ai-gate.sh baseline                       # 人类确认红线后记录基线
 #
 # 约定：门禁状态写在 <spec>/.gates，由本脚本维护；手改它不会让 check 通过。
 # ==============================================================================
 set -u
 
 SPEC_ROOT="process/specs"
-REDLINES="harness/redlines.conf"
-BASELINE="harness/.redlines.baseline"
 GATES="g1 g2 g3"
 FEAT=""
 DIR=""
 
 # 阈值只从当前项目配置读取；缺失或无效时明确拒绝。
 . "$(dirname "${BASH_SOURCE[0]}")/ai-config.sh" || exit 1
-ai_config_load "$REDLINES" CR_MAX_ROUNDS || exit 1
+ai_config_load harness/redlines.conf CR_MAX_ROUNDS || exit 1
 
 say() { printf '%s\n' "$*"; }
 die() { printf '❌ %s\n' "$*" >&2; exit 1; }
@@ -41,12 +38,6 @@ feat_dir() {          # active 优先，其次 archive/YYYY-MM/<feat>
   d=$(find "$SPEC_ROOT/archive" -mindepth 2 -maxdepth 2 -type d -name "$f" 2>/dev/null | head -n 1)
   [ -n "$d" ] && { printf '%s' "$d"; return 0; }
   return 1
-}
-
-sha() {
-  [ -f "$1" ] || return 1
-  if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}'
-  else cksum "$1" | awk '{print $1"-"$2}'; fi
 }
 
 # 字段行「- 标签：值」的值；全角冒号与全角空格先归一（字节 locale 下它们不属于 [[:space:]]）。
@@ -126,32 +117,6 @@ check_gate() {
   esac
 }
 
-# ---------------------------------------------------------------- 红线基线 --
-redline_state() {     # ok | drift | unbaselined | missing
-  [ -f "$REDLINES" ] || { printf 'missing'; return 0; }
-  [ -f "$BASELINE" ] || { printf 'unbaselined'; return 0; }
-  if [ "$(sha "$REDLINES")" = "$(cat "$BASELINE" 2>/dev/null)" ]; then printf 'ok'; else printf 'drift'; fi
-}
-
-ensure_baseline() {
-  [ -f "$REDLINES" ] || return 0
-  [ -f "$BASELINE" ] && return 0
-  mkdir -p "$(dirname "$BASELINE")"
-  sha "$REDLINES" > "$BASELINE"
-  say "ℹ️  已记录红线初始基线。若你此前手工改过红线，请人工重跑：bash scripts/ai-gate.sh baseline"
-}
-
-guard_redlines() {
-  case "$(redline_state)" in
-    drift)
-      say "🚫 红线配置已变更（漂移）（harness/redlines.conf 与基线不符）。"
-      say "   若确属人类有意修改，请在交互终端执行：bash scripts/ai-gate.sh baseline"
-      return 1 ;;
-    unbaselined) ensure_baseline ;;
-  esac
-  return 0
-}
-
 # ---------------------------------------------------------------- 子命令 -----
 valid_gate() { case " $GATES " in *" $1 "*) return 0 ;; esac; die "未知门 $1（可选 g1~g3）"; }
 
@@ -169,7 +134,6 @@ cmd_pass() {
   gate=$(printf '%s' "$2" | tr 'A-Z' 'a-z')
   valid_gate "$gate"
   DIR=$(feat_dir "$FEAT") || die "找不到 spec: $FEAT（先 bash scripts/ai-new-spec.sh $FEAT）"
-  guard_redlines || exit 1
   for i in $GATES; do
     [ "$i" = "$gate" ] && break
     [ -f "$DIR/.gates" ] && grep -qE "^$i[[:space:]]" "$DIR/.gates" || die "前置门 $i 未通过（先 pass $i）"
@@ -222,13 +186,6 @@ render_spec() {
 cmd_status() {
   local feat="${1:-}" d any=0
   say "== 阶段门状态 (ai-gate.sh) =="
-  case "$(redline_state)" in
-    ok)          say "🔒 红线基线：一致（$(sha "$REDLINES" | cut -c1-12)…）" ;;
-    drift)       say "🚫 红线基线：漂移！harness/redlines.conf 被改动过，所有 pass 都会被阻断。"
-                 say "   若属人类有意修改，请在交互终端执行：bash scripts/ai-gate.sh baseline" ;;
-    unbaselined) ensure_baseline ;;
-    missing)     say "ℹ️  未找到 harness/redlines.conf（可从脚手架模板补回）。" ;;
-  esac
   if [ -n "$feat" ]; then
     d=$(feat_dir "$feat") || die "找不到 spec: $feat"
     render_spec "$d"; return 0
@@ -240,13 +197,6 @@ cmd_status() {
   [ "$any" -eq 1 ] || { say ""; say "  当前无活跃 Spec。新建：bash scripts/ai-new-spec.sh <feat-name>"; }
 }
 
-cmd_baseline() {
-  [ -f "$REDLINES" ] || die "找不到 $REDLINES"
-  [ -t 0 ] || die "红线基线需要在交互终端（TTY）确认；此检查只防误操作，不提供身份认证"
-  sha "$REDLINES" > "$BASELINE"
-  ok "已记录红线基线：$(sha "$REDLINES" | cut -c1-12)…"
-}
-
 main() {
   local cmd="${1:-status}"
   [ $# -gt 0 ] && shift
@@ -255,9 +205,8 @@ main() {
     check)    cmd_check "$@" ;;
     pass)     cmd_pass "$@" ;;
     reset)    cmd_reset "$@" ;;
-    baseline) cmd_baseline ;;
     -h|--help|help) sed -n '3,15p' "$0" | sed 's/^# \{0,1\}//' ;;
-    *) die "未知命令 $cmd（可用：status / check / pass / reset / baseline）" ;;
+    *) die "未知命令 $cmd（可用：status / check / pass / reset）" ;;
   esac
 }
 

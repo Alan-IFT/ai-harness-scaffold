@@ -5,7 +5,7 @@
 
 ## Step 1: 正式验证（g2）
 1. `bash scripts/ai-verify.sh --spec <feat> <file>`，目标选归档后路径不变的项目文件（不能选 `process/` 下的文件）。
-2. 摘要写进 `verification.md`，详细日志留本机 `reports/`。验证后代码再变，就重跑。
+2. 摘要写进 `verification.md`，失败时终端打印输出末尾。验证后代码再变，就重跑。
 3. `bash scripts/ai-gate.sh pass <feat> g2`。
 
 ## Step 2: 换上下文审查

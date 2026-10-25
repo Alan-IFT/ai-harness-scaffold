@@ -28,7 +28,7 @@ version: 2.0.0
 
 ## 3. 收尾（新旧项目都做）
 1. 写 `.ai-harness/version`：`version=<本文件 frontmatter 的 version>`，再加一行接入日期。
-2. 运行 `bash scripts/harness-selftest.sh`、`bash scripts/ai-check-bloat.sh`、`bash scripts/ai-gate.sh status`（会记录红线初始基线），修好后提交。
+2. 运行 `bash scripts/harness-selftest.sh`、`bash scripts/ai-check-bloat.sh`、`bash scripts/ai-gate.sh status`，修好后提交。
 3. 报告：接入了哪些文件、冲突怎么处理的、实际跑过哪些验证、还剩哪些事要人决定。
 
 用户负责架构、权限和阈值这类必须由人取舍的事；AI 负责执行、写项目文档和验证。之后各个 AI 工具都靠项目里的 `AGENTS.md`、Spec、活文档和 Git 接力。

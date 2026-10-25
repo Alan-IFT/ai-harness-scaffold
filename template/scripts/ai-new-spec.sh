@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ai-new-spec.sh — 从模板新建 Spec（requirements.md、tasks.md、reports/）
+# ai-new-spec.sh — 从模板新建 Spec（requirements.md、tasks.md）
 # 用法：bash scripts/ai-new-spec.sh <feat>
 set -u
 
@@ -17,7 +17,7 @@ for f in requirements.md tasks.md; do
   [ -f "$TPL/$f" ] || { echo "❌ 模板缺失: $TPL/$f" >&2; exit 1; }
 done
 
-mkdir -p "$DIR/reports" || exit 1
+mkdir -p "$DIR" || exit 1
 for f in requirements.md tasks.md; do
   sed -e "s/{{FEATURE_NAME}}/$FEAT/g" -e "s/{{DATE}}/$(date +%Y-%m-%d)/g" "$TPL/$f" >"$DIR/$f" \
     || { rm -rf "$DIR"; exit 1; }

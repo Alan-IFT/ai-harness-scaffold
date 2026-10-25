@@ -66,7 +66,7 @@ echo "=="
 echo "🔄 AI HARNESS: CROSS-TOOL HANDOFF & RESUME SNAPSHOT (跨工具接力快照)"
 echo "=="
 
-# 1. 阶段门（下一门 + 阻断原因 + 红线基线）
+# 1. 阶段门（下一门 + 阻断原因）
 echo -e "\n[1] 阶段门状态"
 if [ -f scripts/ai-gate.sh ]; then
   bash scripts/ai-gate.sh status "$FEATURE" || true

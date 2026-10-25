@@ -1,6 +1,3 @@
 # ai-harness 本地产物，不入库
-process/specs/active/*/reports/
-process/specs/archive/*/*/reports/
 process/specs/active/*/.attempts
 process/task-pool/.lock/
-harness/.redlines.baseline

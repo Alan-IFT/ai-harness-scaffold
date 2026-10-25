@@ -200,12 +200,7 @@ file_has    "reset 记录原因" process/specs/active/t-good/.gates "需求变�
 file_has    ".gates 保留 g1" process/specs/active/t-good/.gates "g1"
 expect_fail "未知门被拒" "未知门" bash scripts/ai-gate.sh pass t-good g4
 
-section "6. 红线基线"
-expect_fail "baseline 拒绝非 TTY 确认" "TTY" bash -c 'bash scripts/ai-gate.sh baseline </dev/null'
-printf '\n# tampered\n' >>harness/redlines.conf
-expect_fail "红线漂移时 pass 被阻断" "漂移" bash scripts/ai-gate.sh pass t-good g2
-cp "$TMP/redlines.fixture" harness/redlines.conf
-expect_out  "恢复红线后基线一致" "一致" bash scripts/ai-gate.sh status t-good
+section "6. 红线配置"
 sed -i '/^CR_MAX_ROUNDS=/d' harness/redlines.conf
 expect_fail "缺失配置键时拒绝" "CR_MAX_ROUNDS" bash scripts/ai-gate.sh check t-good g1
 cp "$TMP/redlines.fixture" harness/redlines.conf
