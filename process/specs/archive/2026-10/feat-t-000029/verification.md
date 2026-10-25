@@ -2,6 +2,6 @@
 
 - target: template/AGENTS.md
 - result: PASS
-- state: 378ca3a8044a5153eb74285dd75081e91b5c42f957491bd1b54e60412fe05c28
+- state: e937288db7f488377102836e4e1761f146dde325aa639d176ff6ad6ee04f3396
 - command: bash scripts/ai-verify.sh --spec feat-t-000029 template/AGENTS.md
-- verified_at_utc: 2026-10-25T15:05:06Z
+- verified_at_utc: 2026-10-25T15:08:08Z
