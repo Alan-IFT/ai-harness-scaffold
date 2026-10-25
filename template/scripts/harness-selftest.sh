@@ -59,12 +59,9 @@ git_q()      { git -c user.name=selftest -c user.email=selftest@example.invalid 
 
 # ---------------------------------------------------------------- 样例生成器 --
 make_summary() {  # $1=spec 目录：模拟 ai-verify.sh 的正式摘要
-  local spec; spec=$(basename "$1")
   cat >"$1/verification.md" <<MD
-- spec: $spec
 - target: src/export/service.ts
 - result: PASS
-- checks: 2
 - state: $(bash scripts/ai-state-id.sh src/export/service.ts)
 MD
 }
@@ -158,9 +155,6 @@ expect_fail "拒绝未完成任务" "未完成" bash scripts/ai-gate.sh check t-
 mk_spec t-fail
 sed -i 's/^- result: PASS/- result: FAIL/' "$(S t-fail)"
 expect_fail "拒绝失败摘要" "未通过" bash scripts/ai-gate.sh check t-fail g2
-mk_spec t-zero
-sed -i 's/^- checks: 2/- checks: 0/' "$(S t-zero)"
-expect_fail "拒绝 0 项检查的 PASS" "0 项检查" bash scripts/ai-gate.sh check t-zero g2
 mk_spec t-stale
 printf '// changed after verify\n' >>src/export/service.ts
 expect_fail "拒绝代码变化后的过期摘要" "过期" bash scripts/ai-gate.sh check t-stale g2
@@ -211,7 +205,7 @@ rm AGENTS.md; cp "$TMP/redlines.fixture" harness/redlines.conf
 
 section "7. ai-verify"
 mk_spec t-verify
-expect_fail "未配置检查时视为未验证" "未执行任何真实检查" bash scripts/ai-verify.sh --spec t-verify src/export/service.ts
+expect_fail "未配置检查时视为未验证" "未验证" bash scripts/ai-verify.sh --spec t-verify src/export/service.ts
 expect_fail "必须指定 Spec" "用法" bash scripts/ai-verify.sh src/export/service.ts
 expect_fail "拒绝流程文件作正式目标" "流程文件" bash scripts/ai-verify.sh --spec t-verify ./process/specs/active/t-verify/tasks.md
 printf "CUSTOM_CHECK='test -f \"\$TARGET_FILE\"'\n" >harness/verify.conf

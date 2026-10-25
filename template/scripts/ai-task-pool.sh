@@ -3,7 +3,6 @@
 set -euo pipefail
 
 POOL=process/task-pool
-. "$(dirname "${BASH_SOURCE[0]}")/ai-config.sh" || exit 1
 usage() {
   cat <<'EOF'
 用法：
@@ -36,11 +35,7 @@ lock_pool() {
   mkdir "$POOL/.lock" 2>/dev/null || die "任务池正被另一进程修改；稍后重试（若异常中断，核实后移除 $POOL/.lock）"
   trap cleanup_lock EXIT
 }
-cleanup_lock() {
-  [ -z "${LINK_TMP:-}" ] || rm -f -- "$LINK_TMP"
-  [ -z "${START_SPEC:-}" ] || rm -rf -- "$START_SPEC"
-  rmdir "$POOL/.lock"
-}
+cleanup_lock() { rmdir "$POOL/.lock"; }
 spec_location() {
   local spec=$1
   [ -d "process/specs/active/$spec" ] && { printf '进行中'; return; }
@@ -112,10 +107,8 @@ case "${1:-}" in
       n=$((10#${id#T-}))
       [ "$n" -le "$max" ] || max=$n
     done
-    [ "$max" -lt 999999 ] || die "任务 ID 已用尽"
     printf -v id 'T-%06d' "$((max + 1))"
     f="$POOL/$id.md"
-    [ ! -e "$f" ] || die "任务文件已存在：$f"
     {
       printf '# %s\n\n' "$id"
       printf -- '- 队列状态: 待办\n- 关联 Spec: 无\n- 创建日期: %s\n\n' "$(date +%Y-%m-%d)"
@@ -204,22 +197,9 @@ case "${1:-}" in
     task_id=${row%%|*}
     f=$(task_file "$task_id")
     feat="feat-${task_id,,}"
-    [ "$(field "$f" '关联 Spec')" = 无 ] && [ "$(field "$f" '队列状态')" = 待办 ] || die "任务不是未关联的待办：$task_id"
-    [ ! -e "process/specs/active/$feat" ] || die "Spec ID 已占用：$feat"
-    if find process/specs/archive -mindepth 2 -maxdepth 2 -type d -name "$feat" -print -quit 2>/dev/null | grep -q .; then
-      die "Spec ID 已归档，不能重用：$feat"
-    fi
-    LINK_TMP=$(mktemp "$POOL/.link.XXXXXX") || die "无法暂存任务关联"
-    sed "s/^- 关联 Spec: 无$/- 关联 Spec: $feat/" "$f" >"$LINK_TMP" || die "无法暂存任务关联"
-    [ "$(field "$LINK_TMP" '关联 Spec')" = "$feat" ] || die "任务关联字段无效"
-    AI_HARNESS_SOURCE_TASK="$f" bash scripts/ai-new-spec.sh "$feat" || die "创建 Spec 失败；任务仍未关联"
-    START_SPEC="process/specs/active/$feat"
-    mv -f -- "$LINK_TMP" "$f" || die "无法更新任务关联；正在回滚新建 Spec"
-    LINK_TMP=""
-    START_SPEC=""
-    if [ -e "$POOL/NEXT" ] && [ "$(cat "$POOL/NEXT")" = "$task_id" ]; then
-      rm -f -- "$POOL/NEXT"
-    fi
+    AI_HARNESS_SOURCE_TASK="$f" bash scripts/ai-new-spec.sh "$feat" >/dev/null || die "创建 Spec 失败；任务仍未关联"
+    sed -i "s/^- 关联 Spec: 无$/- 关联 Spec: $feat/" "$f"
+    [ "$(cat "$POOL/NEXT" 2>/dev/null)" != "$task_id" ] || rm -f -- "$POOL/NEXT"
     printf '✅ %s 已关联 %s。先读任务原件，写完需求与方案后过 g1（计划）。\n' "$task_id" "$feat"
     ;;
   -h|--help|help) usage ;;

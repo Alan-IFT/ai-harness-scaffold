@@ -6,11 +6,7 @@ set -uo pipefail
 target="${1:-}"
 [ -f "$target" ] || { echo "目标文件不存在：$target" >&2; exit 1; }
 
-hash_stream() {
-  if command -v sha256sum >/dev/null 2>&1; then sha256sum | awk '{print $1}'
-  elif command -v shasum >/dev/null 2>&1; then shasum -a 256 | awk '{print $1}'
-  else cksum | awk '{print $1 "-" $2}'; fi
-}
+hash_stream() { sha256sum | awk '{print $1}'; }
 hash_file() { hash_stream < "$1"; }
 
 {
