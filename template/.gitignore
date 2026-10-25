@@ -10,10 +10,10 @@ coverage/
 !.env.example
 
 # 增量验证产物：本地证据，不入库（由 scripts/ai-verify.sh 生成）
-docs/specs/active/*/reports/
-docs/specs/archive/*/*/reports/
+process/specs/active/*/reports/
+process/specs/archive/*/*/reports/
 # 同一目标连续失败计数（黄卡依据，临时状态，不入库）
-docs/specs/active/*/.attempts
+process/specs/active/*/.attempts
 
 # 编辑器 / 系统杂项
 .DS_Store

@@ -19,17 +19,20 @@ case "$FEAT_NAME" in
     ;;
 esac
 
-TARGET_DIR="docs/specs/active/$FEAT_NAME"
+. "$(dirname "${BASH_SOURCE[0]}")/ai-config.sh" || exit 1
+ai_require_process_layout || exit 1
+
+TARGET_DIR="process/specs/active/$FEAT_NAME"
 if [ -d "$TARGET_DIR" ]; then
   echo "⚠️  目录已存在，未覆盖: $TARGET_DIR"
   exit 1
 fi
-ARCHIVED_DIR=$(find docs/specs/archive -mindepth 2 -maxdepth 2 -type d -name "$FEAT_NAME" -print -quit 2>/dev/null)
+ARCHIVED_DIR=$(find process/specs/archive -mindepth 2 -maxdepth 2 -type d -name "$FEAT_NAME" -print -quit 2>/dev/null)
 if [ -n "$ARCHIVED_DIR" ]; then
   echo "❌ 错误: Spec ID 已归档，不能重用: $ARCHIVED_DIR"
   exit 1
 fi
-TEMPLATE_DIR="${AI_HARNESS_TEMPLATE_DIR:-docs/specs/_templates}"
+TEMPLATE_DIR="${AI_HARNESS_TEMPLATE_DIR:-process/specs/_templates}"
 if [ ! -d "$TEMPLATE_DIR" ]; then
   echo "❌ 错误: 找不到 Spec 模板目录: $TEMPLATE_DIR（请在仓库根目录运行）"
   exit 1
@@ -44,14 +47,14 @@ for file in requirements.md design.md tasks.md acceptance.md verification.md; do
 done
 
 if [ -n "${AI_HARNESS_SOURCE_TASK:-}" ]; then
-  [[ "$AI_HARNESS_SOURCE_TASK" =~ ^docs/task-pool/T-[0-9]{6}\.md$ ]] && [ -f "$AI_HARNESS_SOURCE_TASK" ] || {
+  [[ "$AI_HARNESS_SOURCE_TASK" =~ ^process/task-pool/T-[0-9]{6}\.md$ ]] && [ -f "$AI_HARNESS_SOURCE_TASK" ] || {
     echo "❌ 错误: 任务来源文件无效: $AI_HARNESS_SOURCE_TASK"
     exit 1
   }
 fi
 
-mkdir -p docs/specs/active
-BUILD_DIR=$(mktemp -d "docs/specs/active/.$FEAT_NAME.tmp.XXXXXX") || exit 1
+mkdir -p process/specs/active
+BUILD_DIR=$(mktemp -d "process/specs/active/.$FEAT_NAME.tmp.XXXXXX") || exit 1
 cleanup_build() {
   [ -n "${BUILD_DIR:-}" ] || return 0
   for file in requirements.md design.md tasks.md acceptance.md verification.md requirements.md.tmp; do

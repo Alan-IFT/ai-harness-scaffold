@@ -25,10 +25,10 @@ check_lines() {
 check_lines "AGENTS.md" "$AGENTS_MAX_LINES"
 check_lines "MEMORY.md" "$MEMORY_MAX_LINES"
 
-if [ -d docs/specs/active ]; then
-  ACTIVE_COUNT=$(find docs/specs/active -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
+if [ -d process/specs/active ]; then
+  ACTIVE_COUNT=$(find process/specs/active -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
   if [ "$ACTIVE_COUNT" -gt "$ACTIVE_SPECS_LIMIT" ]; then
-    echo "⚠️  [防膨胀告警] docs/specs/active/ 积压 $ACTIVE_COUNT 个功能未归档（上限 $ACTIVE_SPECS_LIMIT）。"
+    echo "⚠️  [防膨胀告警] process/specs/active/ 积压 $ACTIVE_COUNT 个功能未归档（上限 $ACTIVE_SPECS_LIMIT）。"
     echo "    处理：按 .agents/skills/archive-spec.md 归档已完成功能。"
     STATUS=1
   fi

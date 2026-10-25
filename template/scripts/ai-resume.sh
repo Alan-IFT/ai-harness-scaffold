@@ -5,6 +5,8 @@
 # owner 保留完整接手；worker 和 review 只给各自需要的项目入口。
 # ==============================================================================
 set -u
+. "$(dirname "${BASH_SOURCE[0]}")/ai-config.sh" || exit 1
+ai_require_process_layout || exit 1
 
 usage() {
   cat <<'EOF'
@@ -19,7 +21,7 @@ EOF
 fail() { echo "❌ $*" >&2; usage >&2; exit 2; }
 valid_feat() {
   case "$1" in ''|.|..|*[!A-Za-z0-9._-]*) return 1 ;; esac
-  [ -d "docs/specs/active/$1" ]
+  [ -d "process/specs/active/$1" ]
 }
 
 ROLE="${1:-}"
@@ -36,7 +38,7 @@ case "$ROLE" in
     TASK=$3
     valid_feat "$FEATURE" || fail "找不到活跃 Spec 或 ID 无效：$FEATURE"
     case "$TASK" in ''|0|0*|*[!0-9]*) fail "Task 编号必须是正整数" ;; esac
-    task_file="docs/specs/active/$FEATURE/tasks.md"
+    task_file="process/specs/active/$FEATURE/tasks.md"
     [ -f "$task_file" ] || fail "缺少任务原件：$task_file"
     task_body=$(awk -v task="$TASK" '
       /^## / { if (found) exit }
@@ -73,7 +75,7 @@ case "$ROLE" in
     git rev-parse --verify "$BASE^{commit}" >/dev/null 2>&1 || fail "无法解析基准提交：$BASE"
     git merge-base --is-ancestor "$BASE" HEAD >/dev/null 2>&1 || fail "基准提交不是当前 HEAD 的祖先；请提供本需求开始前的提交"
     git diff --name-only "$BASE"...HEAD >/dev/null 2>&1 || fail "无法读取从基准到 HEAD 的完整提交 diff"
-    spec_dir="docs/specs/active/$FEATURE"
+    spec_dir="process/specs/active/$FEATURE"
     for file in requirements.md design.md tasks.md verification.md; do
       [ -f "$spec_dir/$file" ] || fail "缺少审查原件：$spec_dir/$file"
     done
@@ -115,9 +117,9 @@ fi
 
 # 2. 活跃 spec 与断点
 echo -e "\n[2] 活跃 Spec 与断点"
-if [ -d docs/specs/active ]; then
+if [ -d process/specs/active ]; then
   found=0
-  for spec in docs/specs/active/*/; do
+  for spec in process/specs/active/*/; do
     [ -d "$spec" ] || continue
     [ -z "$FEATURE" ] || [ "$(basename "$spec")" = "$FEATURE" ] || continue
     found=1

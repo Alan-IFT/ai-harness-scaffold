@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# 项目任务池：任务原文保存在 docs/task-pool；进度由关联 Spec 的位置派生。
+# 项目任务池：任务原文保存在 process/task-pool；进度由关联 Spec 的位置派生。
 set -euo pipefail
 
-POOL=docs/task-pool
+POOL=process/task-pool
+. "$(dirname "${BASH_SOURCE[0]}")/ai-config.sh" || exit 1
+ai_require_process_layout || exit 1
 usage() {
   cat <<'EOF'
 用法：
@@ -48,8 +50,8 @@ cleanup_lock() {
 }
 spec_location() {
   local spec=$1
-  [ -d "docs/specs/active/$spec" ] && { printf '进行中'; return; }
-  if find docs/specs/archive -mindepth 2 -maxdepth 2 -type d -name "$spec" -print -quit 2>/dev/null | grep -q .; then
+  [ -d "process/specs/active/$spec" ] && { printf '进行中'; return; }
+  if find process/specs/archive -mindepth 2 -maxdepth 2 -type d -name "$spec" -print -quit 2>/dev/null | grep -q .; then
     printf '已归档'
   else
     printf '关联异常'
@@ -171,7 +173,7 @@ case "${1:-}" in
     ;;
   next)
     [ "$#" -eq 1 ] || die "next 不接受参数"
-    for specdir in docs/specs/active/*/; do
+    for specdir in process/specs/active/*/; do
       [ -d "$specdir" ] || continue
       spec=${specdir%/}; spec=${spec##*/}
       printf '续做活跃 Spec：%s；运行 bash scripts/ai-resume.sh owner %s\n' "$spec" "$spec"
@@ -197,19 +199,19 @@ case "${1:-}" in
     valid_feat "$feat" || die "Spec ID 无效：$feat"
     lock_pool
     project_root=$(pwd -P)
-    for path in docs docs/specs docs/specs/active docs/specs/archive; do
+    for path in process process/specs process/specs/active process/specs/archive; do
       [ ! -L "$path" ] || die "归档路径含符号链接：$path"
     done
-    source_dir="docs/specs/active/$feat"
+    source_dir="process/specs/active/$feat"
     [ -d "$source_dir" ] && [ ! -L "$source_dir" ] || die "活跃 Spec 不存在或是符号链接：$feat"
     month=$(date +%Y-%m)
-    mkdir -p docs/specs/archive
-    target_parent="docs/specs/archive/$month"
+    mkdir -p process/specs/archive
+    target_parent="process/specs/archive/$month"
     [ ! -L "$target_parent" ] || die "归档路径含符号链接：$target_parent"
     mkdir -p "$target_parent"
-    active_root=$(cd docs/specs/active && pwd -P)
+    active_root=$(cd process/specs/active && pwd -P)
     archive_root=$(cd "$target_parent" && pwd -P)
-    [ "$active_root" = "$project_root/docs/specs/active" ] \
+    [ "$active_root" = "$project_root/process/specs/active" ] \
       && [ "$archive_root" = "$project_root/$target_parent" ] \
       || die "归档路径超出当前项目"
     [ ! -e "$target_parent/$feat" ] && [ ! -L "$target_parent/$feat" ] \
@@ -233,7 +235,7 @@ case "${1:-}" in
       [ "$(field "$f" '关联 Spec')" = 无 ] && [ "$(field "$f" '队列状态')" = 待办 ] || die "任务不是未关联的待办：$task_id"
       case "$(field "$f" '优先级')" in P0|P1|P2) ;; *) die "任务优先级无效：$task_id" ;; esac
     fi
-    for specdir in docs/specs/active/*/; do
+    for specdir in process/specs/active/*/; do
       [ -d "$specdir" ] || continue
       if [ "$command" = start-next ]; then
         spec=${specdir%/}; spec=${spec##*/}
@@ -251,15 +253,15 @@ case "${1:-}" in
     fi
     [ "$(field "$f" '关联 Spec')" = 无 ] && [ "$(field "$f" '队列状态')" = 待办 ] || die "任务不是未关联的待办：$task_id"
     case "$(field "$f" '优先级')" in P0|P1|P2) ;; *) die "任务优先级无效：$task_id" ;; esac
-    [ ! -e "docs/specs/active/$feat" ] || die "Spec ID 已占用：$feat"
-    if find docs/specs/archive -mindepth 2 -maxdepth 2 -type d -name "$feat" -print -quit 2>/dev/null | grep -q .; then
+    [ ! -e "process/specs/active/$feat" ] || die "Spec ID 已占用：$feat"
+    if find process/specs/archive -mindepth 2 -maxdepth 2 -type d -name "$feat" -print -quit 2>/dev/null | grep -q .; then
       die "Spec ID 已归档，不能重用：$feat"
     fi
     LINK_TMP=$(mktemp "$POOL/.link.XXXXXX") || die "无法暂存任务关联"
     sed "s/^- 关联 Spec: 无$/- 关联 Spec: $feat/" "$f" >"$LINK_TMP" || die "无法暂存任务关联"
     [ "$(field "$LINK_TMP" '关联 Spec')" = "$feat" ] || die "任务关联字段无效"
     AI_HARNESS_SOURCE_TASK="$f" bash scripts/ai-new-spec.sh "$feat" || die "创建 Spec 失败；任务仍未关联"
-    START_SPEC="docs/specs/active/$feat"
+    START_SPEC="process/specs/active/$feat"
     mv -f -- "$LINK_TMP" "$f" || die "无法更新任务关联；正在回滚新建 Spec"
     LINK_TMP=""
     START_SPEC=""

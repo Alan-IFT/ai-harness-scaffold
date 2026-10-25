@@ -9,6 +9,8 @@
 # 自定义：harness/verify.conf 里写  CUSTOM_CHECK="<命令，可用 $TARGET_FILE>"
 # ==============================================================================
 set -u
+. "$(dirname "${BASH_SOURCE[0]}")/ai-config.sh" || exit 1
+ai_require_process_layout || exit 1
 
 QUICK=0
 if [ "${1:-}" = "--quick" ]; then QUICK=1; shift; fi
@@ -42,8 +44,8 @@ if [ "$QUICK" -eq 0 ]; then
   stable_target="$TARGET_FILE"
   while [ "${stable_target#./}" != "$stable_target" ]; do stable_target="${stable_target#./}"; done
   case "$stable_target" in
-    docs/specs/*|docs/metrics.md|docs/task-pool/*)
-      echo "❌ 正式验证目标不能选归档时会移动或更新的流程文件: $TARGET_FILE" >&2
+    process/*)
+      echo "❌ 正式验证目标不能选流程文件（process/ 下）: $TARGET_FILE" >&2
       exit 1 ;;
   esac
 fi
@@ -52,14 +54,14 @@ export TARGET_FILE
 # 验证前确定归属，避免多任务时把结果写错 Spec。
 REPORT_DIR=""; SPEC_DIR=""
 if [ -n "$SPEC_NAME" ]; then
-  SPEC_DIR="docs/specs/active/$SPEC_NAME"
+  SPEC_DIR="process/specs/active/$SPEC_NAME"
   [ -d "$SPEC_DIR" ] || { echo "❌ 找不到活跃 Spec: $SPEC_NAME" >&2; exit 1; }
-elif [ -d docs/specs/active ]; then
+elif [ -d process/specs/active ]; then
   count=0; only=""
   while IFS= read -r d; do
     [ -n "$d" ] || continue
     count=$((count + 1)); only="$d"
-  done < <(find docs/specs/active -mindepth 1 -maxdepth 1 -type d 2>/dev/null)
+  done < <(find process/specs/active -mindepth 1 -maxdepth 1 -type d 2>/dev/null)
   if [ "$count" -gt 1 ]; then
     echo "❌ 有 $count 个活跃 Spec，请显式指定 --spec <feature>" >&2
     exit 1
@@ -72,7 +74,6 @@ fi
 [ -n "$SPEC_DIR" ] && REPORT_DIR="$SPEC_DIR/reports"
 
 # --- 红线预算（当前项目 harness/redlines.conf 是唯一阈值来源）---
-. "$(dirname "${BASH_SOURCE[0]}")/ai-config.sh" || exit 1
 ai_config_load harness/redlines.conf VERIFY_MAX_SECONDS VERIFY_MAX_ATTEMPTS || exit 1
 
 START_TIME=$(date +%s)

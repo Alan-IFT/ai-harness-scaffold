@@ -1,6 +1,6 @@
 .dsh-ops-update-*.lock
 .ai-harness/
-docs/specs/active/*/reports/
-docs/specs/archive/*/*/reports/
-docs/specs/active/*/.attempts
+process/specs/active/*/reports/
+process/specs/archive/*/*/reports/
+process/specs/active/*/.attempts
 harness/.redlines.baseline

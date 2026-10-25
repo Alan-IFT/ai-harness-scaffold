@@ -1,6 +1,6 @@
 # 物理屏蔽历史 Spec 与验证产物，防止污染 AI 检索上下文（只屏蔽「检索」，不禁止写入）
-docs/specs/archive/**
-docs/specs/active/*/reports/**
+process/specs/archive/**
+process/specs/active/*/reports/**
 node_modules/**
 dist/**
 build/**

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 当前代码状态的便携指纹：全仓计算，只排除流程记录。
-# 流程记录（docs/specs/**、docs/metrics.md、docs/task-pool/**）不参与指纹；索引内容提交后保持稳定。
+# 流程记录统一放在 process/ 下，不参与指纹；索引内容提交后保持稳定。
 set -uo pipefail
 
 # --spec 为兼容旧调用保留，不影响结果。
@@ -18,10 +18,10 @@ hash_file() { hash_stream < "$1"; }
 {
   if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     printf 'global\\0'
-    git ls-files --stage -z -- . ':(exclude)docs/specs/**' ':(exclude)docs/metrics.md' ':(exclude)docs/task-pool/**'
-    git diff --binary -- . ':(exclude)docs/specs/**' ':(exclude)docs/metrics.md' ':(exclude)docs/task-pool/**'
+    git ls-files --stage -z -- . ':(exclude)process/**'
+    git diff --binary -- . ':(exclude)process/**'
     while IFS= read -r -d '' path; do
-      case "$path" in docs/specs/*|docs/metrics.md|docs/task-pool/*) continue ;; esac
+      case "$path" in process/*) continue ;; esac
       [ -f "$path" ] || continue
       printf 'untracked:%s\\0' "$path"
       hash_file "$path"

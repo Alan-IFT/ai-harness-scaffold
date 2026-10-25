@@ -3,7 +3,7 @@
 - **创建时间**: 2026-10-24
 - **状态**: Approved
 - **需求来源**: `docs/task-pool/T-000033.md`（原始需求与更新）
-- 原始问题 / 原话：ADR-0002 阶段 R2，见 `docs/task-pool/T-000033.md`。ADR-0002 阶段 R2（简化指纹）：
+- 原始问题 / 原话：ADR-0002 阶段 R2，见 `process/task-pool/T-000033.md`（迁移前为 `docs/task-pool/`）。ADR-0002 阶段 R2（简化指纹）：
   - 流程记录 `docs/specs`、`docs/metrics.md`、`docs/task-pool` 迁入可见顶层目录 `process/`；`ai-state-id.sh` 与 `ai-verify.sh` 只排除该目录；删除 design §4 局部清单模式。
   - upgrade 迁移下游项目：检测到活跃 Spec 或已有 `process/` 时拒绝。
   - 与 R1 同一版本发布。
@@ -75,7 +75,7 @@
 
 | 编号 | 验收点 | 通过条件 | 不通过条件 | 量化指标 / 证据 |
 | :-- | :-- | :-- | :-- | :-- |
-| AC-01 | 新路径 | `grep -rn 'docs/specs\|docs/metrics\|docs/task-pool'` 在 `template/`、`scripts/`、`skill/`、`README.md`、`AGENTS.md` 中无命中；`bin/ai-harness` 只在迁移逻辑中出现旧路径 | 其他位置仍引用旧路径 | `grep` 输出 |
+| AC-01 | 新路径 | `grep -rn 'docs/specs\|docs/metrics\|docs/task-pool'` 在 `template/`、`scripts/`、`skill/`、`README.md`、`AGENTS.md` 中只剩迁移相关命中：`bin/ai-harness` 迁移逻辑、`ai-config.sh` 旧布局守卫（ERR-02 必须识别旧路径）及其自检用例、`retrofit-legacy.md` 与 README 的升级说明 | 其他位置仍引用旧路径 | `grep` 输出 |
 | AC-02 | 指纹简化 | `ai-state-id.sh` 不含 manifest、scope 相关函数，行数小于 145；自检覆盖：`process/` 下改动不改变指纹，`process-x/` 下改动改变指纹，`--spec` 与不带参数结果相同 | 任一项不符 | `wc -l`、自检断言 |
 | AC-03 | 迁移回归 | `tests/cli-upgrade.sh` 覆盖：旧布局无活跃 Spec 时迁移成功且任务、归档、度量内容不变；有活跃 Spec 时拒绝且快照不变；已有 `process/` 时拒绝；`--dry-run` 快照不变；迁移后再次 upgrade 无冲突 | 任一用例不符 | 回归断言 |
 | AC-04 | 旧路径提示 | 自检中新版脚本在仅有 `docs/specs/` 的项目里，`ai-gate.sh status` 与 `ai-task-pool.sh next` 返回非零并提示 upgrade | 继续在旧路径工作或无提示 | 自检断言 |

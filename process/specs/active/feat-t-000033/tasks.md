@@ -1,9 +1,9 @@
 # 原子执行队列与跨工具接力棒 (Tasks & Handoff): feat-t-000033
 
-- **需求文档**: `docs/specs/active/feat-t-000033/requirements.md`
-- **设计文档**: `docs/specs/active/feat-t-000033/design.md`
+- **需求文档**: `process/specs/active/feat-t-000033/requirements.md`
+- **设计文档**: `process/specs/active/feat-t-000033/design.md`
 - 追溯版本：1（与 design.md 配套；旧 Spec 无此行仍沿用旧门禁）
-- **当前阶段**: 以 `bash scripts/ai-gate.sh status feat-t-000033` 为准。`docs/specs/active/feat-t-000033/.gates` 由脚本维护，**禁止手改**。
+- **当前阶段**: 以 `bash scripts/ai-gate.sh status feat-t-000033` 为准。`process/specs/active/feat-t-000033/.gates` 由脚本维护，**禁止手改**。
 
 ## 0. 阶段门
 以 `bash scripts/ai-gate.sh status feat-t-000033` 的 `.gates` 结果为准；规则见 `AGENTS.md`。此处只记未完成任务，不复制阶段表。回滚后用 `ai-gate.sh reset` 使受影响门失效。
@@ -11,7 +11,7 @@
 ## 1. 上下文清单（开工前先填，避免乱读）
 - **必读**：`requirements.md`、`design.md`、本文件、涉及模块的活文档
 - **条件读**（命中才读）：`bin/ai-harness` 的 `cmd_upgrade`（Task 3）、`tests/cli-upgrade.sh`、ADR-0002 §3.3
-- **明确不读**：`docs/specs/archive/**`（迁移后为 `process/specs/archive/**`）、全量测试输出
+- **明确不读**：`process/specs/archive/**`、全量测试输出
 - **相关记忆**（`MEMORY.md` 中与本任务有关的条目；没有写「无」）：无
 - **本次不变量**（改坏即视为回归）：门禁 G1~G7 行为不变；任务池命令行为不变；根目录 `harness/redlines.conf` 不改；归档 Spec 与任务原文内容原样移动；`--dry-run` 只读。
 
@@ -29,7 +29,7 @@
   - **完成判据**: scoped 函数与分支全部删除；`--spec` 与无参数指纹相同；自检全过
   - **验证命令**: `bash scripts/harness-selftest.sh`
 
-- [ ] **Task 2: 路径迁移到 process/ 与本仓库自迁移（同一提交）** `[<<< CURRENT ACTIVE TASK]`
+- [x] **Task 2: 路径迁移到 process/ 与本仓库自迁移（同一提交）**
   - **涉及文件**: `template/scripts/*.sh`、`template/process/**`（`git mv`）、`template/harness/redlines.conf`、`template/.gitignore`、`template/.cursorignore`、`template/.claudeignore`、`process/**`（`git mv`）、`.gitignore`、`scripts/ai-new-spec.sh`、`AGENTS.md`、`MEMORY.md`、`docs/architecture/00-INDEX.md`
   - **对应需求 / 验收**: REQ-01, REQ-02, REQ-03, ERR-02 / AC-01, AC-02, AC-04, AC-05
   - **对应设计**: design.md §1、§2、§3.2、§4
@@ -37,7 +37,7 @@
   - **验证命令**: `bash scripts/harness-selftest.sh && bash scripts/ai-gate.sh status feat-t-000033`
   - **检查点**: 有（检查点 1，Agent 自查后再进入 Task 3）
 
-- [ ] **Task 3: upgrade 迁移下游与 2.0.0**
+- [ ] **Task 3: upgrade 迁移下游与 2.0.0** `[<<< CURRENT ACTIVE TASK]`
   - **涉及文件**: `bin/ai-harness`、`tests/cli-upgrade.sh`
   - **对应需求 / 验收**: REQ-04, REQ-05, ERR-01 / AC-03, AC-05
   - **对应设计**: design.md §1、§2、§3.2、§3.3
@@ -72,12 +72,12 @@
 > **致下一个接手的 AI Agent (Claude / Codex / DeepSeek)**：
 > 上一个工具可能因额度耗尽（429）或超时中断。请结合 `git diff` 与本区继续，**严禁推倒重写已通过验证的代码**！
 
-- **当前正在执行的任务**: `Task 2`
+- **当前正在执行的任务**: `Task 3`
 - **前置依赖 / 并行关系**: 无（并行任务须写明依赖和各自负责的文件）
-- **已完成的小步进展**: Task 1 完成：ai-state-id.sh 34 行，自检 206 项全过。
+- **已完成的小步进展**: Task 1、2 完成：指纹全仓模式；模板与本仓库已迁到 process/；旧布局守卫在五个脚本入口；自检 214 项全过。AC-01 已注明守卫与升级说明可引用旧路径（与 ERR-02 的固有矛盾）。
 - **正在编辑的文件**（下一个 Agent 必须**重新读**这些文件，不要凭记忆）：
   - 
 - **已排除的死胡同 / 错误方案 (勿重复踩坑)**: 无
 - **上次验证与未验证改动**: 看 `verification.md`；G4 前若代码内容变化，重跑正式验证。`ai-resume.sh owner <feat>` 会提示摘要是否过期；G5 用 `review <feat> <base-ref>` 检查审查证据。
-- **下一步立即执行的唯一动作 (Next Immediate Action)**：开始 Task 2：git mv 模板三项并改脚本路径常量。
+- **下一步立即执行的唯一动作 (Next Immediate Action)**：开始 Task 3：bin/ai-harness 加 legacy_layout、migrate_process_layout、rewrite_legacy_refs。
 - **knowledge_feedback**（若 `MEMORY.md`、规则或模块活文档与代码不符，记在这里，GC 时修正或删除）：
