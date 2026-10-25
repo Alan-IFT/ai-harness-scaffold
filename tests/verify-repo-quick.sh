@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 本仓库开发期短检查；不产生正式 G4 验证摘要。
+# 本仓库开发期短检查；不产生正式验证摘要。
 set -euo pipefail
 
 case "${TARGET_FILE:-}" in

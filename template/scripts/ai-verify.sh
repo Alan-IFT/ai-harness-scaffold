@@ -184,7 +184,7 @@ RESULT=PASS; [ "$FAIL" -ne 0 ] && RESULT=FAIL
 if [ "$QUICK" -eq 1 ]; then
   if [ "$RESULT" = FAIL ]; then tail -n 20 "$LOG" | redact | sed 's/^/   /'; fi
   rm -f "$LOG"
-  echo "快速检查：$RESULT（$CHECKS 项，${DUR}s）；不生成 G4 验证摘要"
+  echo "快速检查：$RESULT（$CHECKS 项，${DUR}s）；不生成正式验证摘要"
   [ "$RESULT" = PASS ]
   exit $?
 fi

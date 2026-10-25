@@ -4,7 +4,7 @@
 # 用法：把本文件复制为 harness/verify.conf，再改成你自己项目的一条增量检查命令。
 #       ai-verify.sh 会用 `bash -c "$CUSTOM_CHECK"` 执行，其中 $TARGET_FILE 是待验证文件。
 #       没有真实工具链时，配置 CUSTOM_CHECK 是让验证"真的发生"的最短路径。
-#       可另配 QUICK_CHECK 供开发中 --quick 使用；quick 不写 G4 摘要，零检查会失败。
+#       可另配 QUICK_CHECK 供开发中 --quick 使用；quick 不写验证摘要，零检查会失败。
 #
 # 示例（按你的技术栈取消注释其中一条）：
 #   CUSTOM_CHECK='npx eslint "$TARGET_FILE" --max-warnings=0'

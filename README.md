@@ -54,13 +54,13 @@ bash bin/ai-harness install-skill --host dsh
 
 ```bash
 bash scripts/ai-resume.sh owner  # 主 Agent 接手快照：门状态、WIP、git 残局
-bash scripts/ai-gate.sh status   # G1~G7 阶段门
+bash scripts/ai-gate.sh status   # 三道门：计划 / 验证 / 审查
 bash scripts/ai-task-pool.sh next  # AI 接手时查看当前工作；维护者直接用自然语言说需求
 ```
 
-维护者直接告诉 AI 新需求或补充，无需运行命令。AI 用 `ai-task-pool.sh intake` 自动保存原话：有活跃 Spec 就把新需求排队并续做；没有活跃 Spec 就启动人工指定或最早录入的待办，空池则启动刚提出的需求。默认按录入先后，旧 P0/P1/P2 字段仅保留兼容；说“先做某项”即可让 AI 持久指定下一项，仅在该项启动后清除。归档与自动领取共用任务池锁，归档完成后由 AI 接续下一项；新会话运行 `ai-resume.sh owner` 会提示续做的 Spec 或下一条待办。已开始的需求变化会同步修订 Spec 与受影响门禁。旧 `docs/INTAKE.md` 保留历史。需求澄清先明确完成后希望促成的行动、效果与观察方式；设计时用原始证据低成本检验关键前提，不因实现困难擅自降低目标。①低风险小改动可用单步紧凑设计；②③先记录人的风险或架构决定，并在 G3 列出边界样本及 REQ/ERR/AC 到设计的覆盖矩阵；任务引用设计章节，实施前回读原文锚点。④完成分类与人工移交后，门禁会阻止继续自动开发。设计时核对间接消费者与实际检索范围。独立 CR 对照需求原文、相关记忆和本次修改的 AI 协作文件，并核对 AC 措辞与验收证据是否支持结论；验收模板记录发布与回访结果，后续问题仅在有证据时作为候选提出。
+维护者直接告诉 AI 新需求或补充，无需运行命令。AI 用 `ai-task-pool.sh intake` 自动保存原话：有活跃 Spec 就把新需求排队并续做；没有活跃 Spec 就启动人工指定或最早录入的待办，空池则启动刚提出的需求。默认按录入先后，旧 P0/P1/P2 字段仅保留兼容；说“先做某项”即可让 AI 持久指定下一项，仅在该项启动后清除。归档与自动领取共用任务池锁，归档完成后由 AI 接续下一项；新会话运行 `ai-resume.sh owner` 会提示续做的 Spec 或下一条待办。已开始的需求变化会同步修订 Spec 与受影响门禁。旧 `docs/INTAKE.md` 保留历史。需求澄清后写 requirements.md（原话、是否需人决定、验收标准）与 tasks.md（方案、任务、WIP），过 g1（计划）再编码；任务完成后正式验证过 g2；换一个没写过代码的上下文审查过 g3，涉及数据、权限、发布或架构取舍的需求还要人当次决定。门只检查骗不过的信号，文字质量交给独立审查与人。
 
-G6 由 Agent 执行冒烟和 AC 核对，并把命令、环境、结果写入 `acceptance.md`。①证据充分时自动收尾；②③把风险和结果交给人当次决定。`acceptance.md` 每项以「通过」或「不通过」开头，门禁只认开头的结论，证据与结论是否一致由独立审查和人核对。用户不必填写 Markdown 或亲跑命令。本地文件不是身份认证，需要强制审批时使用项目自己的权限机制。
+人的决定记在 `review.md` 的「人工决定」与「决策来源」，由 Agent 记录人的原话结论，用户不必填写 Markdown 或亲跑命令。本地文件不是身份认证，需要强制审批时使用项目自己的权限机制。
 
 ## 两种模式的区别
 
@@ -124,8 +124,8 @@ bash scripts/harness-selftest.sh
 ```bash
 bash scripts/ai-resume.sh owner feat-example
 bash scripts/ai-resume.sh worker feat-example 2          # 只接 Task 2
-bash scripts/ai-resume.sh review feat-example HEAD~1      # G5：改为本次变更前的实际提交
-bash scripts/ai-verify.sh --quick --spec feat-example src/example.ts  # 需配置 QUICK_CHECK；不生成 G4 摘要
+bash scripts/ai-resume.sh review feat-example HEAD~1      # 独立审查：改为本次变更前的实际提交
+bash scripts/ai-verify.sh --quick --spec feat-example src/example.ts  # 需配置 QUICK_CHECK；不生成验证摘要
 bash scripts/ai-verify.sh --spec feat-example src/example.ts
 bash scripts/ai-gate.sh status feat-example
 bash scripts/ai-gate.sh metrics feat-example
@@ -134,8 +134,8 @@ bash scripts/ai-gate.sh metrics feat-example
 换 IDE 且使用同一工作区，可直接接手未提交改动；换 worktree 或电脑时，须用 Git 提交或补丁传递未提交代码。
 接手命令必须显式选择 `owner`、`worker` 或 `review`；旧式 `ai-resume.sh [feat]` 会报错并提示新用法。worker 读取指定任务的项目原件；review 独立读取需求、完整相关 diff 与验证摘要，不接收实现者的自评作为审查依据。
 没有 Git 时摘要只能检测目标文件本身的变化，因此完整的跨工作区接力应使用 Git。
-G4 只认不带 `--quick` 的正式验证摘要。状态指纹全仓计算，只排除 `process/`：其下的 Spec、任务池与度量是流程记录，不计入指纹，Spec 进行中收录任务不会使摘要过期。修改相关代码或暂存后请重验；相同索引内容提交后指纹保持稳定。TTY 和本地红线哈希只防误操作；
-首次正式 G4 前，先对照需求原文、AC、设计文件清单和实际交付物，检查 `git status --short` 中的未跟踪、未暂存及已暂存文件；项目检查可同时运行 `git diff --check` 和 `git diff --cached --check`。quick 适合短反馈，不能替代完整验证。本仓库的完整验证先做双区 diff，再跑自检和 CLI 回归；本地报告逐阶段打印耗时，便于依据实测定位慢阶段。
+g2 只认不带 `--quick` 的正式验证摘要。状态指纹全仓计算，只排除 `process/`：其下的 Spec、任务池与度量是流程记录，不计入指纹，Spec 进行中收录任务不会使摘要过期。修改相关代码或暂存后请重验；相同索引内容提交后指纹保持稳定。TTY 和本地红线哈希只防误操作；
+正式验证前，先对照需求原文、AC 和实际交付物，检查 `git status --short` 中的未跟踪、未暂存及已暂存文件；项目检查可同时运行 `git diff --check` 和 `git diff --cached --check`。quick 适合短反馈，不能替代完整验证。本仓库的完整验证先做双区 diff，再跑自检和 CLI 冒烟；本地报告逐阶段打印耗时，便于依据实测定位慢阶段。
 需要强制人工审批时，用目标项目自己的外部权限机制。
 
 ## 设计取舍

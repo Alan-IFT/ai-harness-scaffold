@@ -40,7 +40,7 @@ lock_pool() {
 cleanup_lock() {
   [ -z "${LINK_TMP:-}" ] || rm -f -- "$LINK_TMP"
   if [ -n "${START_SPEC:-}" ]; then
-    for name in requirements.md design.md tasks.md acceptance.md verification.md; do
+    for name in requirements.md tasks.md verification.md; do
       rm -f -- "$START_SPEC/$name"
     done
     rmdir "$START_SPEC/reports" "$START_SPEC" 2>/dev/null || true
@@ -267,7 +267,7 @@ case "${1:-}" in
     if [ -e "$POOL/NEXT" ] && [ "$(cat "$POOL/NEXT")" = "$task_id" ]; then
       rm -f -- "$POOL/NEXT"
     fi
-    printf '✅ %s 已关联 %s。先读任务原件，再完成 G1~G3。\n' "$task_id" "$feat"
+    printf '✅ %s 已关联 %s。先读任务原件，写完需求与方案后过 g1（计划）。\n' "$task_id" "$feat"
     ;;
   -h|--help|help) usage ;;
   *) usage >&2; exit 1 ;;

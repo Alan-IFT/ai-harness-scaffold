@@ -10,9 +10,9 @@
 
 ## 开发
 
-- 维护者直接说需求，主 Agent 判断独立新需求还是已有需求的补充：新需求由 AI 调用 `bash scripts/ai-task-pool.sh intake "原话"` 自动入队并按活跃 Spec、人工指定、收录顺序路由；补充用 `update <T-ID> "补充"`，已开始的任务同步修订 Spec 并回退门。新会话接手或归档后，若无活跃 Spec 且 `next` 指向待办，AI 用 `start-next` 原子选取并启动。维护者说“先做某项”时 AI 用 `prefer <T-ID>` 持久指定下一项；无活跃 Spec 时立即 `start-next`。旧 `docs/INTAKE.md` 保留历史。非平凡变更的需求、设计、任务与 WIP 写进 `process/specs/active/`。阶段门用 `bash scripts/ai-gate.sh check|pass <feat> <gate>`。G6 由 Agent 执行客观核验，②③只把需判断的风险和结果交给人决定；归档时更新 `process/metrics.md`。
+- 维护者直接说需求，主 Agent 判断独立新需求还是已有需求的补充：新需求由 AI 调用 `bash scripts/ai-task-pool.sh intake "原话"` 自动入队并按活跃 Spec、人工指定、收录顺序路由；补充用 `update <T-ID> "补充"`，已开始的任务同步修订 Spec 并回退门。新会话接手或归档后，若无活跃 Spec 且 `next` 指向待办，AI 用 `start-next` 原子选取并启动。维护者说“先做某项”时 AI 用 `prefer <T-ID>` 持久指定下一项；无活跃 Spec 时立即 `start-next`。旧 `docs/INTAKE.md` 保留历史。非平凡变更的需求、方案、任务与 WIP 写进 `process/specs/active/`。三道门（g1 计划、g2 验证、g3 审查）用 `bash scripts/ai-gate.sh check|pass <feat> <gate>`；「需人决定：是」的需求，Agent 只把风险和结果交给人当次决定；归档时更新 `process/metrics.md`。
 - 修改脚手架脚本时编辑 `template/scripts/`，并跑 `bash scripts/harness-selftest.sh`。修改 `bin/` 时至少跑 Bash 语法检查与 `retrofit --dry-run` 冒烟。
-- 开发中用 `bash scripts/ai-verify.sh --quick --spec <feat> <file>` 做短检查；G4 前去掉 `--quick` 跑正式验证，产出可交接的 `verification.md`。详细日志留本地；状态指纹全仓计算，只排除 `process/`。
+- 开发中用 `bash scripts/ai-verify.sh --quick --spec <feat> <file>` 做短检查；g2 前去掉 `--quick` 跑正式验证，产出可交接的 `verification.md`。详细日志留本地；状态指纹全仓计算，只排除 `process/`。
 - `template/AGENTS.md` 与 `template/.agents/skills/` 是交付给目标项目的规则和普通 Markdown 指南；改它们时同步检查 README、CLI 和自检。根目录规则只适用于本仓库开发。
 - 老项目改造必须保护已有文件；参考 `template/.agents/skills/retrofit-legacy.md`。`--dry-run` 应保持只读。
 - 新知识只记录经证据支持、下次能复用的结论；过期内容按 `template/.agents/skills/gc-memory.md` 清理。

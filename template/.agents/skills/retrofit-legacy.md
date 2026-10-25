@@ -1,6 +1,6 @@
 # 老项目渐进接入指南（跨 IDE 普通项目文件）
 
-适用：已有代码、CI 和团队约定的项目。以现有可运行系统为基线；只给**接入后的新变更**使用 Spec 与 G1~G7，不为历史提交补造 Spec 或验证记录。
+适用：已有代码、CI 和团队约定的项目。以现有可运行系统为基线；只给**接入后的新变更**使用 Spec 与三道门，不为历史提交补造 Spec 或验证记录。
 
 ## 1. 只读摸底
 
@@ -34,13 +34,13 @@
 - 1.x → 2.0：
   - 流程记录迁到 `process/`：用 `git mv` 把 `docs/specs/{_templates,active,archive}` 移到 `process/specs/`，`docs/task-pool` 移到 `process/task-pool`，`docs/metrics.md` 移到 `process/metrics.md`；ignore 文件与项目脚本里的这些旧路径改为新路径；由人把 `redlines.conf` 的 `ALLOWED_WRITE_DIRS` 改为 `process/specs/active/` 后运行 `bash scripts/ai-gate.sh baseline`。
   - 删除 `.ai-harness/manifest.tsv`（不再使用）；旧版的知识卡脚本与指南随模板删除，`.knowledge/` 属项目状态，保留与否由人定。
-  - 在途 Spec 的 `acceptance.md` 每项改为以「通过」开头并去掉条件委托字段；`scripts/ai-state-id.sh` 变了，已过 G4 的在途 Spec 重跑正式验证。
+  - 门禁从 G1~G7 改为三道门（g1 计划、g2 验证、g3 审查）：在途 Spec 先按旧版收尾归档再升级；`design.md`、`acceptance.md` 不再使用，其内容并入 tasks.md 方案与 review.md；`scripts/ai-state-id.sh` 变了，在途 Spec 重跑正式验证。
 - 降级：反向执行目标版本之后各条说明。
 
 ## 3. 小范围试点与扩展
 
-1. 对首个真实小需求建 Spec，写清 AC、风险、影响文件与回滚办法，再按 G1~G7 执行。旧代码未覆盖到的模块不要求先补文档。
-   先按象限分流：④停在分析移交；①低风险小改动可写单步设计；②③在编码前记录人的风险或架构决定。对旧项目特别核对后台任务、数据同步、配置、权限和跨仓库消费者。
+1. 对首个真实小需求建 Spec，写清 AC、风险、影响文件与回滚办法，再按三道门执行。旧代码未覆盖到的模块不要求先补文档。
+   涉及数据、权限、发布或架构取舍的写「需人决定：是」。对旧项目特别核对后台任务、数据同步、配置、权限和跨仓库消费者。
 2. 实际运行 `ai-verify.sh --spec <feat> <file>`、`harness-selftest.sh`、`ai-check-bloat.sh` 和既有 CI。确认零检查不会被当作通过、跨 IDE 可通过 `ai-resume.sh owner <feat>` 接力。
 3. 只在下一次变更触及新模块时补该模块文档。多 Agent 并行时在各自 `tasks.md` 写清依赖、文件归属和集成检查点；避免并发编辑同一文件。
 4. 每次归档只保留当前活文档和可复用结论；历史过程留在归档。发现文档与代码冲突时先核代码，再修文档，不追加第二份真相。

@@ -58,7 +58,7 @@ case "$ROLE" in
     printf '%s\n' "$task_body" | grep -qE '涉及文件.*`[^\`]+`' || fail "Task $TASK 缺少明确的涉及文件"
     printf '%s\n' "$task_body" | grep -q 'path/to/' && fail "Task $TASK 的涉及文件仍是占位路径"
     echo "== worker 接手：$FEATURE / Task $TASK =="
-    echo "必读原件：AGENTS.md；$task_file 的本任务与 §4 WIP；相关 requirements.md §2/§3 和 design.md 对应章节。"
+    echo "必读原件：AGENTS.md；$task_file 的本任务与 §4 WIP；相关 requirements.md 验收标准和 tasks.md §1 方案。"
     echo "任务边界（以下来自 $task_file）："
     printf '%s\n' "$task_body"
     echo "变更前核对：git status --short；只读本任务涉及文件的 diff。需要扩范围时回到设计与门禁。"
@@ -75,10 +75,10 @@ case "$ROLE" in
     git merge-base --is-ancestor "$BASE" HEAD >/dev/null 2>&1 || fail "基准提交不是当前 HEAD 的祖先；请提供本需求开始前的提交"
     git diff --name-only "$BASE"...HEAD >/dev/null 2>&1 || fail "无法读取从基准到 HEAD 的完整提交 diff"
     spec_dir="process/specs/active/$FEATURE"
-    for file in requirements.md design.md tasks.md verification.md; do
+    for file in requirements.md tasks.md verification.md; do
       [ -f "$spec_dir/$file" ] || fail "缺少审查原件：$spec_dir/$file"
     done
-    grep -qE '^- result: PASS$' "$spec_dir/verification.md" || fail "verification.md 尚无 G4 PASS；先完成正式验证"
+    grep -qE '^- result: PASS$' "$spec_dir/verification.md" || fail "verification.md 尚无 PASS；先完成正式验证"
     grep -qE '^- state: [^[:space:]]+' "$spec_dir/verification.md" || fail "verification.md 缺少可核验状态"
     target=$(sed -n 's/^- target: //p' "$spec_dir/verification.md" | head -n 1)
     saved=$(sed -n 's/^- state: //p' "$spec_dir/verification.md" | head -n 1)
@@ -88,11 +88,11 @@ case "$ROLE" in
     changed=$({ git diff --name-only "$BASE"...HEAD; git diff --name-only; git diff --cached --name-only; git ls-files --others --exclude-standard; } | sort -u)
     [ -n "$changed" ] || fail "从 $BASE 到当前没有可审查的变更；请提供正确基准"
     echo "== review 接手：$FEATURE =="
-    echo "独立审查必读：$spec_dir/requirements.md（原话、§2.3、AC）、design.md（覆盖矩阵、文件清单）、tasks.md（追溯）、verification.md，以及 .agents/skills/code-review.md。"
+    echo "独立审查必读：$spec_dir/requirements.md（原话、AC）、tasks.md（方案与任务）、verification.md，以及 .agents/skills/code-review.md。"
     echo "基准：$BASE；读取完整提交 diff：git diff $BASE...HEAD；另核对 git diff、git diff --cached 与未跟踪文件全文。"
     echo "变更路径（核对归属与相关契约）："
     printf '%s\n' "$changed"
-    echo "不使用实现者自述代替原件；此接手输出不代表 G5 已通过。"
+    echo "不使用实现者自述代替原件；此接手输出不代表审查已通过。"
     exit 0
     ;;
   *) fail "未知角色或旧式调用：$ROLE" ;;
@@ -176,5 +176,5 @@ echo "1. 先看 [1] 的「下一门」：门禁未过，不要开始编码。"
 echo "2. 有未提交改动 → 先 git diff 看懂上一步；结合 [2] 的 WIP 区继续，严禁推倒重写已通过验证的代码。"
 echo "3. 按任务的代码路径读 docs/architecture/00-INDEX.md 和相关模块活文档。"
 echo "4. 本地跑 bash scripts/ai-verify.sh --spec <feat> <file>；摘要写入 verification.md，详细日志留本机。"
-echo "5. G6 由 Agent 核验；②③按当次人的决定推进，不推断授权。"
+echo "5. 「需人决定：是」的需求，g3 需要人当次的通过决定，不推断授权。"
 echo "=="
