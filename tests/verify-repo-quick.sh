@@ -3,7 +3,7 @@
 set -euo pipefail
 
 case "${TARGET_FILE:-}" in
-  *.sh|bin/ai-harness)
+  *.sh)
     echo '== 目标文件语法 =='
     bash -n "$TARGET_FILE"
     ;;

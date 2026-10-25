@@ -2,7 +2,7 @@
 
 | 模块 | 代码路径 | 对外入口 | 活文档 |
 | :-- | :-- | :-- | :-- |
-| CLI 与安装 | `bin/**` | `bin/ai-harness` | `docs/architecture/modules/cli.md` |
+| 接入技能 | `skill/**` | `skill/SKILL.md` | `docs/architecture/modules/install-skill.md` |
 | 模板机制 | `template/scripts/**`, `template/harness/**`, `template/process/specs/_templates/**` | `template/scripts/*.sh` | `docs/architecture/modules/template-mechanism.md` |
 | 项目指南 | `template/AGENTS.md`, `template/.agents/skills/**`, `skill/**`, `README.md` | `template/AGENTS.md` | `docs/architecture/modules/guidance.md` |
 | 本仓库自用状态 | 根目录 `AGENTS.md`、`scripts/**`、`docs/**`、`process/**`、`harness/**` | `AGENTS.md` | `docs/architecture/modules/self-hosting.md` |

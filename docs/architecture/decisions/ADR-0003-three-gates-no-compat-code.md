@@ -23,6 +23,7 @@
 2. **删除**：象限 ①~④ 与分级依据、四项必答、EARS 与原文锚点、覆盖矩阵与任务追溯、模块关联与检索依据的结构检查、`design.md` 与 `acceptance.md`。方案并入 `tasks.md`，人的决定并入 `review.md`。
 3. **保留**：任务池、Spec 与 WIP 接力、`ai-verify.sh` 与状态指纹、独立审查与 CR 轮次上限、红线基线、`ai-resume.sh` 三种角色、`--force` 审计与 `reset`。
 4. **不写兼容代码**：删除 `upgrade` 命令、manifest 基线、下游布局迁移与旧布局守卫。升级、降级与跨版本变化写在 `template/.agents/skills/retrofit-legacy.md`，由项目 AI 比对目标版本 `template/` 手动完成。只支持 Windows（Git Bash），不为其他系统做适配。
+5. **不做 CLI**：删除 `bin/ai-harness`（init / retrofit / doctor / install-skill）与 `tests/cli-smoke.sh`。接入由 AI 按 `skill/SKILL.md` 判断执行；维护者原话「没必要做cli，用不上，现在都是直接给AI说干嘛，让AI来干，cli命令太死板了，遇到特殊情况就无法处理了，不如skill智能」。
 
 ## 3. 结果
 
@@ -30,8 +31,8 @@
 | :-- | :-- | :-- |
 | `template/scripts/ai-gate.sh` | 637 | 298 |
 | `template/scripts/harness-selftest.sh` | 884 | 639 |
-| `bin/ai-harness` | 754 | 396 |
-| `tests/cli-upgrade.sh` → `tests/cli-smoke.sh` | 290 | 28 |
+| `bin/ai-harness` | 754 | 删除 |
+| `tests/cli-upgrade.sh` | 290 | 删除 |
 | Spec 模板 | 5 份 | 3 份 |
 
 ## 4. 回滚

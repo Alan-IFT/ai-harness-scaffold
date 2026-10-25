@@ -1,94 +1,40 @@
-# ai-harness — 跨工具 AI 辅助开发脚手架（安装器 + 模板）
+# ai-harness — 跨工具 AI 辅助开发脚手架
 
-一个 **host 无关**的初始化工具：把「需求入口、按风险分流、影响面核对、阶段门禁、增量验证、独立 CR、记忆积累和交付反馈」这套规范，
-一键装进新项目，或 retrofit 进已有老项目。模板与脚本都在这一个仓库里，单一真相源。
+一套 **host 无关**的开发规范：需求入口、三道门（计划 / 验证 / 审查）、增量验证、独立审查、记忆积累和交付反馈。
+没有安装命令：由 AI 按 `skill/SKILL.md` 把 `template/` 接入新项目或老项目，遇到特殊情况由 AI 判断，拿不准再问人。
 
-> 面向 Claude Code / OpenAI Codex / Cursor / OpenCode / DeepSeek 等任何能读 `AGENTS.md`、
-> 能跑 bash 的 AI 工具；不绑定某个 IDE 或云端平台。
+> 面向 Claude Code / OpenAI Codex / Cursor / OpenCode / DeepSeek 等任何能读 `AGENTS.md`、能跑 bash 的 AI 工具；只支持 Windows（Git Bash）。
 
-## 一句话使用：先安装技能一次
+## 用法：直接跟 AI 说
+
+```
+用 ai-harness 脚手架初始化 D:\code\my-new-project
+把 D:\code\legacy-project 接入 ai-harness 脚手架
+把 D:\code\legacy-project 的脚手架升级到最新版
+```
+
+AI 读 `skill/SKILL.md`（本仓库路径告诉它即可）完成摸底、计划、合并、验证命令、一个模块试点和体检，只把架构、权限、阈值这类需要你决定的事交回来。
+想让宿主自动发现这个技能，可以让 AI 在宿主的用户技能目录（如 `~/.claude/skills/ai-harness-scaffold/`、`~/.codex/skills/ai-harness-scaffold/`）放一个只写「先读 `<本仓库>/skill/SKILL.md`」的薄 `SKILL.md`。
+
+装好后，在项目里开场跑：
 
 ```bash
-bash bin/ai-harness install-skill --host codex
-bash bin/ai-harness install-skill --host claude
+bash scripts/ai-resume.sh owner    # 主 Agent 接手快照：门状态、WIP、git 残局
+bash scripts/ai-gate.sh status     # 三道门：计划 / 验证 / 审查
+bash scripts/ai-task-pool.sh next  # 当前工作；维护者直接用自然语言说需求
 ```
 
-安装器分别在 Codex 和 Claude Code 的用户技能目录生成薄入口，均指向本仓库的 `skill/SKILL.md`；流程正文仍只维护这一份。安装仅更新宿主和来源都匹配的本工具入口；无归属记录的旧 DSH 安装也会拒绝自动覆盖，由 Agent 核对后迁移。移动本仓库后需移除原来的本工具薄入口，再从新位置安装。
-
-以后在任一宿主打开目标项目，直接说：**「把这个老项目接入 ai-harness 脚手架」**。若当前上下文无法确定目标项目，再补一个路径。也可显式调用 Codex 的 `$ai-harness-scaffold` 或 Claude Code 的 `/ai-harness-scaffold`。Agent 会完成摸底、只读预演、冲突合并、一个模块试点和验证；只把必须由维护者决定的架构、权限或阈值问题交回来。
-
-## 两种用法：对话主导（推荐）/ 命令行直接跑
-
-**推荐用法是对话主导**：由 AI 侦察仓库、判断模块边界、合并已有文档、实测 verify 命令，遇到真正需要维护者取舍的问题再回来问你。CLI 是批量落盘的助手，技能负责发现和编排。
-
-```
-# 新项目，交给 AI
-用 ai-harness-scaffold 这套规范初始化 ~/code/my-new-project
-
-# 老项目，交给 AI
-把 ~/code/legacy-project 接入 ai-harness 脚手架
-```
-
-AI 从 `skill/SKILL.md` 定位共享流程；老项目的分阶段接入和试点见 `template/.agents/skills/retrofit-legacy.md`。模块扫描只生成候选清单，不自动建立一批空模块文档；**不确定的边界列成清单确认**。
-
-**命令行直接跑**适合：标准结构的项目、CI 里的重复初始化、你已清楚要什么的时候。
-
-## 快速开始
-
-```bash
-# 新项目（目标必须为空目录或只有 .git）
-bash bin/ai-harness init ../my-new-project
-
-# 老项目改造（永不覆盖已有文件）
-bash bin/ai-harness retrofit ../legacy-project --dry-run   # 先看计划
-bash bin/ai-harness retrofit ../legacy-project
-
-# 体检
-bash bin/ai-harness doctor ../legacy-project
-
-# 旧 DSH 技能安装（可选，保持兼容）
-bash bin/ai-harness install-skill --host dsh
-```
-
-装好后，在新项目里开场跑：
-
-```bash
-bash scripts/ai-resume.sh owner  # 主 Agent 接手快照：门状态、WIP、git 残局
-bash scripts/ai-gate.sh status   # 三道门：计划 / 验证 / 审查
-bash scripts/ai-task-pool.sh next  # AI 接手时查看当前工作；维护者直接用自然语言说需求
-```
-
-维护者直接告诉 AI 新需求或补充，无需运行命令。AI 用 `ai-task-pool.sh intake` 自动保存原话：有活跃 Spec 就把新需求排队并续做；没有活跃 Spec 就启动人工指定或最早录入的待办，空池则启动刚提出的需求。默认按录入先后，旧 P0/P1/P2 字段仅保留兼容；说“先做某项”即可让 AI 持久指定下一项，仅在该项启动后清除。归档与自动领取共用任务池锁，归档完成后由 AI 接续下一项；新会话运行 `ai-resume.sh owner` 会提示续做的 Spec 或下一条待办。已开始的需求变化会同步修订 Spec 与受影响门禁。旧 `docs/INTAKE.md` 保留历史。需求澄清后写 requirements.md（原话、是否需人决定、验收标准）与 tasks.md（方案、任务、WIP），过 g1（计划）再编码；任务完成后正式验证过 g2；换一个没写过代码的上下文审查过 g3，涉及数据、权限、发布或架构取舍的需求还要人当次决定。门只检查骗不过的信号，文字质量交给独立审查与人。
+维护者直接告诉 AI 新需求或补充，无需运行命令。AI 用 `ai-task-pool.sh intake` 保存原话：有活跃 Spec 就排队并续做；没有就启动人工指定或最早录入的待办，空池则启动刚提出的需求。说“先做某项”即可让 AI 指定下一项。需求澄清后写 requirements.md（原话、是否需人决定、验收标准）与 tasks.md（方案、任务、WIP），过 g1（计划）再编码；任务完成后正式验证过 g2；换一个没写过代码的上下文审查过 g3，涉及数据、权限、发布或架构取舍的需求还要人当次决定。门只检查骗不过的信号，文字质量交给独立审查与人。
 
 人的决定记在 `review.md` 的「人工决定」与「决策来源」，由 Agent 记录人的原话结论，用户不必填写 Markdown 或亲跑命令。本地文件不是身份认证，需要强制审批时使用项目自己的权限机制。
-
-## 两种模式的区别
-
-| | `init` | `retrofit` |
-| :-- | :-- | :-- |
-| 目标 | 空目录 | 任意已有项目 |
-| 已有文件 | 拒绝执行（除非 `--force`） | **一律不覆盖**，冲突内容放 `.ai-harness/suggested/` |
-| ignore 文件 | 直接放置 | 用 `# >>> ai-harness managed block` 幂等追加 |
-| 技术栈 | 不探测 | 探测 `package.json` / `pyproject.toml` / `go.mod` / `pom.xml` / `Cargo.toml`，生成 `harness/verify.conf` |
-| 模块索引 | 保留模板示例 | 扫描代码树生成候选清单；确认试点模块后才写活文档和 `00-INDEX` |
-| 收尾 | 打印下一步 | 自动跑 `doctor`（可 `--skip-doctor`） |
-
-## 命令
-
-```
-ai-harness init     <dir> [--no-git] [--dry-run] [--force]
-ai-harness retrofit <dir> [--no-git] [--skip-doctor] [--dry-run]
-ai-harness doctor   <dir>
-ai-harness install-skill [--host dsh|codex|claude] [--dest DIR]
-ai-harness version | help
-```
 
 ## 仓库结构
 
 ```
-bin/ai-harness     # CLI：复制 / 冲突隔离 / 栈探测 / 模块扫描 / 体检 / 装 skill
-template/          # 要被复制进目标项目的全部内容（唯一真相源）
-skill/SKILL.md     # 共享技能入口：宿主薄入口指向这里，机械步骤交给 CLI，判断步骤交给 Agent
+template/          # 接入目标项目的全部内容（唯一真相源）
+skill/SKILL.md     # 接入、升级、降级的做法，由 AI 照着判断执行
+scripts/           # 只转发到 template/scripts/，本仓库自己也用这套流程
+tests/             # 本仓库的验证入口
 ```
 
 ## 本仓库自用
@@ -107,7 +53,7 @@ bash scripts/harness-selftest.sh
 `scripts/`（ai-task-pool / ai-gate / ai-verify / ai-resume / ai-new-spec / ai-state-id / ai-config / ai-check-bloat / harness-selftest）、
 `harness/redlines.conf`（唯一阈值来源）、`MEMORY.md`（踩坑记忆）、`.agents/skills/`（阶段技能）。
 通用 CI 接入命令见 `template/harness/CI.md`；覆盖率和变异测试阈值须由目标项目的 CI 实现，并用低于阈值的样本确认失败路径。未接线时配置值不代表检查已通过。
-老项目 `retrofit --dry-run` 只读；正式接入不会覆盖已有文件、删除同名示例文件或自动改写红线。目录扫描结果放在 `.ai-harness/suggested/` 供审核。
+接入老项目时先列计划再动手，不覆盖已有文件、不删除同名示例文件、不自动改写红线。
 升级与降级不提供命令：让项目 AI 按 `template/.agents/skills/retrofit-legacy.md` 的「升级与降级」比对目标版本 `template/` 手动完成，项目状态与红线不替换；跨版本的目录变化（如 2.0 把 Spec、任务池与度量移到顶层 `process/`）写在同一处的版本说明里。
 
 若旧项目的红线配置缺少必要键或值无效，脚本会指出键名并停止；维护者按项目需要补齐 `harness/redlines.conf` 后再运行。脚本不使用另一套隐含默认阈值。
@@ -135,7 +81,7 @@ bash scripts/ai-gate.sh metrics feat-example
 接手命令必须显式选择 `owner`、`worker` 或 `review`；旧式 `ai-resume.sh [feat]` 会报错并提示新用法。worker 读取指定任务的项目原件；review 独立读取需求、完整相关 diff 与验证摘要，不接收实现者的自评作为审查依据。
 没有 Git 时摘要只能检测目标文件本身的变化，因此完整的跨工作区接力应使用 Git。
 g2 只认不带 `--quick` 的正式验证摘要。状态指纹全仓计算，只排除 `process/`：其下的 Spec、任务池与度量是流程记录，不计入指纹，Spec 进行中收录任务不会使摘要过期。修改相关代码或暂存后请重验；相同索引内容提交后指纹保持稳定。TTY 和本地红线哈希只防误操作；
-正式验证前，先对照需求原文、AC 和实际交付物，检查 `git status --short` 中的未跟踪、未暂存及已暂存文件；项目检查可同时运行 `git diff --check` 和 `git diff --cached --check`。quick 适合短反馈，不能替代完整验证。本仓库的完整验证先做双区 diff，再跑自检和 CLI 冒烟；本地报告逐阶段打印耗时，便于依据实测定位慢阶段。
+正式验证前，先对照需求原文、AC 和实际交付物，检查 `git status --short` 中的未跟踪、未暂存及已暂存文件；项目检查可同时运行 `git diff --check` 和 `git diff --cached --check`。quick 适合短反馈，不能替代完整验证。本仓库的完整验证先做双区 diff，再跑自检；本地报告逐阶段打印耗时，便于依据实测定位慢阶段。
 需要强制人工审批时，用目标项目自己的外部权限机制。
 
 ## 设计取舍
