@@ -1,2 +1,0 @@
-reset	2026-10-20T15:32:15Z	feat-single-source-of-truth	回退 g4 及之后（移除 1 条）：独立审查发现配置整数范围和自检夹具边界，修复后重验
-reset	2026-10-20T15:36:35Z	feat-single-source-of-truth	回退 g4 及之后（移除 1 条）：第二轮独立审查发现另一个测试沙箱仍引用项目阈值，修复后重验

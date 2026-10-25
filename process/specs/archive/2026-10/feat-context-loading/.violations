@@ -1,5 +1,0 @@
-reset	2026-10-21T02:37:37Z	feat-context-loading	回退 g3 及之后（移除 1 条）：用户允许重构接手入口，不再要求旧 ai-resume.sh [feat] 兼容
-reset	2026-10-21T02:37:44Z	feat-context-loading	回退 g1 及之后（移除 2 条）：用户调整兼容性需求：允许废弃旧接手命令以获得更简洁的角色入口
-reset	2026-10-21T02:50:32Z	feat-context-loading	回退 g3 及之后（移除 1 条）：补齐旧项目指南和任务模板两个间接调用点
-reset	2026-10-21T02:53:16Z	feat-context-loading	回退 g3 及之后（移除 1 条）：将超过五文件的收尾任务拆成文档迁移和机制验证两个任务
-reset	2026-10-21T03:02:00Z	feat-context-loading	回退 g4 及之后（移除 1 条）：G5 独立审查发现 worker 任务匹配、review diff 失败传播和 AC-03 读取路径缺口

@@ -21,7 +21,6 @@
 template/          # 接入目标项目的全部内容（唯一真相源）
 skill/SKILL.md     # 接入说明，由 AI 照着判断执行
 scripts/           # 只转发到 template/scripts/；本仓库自己也用这套流程开发
-tests/             # 本仓库的验证入口
 ```
 
 ## 设计取舍

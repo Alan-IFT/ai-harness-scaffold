@@ -1,4 +1,0 @@
-reset	2026-10-20T10:23:58Z	feat-self-hosting	回退 g4 及之后（移除 1 条）：模板脚本随新流程改造发生变化
-reset	2026-10-20T14:09:31Z	feat-self-hosting	回退 g1 及之后（移除 4 条）：对齐现行G1与G3要求
-reset	2026-10-20T14:43:00Z	feat-self-hosting	回退 g1 及之后（移除 5 条）：用户确认G6由Agent执行核验与留痕，人工只负责关键决定
-reset	2026-10-20T14:49:15Z	feat-self-hosting	回退 g4 及之后（移除 1 条）：修复提交前后G4状态指纹与归档循环

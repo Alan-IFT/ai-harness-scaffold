@@ -1,4 +1,0 @@
-reset	2026-10-22T08:00:40Z	feat-auto-task-routing	回退 g3 及之后（移除 1 条）：补充根目录 INTAKE 文件清单
-reset	2026-10-22T08:21:59Z	feat-auto-task-routing	回退 g3 及之后（移除 2 条）：独立审查发现选取与启动竞态，调整同锁路由设计
-reset	2026-10-22T08:39:27Z	feat-auto-task-routing	回退 g3 及之后（移除 2 条）：第二轮独立审查要求归档与自动领取共用任务池锁
-reset	2026-10-22T09:03:44Z	feat-auto-task-routing	回退 g4 及之后（移除 2 条）：暂存任务原件并修正末尾空白行，验证指纹已变化
