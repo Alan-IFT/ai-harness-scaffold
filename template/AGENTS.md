@@ -20,7 +20,7 @@
 2. **精准路由**：主 Agent 用 WIP、`MEMORY.md`、`git diff` 恢复全局状态；worker 读本任务、相关需求与设计章节、分配文件的 diff；G5 审查者独立读需求原文、AC、完整相关 diff、验证摘要和契约，不能用实现者自述代替。再从 `docs/architecture/00-INDEX.md` 加载相关模块活文档；跨模块按需扩展。
 3. **受控执行**：只认领 `tasks.md` 里 **1 个** `[ ]` 原子任务；**门禁未过不得开始编码**。
 4. **自然语言任务入口**：维护者只需直接告诉 AI 需求，无需运行任务池命令。主 Agent 先判断是独立新需求，还是明确补充/修改已有任务。新需求由 AI 调用 `bash scripts/ai-task-pool.sh intake "原话"`：有活跃 Spec 时入队并续做；没有时自动启动指定任务或最早待办（空池即当前需求）。默认按收录顺序，不按旧优先级字段排序。新会话接手或归档后，若无活跃 Spec 且 `next` 指向待办，AI 调用 `start-next` 原子选取并启动。维护者说“先做某项”时，AI 找到 T-ID 并调用 `prefer <T-ID>`；若当前无活跃 Spec，再调用 `start-next` 立即开始。补充调用 `update <T-ID> "补充"`；已开始的任务还须同步修订 Spec 并回退受影响门。收录成功而启动失败时按输出的 T-ID 恢复，不重复收录。
-5. **脚手架升级**：已安装项目用源仓库的 `bash bin/ai-harness upgrade <项目路径> --dry-run` 预演，再正式执行；定制文件冲突按 `.agents/skills/retrofit-legacy.md` 合并并逐文件确认，项目状态与红线不自动替换。
+5. **脚手架升级 / 降级**：没有命令，AI 按 `.agents/skills/retrofit-legacy.md` 的「升级与降级」比对目标版本 `template/` 手动完成；项目状态与红线不替换。
 
 ## 2. 质量门 G1~G7（由 `scripts/ai-gate.sh` 机械校验）
 | 门 | 名称 | 通过条件 | 失败回到 | 谁推进 |

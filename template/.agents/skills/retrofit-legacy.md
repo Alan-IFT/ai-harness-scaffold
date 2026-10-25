@@ -18,11 +18,24 @@
 4. 审核 `.ai-harness/suggested/harness/allowed-write-dirs.txt`；由有权限的人决定是否合并进 `harness/redlines.conf` 并更新基线。不要把目录扫描结果当权限事实。
 5. 接入一条能运行的增量检查到 `harness/verify.conf`，沿用现有 CI 的完整测试；`verification.md` 只记录本地增量结论。
 
-已安装项目后续获取新版脚手架时，运行 `bash <脚手架路径>/bin/ai-harness upgrade <项目路径> --dry-run` 查看计划，再运行 `upgrade <项目路径>`。安装基线记录在 `.ai-harness/manifest.tsv`；未改过的机制文件自动更新，缺失文件自动补齐。项目状态与红线不自动替换。冲突时保留原文件并输出 `.ai-harness/suggested/` 建议文件；合并一处后用 `upgrade <项目路径> --accept-custom <相对路径>` 确认其当前定制基线。旧安装若无 manifest，已有不同内容均作为冲突处理。模板已删除的托管文件（如旧版的知识卡脚本与指南）：未改动的随升级删除；本地改过或经 `--accept-custom` 定制的保留、列出并以非零退出提示人工处理，此后归项目所有，再次升级不再报告。`.knowledge/` 属项目状态，不自动删除。在途 Spec 的 `acceptance.md` 须改为每项以「通过」开头，并去掉条件委托字段，否则 G6 会拒绝。升级会改动 `scripts/ai-state-id.sh`，已过 G4 的在途 Spec 须重跑正式验证再继续。
+## 升级与降级（不提供命令，由项目 AI 照做）
 
-**跨版本布局变化（升级与降级）**：CLI 不做布局迁移，由项目 AI 按本说明手动完成，完成后再运行 `upgrade`。
-- 1.x → 2.0：先归档在途 Spec；用 `git mv` 把 `docs/specs/{_templates,active,archive}` 移到 `process/specs/`，`docs/task-pool` 移到 `process/task-pool`，`docs/metrics.md` 移到 `process/metrics.md`；把 `.ai-harness/manifest.tsv` 第 3 列、ignore 文件和项目脚本里的这些旧路径改为新路径；`harness/redlines.conf` 的 `ALLOWED_WRITE_DIRS` 由人改为 `process/specs/active/` 后运行 `bash scripts/ai-gate.sh baseline`；提交这次重命名。
-- 降级：反向执行上述 `git mv` 与路径改写，再用旧版 CLI 运行 `upgrade`。
+升级和降级是同一套步骤，只是目标版本不同。
+1. 先提交项目当前改动；有在途 Spec 先归档，或确认本次变化不影响它。
+2. 机制文件是 `AGENTS.md`、`CLAUDE.md`、`.cursorrules`、`scripts/*.sh`、`.agents/skills/*.md`、`process/specs/_templates/*.md`、`process/task-pool/README.md`、`harness/CI.md`、`harness/verify.conf.example`。逐个与目标版本 `template/` 下的同名文件比对：
+   - 项目没改过的直接覆盖（以 `.ai-harness/version` 记录版本对应的模板为基线；判断不了就当作改过）；
+   - 项目改过的，把新版差异合并进去；
+   - 目标版本新增的复制过来；目标版本已删除的删掉，项目改过的先问人。
+3. 不动项目状态：`process/` 下的 Spec、任务与度量，`MEMORY.md`，`docs/architecture/`，`harness/verify.conf`。`harness/redlines.conf` 只由人改；新版需要新键或新值时列给人。ignore 文件只替换 `ai-harness managed block` 之间的内容。
+4. 按下面的版本说明处理目录与格式变化。
+5. 把 `.ai-harness/version` 的 `version=` 改为目标版本，运行 `bash scripts/harness-selftest.sh` 与 `bash scripts/ai-gate.sh status`，通过后提交。
+
+**版本说明**
+- 1.x → 2.0：
+  - 流程记录迁到 `process/`：用 `git mv` 把 `docs/specs/{_templates,active,archive}` 移到 `process/specs/`，`docs/task-pool` 移到 `process/task-pool`，`docs/metrics.md` 移到 `process/metrics.md`；ignore 文件与项目脚本里的这些旧路径改为新路径；由人把 `redlines.conf` 的 `ALLOWED_WRITE_DIRS` 改为 `process/specs/active/` 后运行 `bash scripts/ai-gate.sh baseline`。
+  - 删除 `.ai-harness/manifest.tsv`（不再使用）；旧版的知识卡脚本与指南随模板删除，`.knowledge/` 属项目状态，保留与否由人定。
+  - 在途 Spec 的 `acceptance.md` 每项改为以「通过」开头并去掉条件委托字段；`scripts/ai-state-id.sh` 变了，已过 G4 的在途 Spec 重跑正式验证。
+- 降级：反向执行目标版本之后各条说明。
 
 ## 3. 小范围试点与扩展
 

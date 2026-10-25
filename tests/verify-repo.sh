@@ -23,4 +23,4 @@ esac
 run_phase '未暂存 diff' git diff --check || exit $?
 run_phase '已暂存 diff' git diff --cached --check || exit $?
 run_phase '模板自检' bash template/scripts/harness-selftest.sh || exit $?
-run_phase 'CLI 回归' bash tests/cli-upgrade.sh || exit $?
+run_phase 'CLI 回归' bash tests/cli-smoke.sh || exit $?

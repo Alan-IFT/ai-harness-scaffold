@@ -12,6 +12,6 @@ version: 1.2.0
 
 老项目先只读侦察 Git 状态、现有规则与 CI，再运行 `bash <仓库根>/bin/ai-harness retrofit <目标> --dry-run --no-git`。核对预演计划后由 AI 继续运行 `retrofit <目标> --skip-doctor --no-git`，逐项合并 `.ai-harness/suggested/`；只为一个真实试点模块写活文档、配置真实验证命令并运行体检。不要覆盖已有文件、清理未提交改动、补造历史 Spec，或把目录候选当作模块事实。
 
-若目标已有 `.ai-harness/version`，先改用 `upgrade <目标> --dry-run` 查看升级计划，再运行 `upgrade <目标>`；自动更新未改动的机制文件并补缺。冲突保留目标文件，合并建议后逐文件用 `--accept-custom <相对路径>` 记录定制基线。无 manifest 的旧安装只自动补缺，不覆盖不同内容。项目状态和红线不自动替换。
+若目标已有 `.ai-harness/version`，不要重新安装，按 `template/.agents/skills/retrofit-legacy.md` 的「升级与降级」比对本仓库 `template/` 手动升级；项目状态和红线不替换。
 
 用户负责架构、权限和阈值等真正需要人的取舍；AI 负责运行命令、编写项目文档和验证。项目内 `AGENTS.md`、Spec、活文档与 Git 是后续 Claude Code / Codex 接力状态。最后报告已接入内容、实际验证、冲突处理及尚需决定的事项。
