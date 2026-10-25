@@ -3,15 +3,13 @@
 # ai-verify.sh — 增量极速验证（本地可信的最低门槛）
 # 设计原则：未验证 ≠ 通过。没有任何真实检查被执行时，本脚本必须失败。
 #
-# 用法：bash scripts/ai-verify.sh [--quick] --spec <feature> <file_path>
-# 检查命令只来自 harness/verify.conf：CUSTOM_CHECK（正式）/ QUICK_CHECK（--quick），可用 $TARGET_FILE。
+# 用法：bash scripts/ai-verify.sh --spec <feature> <file_path>
+# 检查命令只来自 harness/verify.conf 的 CUSTOM_CHECK，可用 $TARGET_FILE。
 # ==============================================================================
 set -u
 . "$(dirname "${BASH_SOURCE[0]}")/ai-config.sh" || exit 1
 
-QUICK=0
-if [ "${1:-}" = "--quick" ]; then QUICK=1; shift; fi
-[ "${1:-}" = "--spec" ] || { echo "👉 用法: bash scripts/ai-verify.sh [--quick] --spec <feature> <file_path>" >&2; exit 1; }
+[ "${1:-}" = "--spec" ] || { echo "👉 用法: bash scripts/ai-verify.sh --spec <feature> <file_path>" >&2; exit 1; }
 SPEC_NAME="${2:-}"; TARGET_FILE="${3:-}"
 case "$SPEC_NAME" in ''|.|..|*[!A-Za-z0-9._-]*) echo "❌ 无效 Spec 名称: $SPEC_NAME" >&2; exit 1 ;; esac
 SPEC_DIR="process/specs/active/$SPEC_NAME"
@@ -20,7 +18,7 @@ SPEC_DIR="process/specs/active/$SPEC_NAME"
 TARGET_FILE="${TARGET_FILE#./}"
 case "$TARGET_FILE" in
   /*|../*|*/../*|[A-Za-z]:*) echo "❌ 请使用项目内的相对路径，验证摘要才能跨工作区复用: $TARGET_FILE" >&2; exit 1 ;;
-  process/*) [ "$QUICK" -eq 1 ] || { echo "❌ 正式验证目标不能选流程文件（process/ 下）: $TARGET_FILE" >&2; exit 1; } ;;
+  process/*) echo "❌ 验证目标不能选流程文件（process/ 下）: $TARGET_FILE" >&2; exit 1 ;;
 esac
 export TARGET_FILE
 
@@ -62,13 +60,7 @@ redact() {
 
 # ---------------------------------------------------------------- 项目检查 --
 [ -f harness/verify.conf ] && . harness/verify.conf 2>/dev/null || true
-if [ "$QUICK" -eq 1 ]; then
-  if [ -n "${QUICK_CHECK:-}" ]; then
-    run_check "快速检查 (harness/verify.conf)" bash -c "$QUICK_CHECK"
-  fi
-elif [ -n "${CUSTOM_CHECK:-}" ]; then
-  run_check "自定义检查 (harness/verify.conf)" bash -c "$CUSTOM_CHECK"
-fi
+[ -z "${CUSTOM_CHECK:-}" ] || run_check "项目检查 (harness/verify.conf)" bash -c "$CUSTOM_CHECK"
 
 END_TIME=$(date +%s)
 DUR=$((END_TIME - START_TIME))
@@ -76,20 +68,11 @@ DUR=$((END_TIME - START_TIME))
 if [ "$CHECKS" -eq 0 ]; then
   echo ""
   echo "❌ 未执行任何真实检查 —— 本次视为【未验证】（未验证 ≠ 通过）"
-  [ "$QUICK" -eq 1 ] && echo "   在 harness/verify.conf 配置 QUICK_CHECK（可用 \$TARGET_FILE）" \
-    || echo "   在 harness/verify.conf 配置 CUSTOM_CHECK（可用 \$TARGET_FILE）"
+  echo "   在 harness/verify.conf 配置 CUSTOM_CHECK（可用 \$TARGET_FILE）"
   FAIL=1
 fi
 
 RESULT=PASS; [ "$FAIL" -ne 0 ] && RESULT=FAIL
-
-if [ "$QUICK" -eq 1 ]; then
-  if [ "$RESULT" = FAIL ]; then tail -n 20 "$LOG" | redact | sed 's/^/   /'; fi
-  rm -f "$LOG"
-  echo "快速检查：$RESULT（$CHECKS 项，${DUR}s）；不生成正式验证摘要"
-  [ "$RESULT" = PASS ]
-  exit $?
-fi
 
 if [ "$FAIL" -ne 0 ]; then
   echo ""

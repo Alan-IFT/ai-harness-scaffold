@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # ai-resume.sh — 跨工具接盘快照
-# 用法：owner [feat] | worker <feat> <task-id> | review <feat> <base-ref>
-# owner 保留完整接手；worker 和 review 只给各自需要的项目入口。
+# 用法：owner [feat] | review <feat> <base-ref>
 # ==============================================================================
 set -u
 . "$(dirname "${BASH_SOURCE[0]}")/ai-config.sh" || exit 1
@@ -11,7 +10,6 @@ usage() {
   cat <<'EOF'
 用法：
   bash scripts/ai-resume.sh owner [feat]
-  bash scripts/ai-resume.sh worker <feat> <task-id>
   bash scripts/ai-resume.sh review <feat> <base-ref>
 EOF
 }
@@ -29,39 +27,6 @@ case "$ROLE" in
     [ "$#" -le 2 ] || fail "owner 只接受可选的 Spec ID"
     FEATURE="${2:-}"
     if [ -n "$FEATURE" ]; then valid_feat "$FEATURE" || fail "找不到活跃 Spec 或 ID 无效：$FEATURE"; fi
-    ;;
-  worker)
-    [ "$#" -eq 3 ] || fail "worker 需要活跃 Spec ID 和 Task 编号"
-    FEATURE=$2
-    TASK=$3
-    valid_feat "$FEATURE" || fail "找不到活跃 Spec 或 ID 无效：$FEATURE"
-    case "$TASK" in ''|0|0*|*[!0-9]*) fail "Task 编号必须是正整数" ;; esac
-    task_file="process/specs/active/$FEATURE/tasks.md"
-    [ -f "$task_file" ] || fail "缺少任务原件：$task_file"
-    task_body=$(awk -v task="$TASK" '
-      /^## / { if (found) exit }
-      /^- \[[ xX]\] (\*\*)?Task / {
-        if (found) exit
-        title=$0
-        sub(/^- \[[ xX]\] (\*\*)?Task /, "", title)
-        if (match(title,/^[0-9]+/)) {
-          number=substr(title,RSTART,RLENGTH)
-          # 全角冒号不能放进 []：字节 locale 下会把「（」等同首字节的字符误当分隔符。
-          rest=substr(title,RLENGTH+1); suffix=substr(rest,1,1)
-          if (number == task && (suffix == ":" || suffix == " " || index(rest, "：") == 1)) found=1
-        }
-      }
-      found { print }
-    ' "$task_file")
-    [ -n "$task_body" ] || fail "tasks.md 中找不到 Task $TASK"
-    printf '%s\n' "$task_body" | grep -qE '涉及文件.*`[^\`]+`' || fail "Task $TASK 缺少明确的涉及文件"
-    printf '%s\n' "$task_body" | grep -q 'path/to/' && fail "Task $TASK 的涉及文件仍是占位路径"
-    echo "== worker 接手：$FEATURE / Task $TASK =="
-    echo "必读原件：AGENTS.md；$task_file 的本任务与 §4 WIP；相关 requirements.md 验收标准和 tasks.md §1 方案。"
-    echo "任务边界（以下来自 $task_file）："
-    printf '%s\n' "$task_body"
-    echo "变更前核对：git status --short；只读本任务涉及文件的 diff。需要扩范围时回到设计与门禁。"
-    exit 0
     ;;
   review)
     [ "$#" -eq 3 ] || fail "review 需要活跃 Spec ID 和本次变更的基准提交"
@@ -141,9 +106,6 @@ if [ -d process/specs/active ]; then
     fi
     if [ -f "$spec/.attempts" ]; then
       echo "  🟡 连续验证失败：$(tr -dc '0-9' <"$spec/.attempts") 次（触顶必须停下等人）"
-    fi
-    if [ -f "$spec/.violations" ]; then
-      echo "  🧾 审计事件：$(wc -l <"$spec/.violations" | tr -d ' ') 条（$spec/.violations）"
     fi
   done
   [ "$found" -eq 1 ] || echo "  当前无活跃 Spec。新建：bash scripts/ai-new-spec.sh <feat-name>"

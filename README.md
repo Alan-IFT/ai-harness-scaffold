@@ -57,36 +57,25 @@ bash scripts/harness-selftest.sh
 升级与降级不提供命令：让项目 AI 按 `template/.agents/skills/retrofit-legacy.md` 的「升级与降级」比对目标版本 `template/` 手动完成，项目状态与红线不替换；跨版本的目录变化（如 2.0 把 Spec、任务池与度量移到顶层 `process/`）写在同一处的版本说明里。
 
 若旧项目的红线配置缺少必要键或值无效，脚本会指出键名并停止；维护者按项目需要补齐 `harness/redlines.conf` 后再运行。脚本不使用另一套隐含默认阈值。
-示例领域图与路线图不会复制进老项目，避免把虚构架构当成项目事实。
 
 单一事实来源按项目划分：`template/scripts/` 是分发机制源码；`template/harness/redlines.conf` 是新项目初始样本；安装后的项目各自以自己的 `harness/redlines.conf` 为阈值来源。根目录 `scripts/` 是薄转发，根目录 `harness/redlines.conf` 只属于本仓库。指南与 Spec 模板只引用配置键；当前工作状态由项目内 Spec、活文档和 Git 记录。
 
 ## Claude Code ↔ Codex 接力
 
-项目内 `AGENTS.md`、当前 Spec 的 `tasks.md` / `.gates` / `verification.md` 和 Git 改动是持久状态；
-`CLAUDE.md` 仅导入 `AGENTS.md`，不存另一份规则。`.agents/skills/*.md` 是按需读取的普通项目指南。
-本地 `reports/` 保存详细验证日志，`verification.md` 保存可入库的摘要。
+项目内 `AGENTS.md`、当前 Spec 的 `tasks.md` / `.gates` / `verification.md` 和 Git 改动是持久状态；`CLAUDE.md` 只导入 `AGENTS.md`。`reports/` 只在本机保存详细验证日志。
 
 ```bash
-bash scripts/ai-resume.sh owner feat-example
-bash scripts/ai-resume.sh worker feat-example 2          # 只接 Task 2
+bash scripts/ai-resume.sh owner feat-example              # 接手
 bash scripts/ai-resume.sh review feat-example HEAD~1      # 独立审查：改为本次变更前的实际提交
-bash scripts/ai-verify.sh --quick --spec feat-example src/example.ts  # 需配置 QUICK_CHECK；不生成验证摘要
 bash scripts/ai-verify.sh --spec feat-example src/example.ts
 bash scripts/ai-gate.sh status feat-example
-bash scripts/ai-gate.sh metrics feat-example
 ```
 
-换 IDE 且使用同一工作区，可直接接手未提交改动；换 worktree 或电脑时，须用 Git 提交或补丁传递未提交代码。
-接手命令必须显式选择 `owner`、`worker` 或 `review`；worker 读取指定任务的项目原件；review 独立读取需求、完整相关 diff 与验证摘要，不接收实现者的自评作为审查依据。
-没有 Git 时摘要只能检测目标文件本身的变化，因此完整的跨工作区接力应使用 Git。
-g2 只认不带 `--quick` 的正式验证摘要。状态指纹全仓计算，只排除 `process/`：其下的 Spec、任务池与度量是流程记录，不计入指纹，Spec 进行中收录任务不会使摘要过期。修改相关代码或暂存后请重验；相同索引内容提交后指纹保持稳定。TTY 和本地红线哈希只防误操作；
-正式验证前，先对照需求原文、AC 和实际交付物，检查 `git status --short` 中的未跟踪、未暂存及已暂存文件；项目检查可同时运行 `git diff --check` 和 `git diff --cached --check`。quick 适合短反馈，不能替代完整验证。本仓库的完整验证先做双区 diff，再跑自检；本地报告逐阶段打印耗时，便于依据实测定位慢阶段。
-需要强制人工审批时，用目标项目自己的外部权限机制。
+同一工作区换 IDE 可直接接手未提交改动；换 worktree 或电脑时用 Git 提交传递。状态指纹全仓计算，只排除 `process/`；代码或暂存内容变化后重验，同一内容提交后指纹不变。
 
 ## 设计取舍
 
 - **升级只写说明**：升级、降级与迁移不写代码，由项目 AI 照说明比对合并；兼容代码只会越积越多。
 - **不覆盖、不猜测**：老项目的 `AGENTS.md`、`00-INDEX.md` 可能已有团队约定，合并是判断题，不是复制题。
-- **过时内容归档而非删除**：被取代的旧文档移入 `process/specs/archive/`，保持单一真相。
+- **少就是多**：会让脚手架变臃肿的功能、配置和文档直接删除，追溯交给 Git；只支持 Windows（Git Bash）。
 - **模板即实例**：这个仓库自身就是可运行的脚手架（`template/` 内可跑 `harness-selftest.sh` 自检）。

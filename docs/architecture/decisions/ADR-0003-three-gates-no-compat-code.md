@@ -24,6 +24,7 @@
 3. **保留**：任务池、Spec 与 WIP 接力、`ai-verify.sh` 与状态指纹、独立审查与 CR 轮次上限、红线基线、`ai-resume.sh` 三种角色、`--force` 审计与 `reset`。
 4. **不写兼容代码**：删除 `upgrade` 命令、manifest 基线、下游布局迁移与旧布局守卫。升级、降级与跨版本变化写在 `template/.agents/skills/retrofit-legacy.md`，由项目 AI 比对目标版本 `template/` 手动完成。只支持 Windows（Git Bash），不为其他系统做适配。
 5. **不做 CLI**：删除 `bin/ai-harness`（init / retrofit / doctor / install-skill）与 `tests/cli-smoke.sh`。接入由 AI 按 `skill/SKILL.md` 判断执行；维护者原话「没必要做cli，用不上，现在都是直接给AI说干嘛，让AI来干，cli命令太死板了，遇到特殊情况就无法处理了，不如skill智能」。
+6. **再做一轮减法**（维护者原话「只要是会导致整个脚手架变得臃肿、累赘的，都应该删除」）：删掉无脚本读取的红线键、任务优先级、`--quick` 与 `QUICK_CHECK`、`ai-verify` 工具链自动探测、`ai-resume worker`、任务池手动 `start`、`ai-gate --force` 与 `.violations`、`metrics` 子命令、`.cursorrules`、示例与路线图模板文档；`AGENTS.md` 78 → 45 行，自检 639 → 约 300 行。
 
 ## 3. 结果
 

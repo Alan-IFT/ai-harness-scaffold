@@ -193,12 +193,10 @@ expect_ok  "g1 通过" bash scripts/ai-gate.sh pass t-good g1
 expect_ok  "g2 通过" bash scripts/ai-gate.sh pass t-good g2
 expect_ok  "g3 通过" bash scripts/ai-gate.sh pass t-good g3
 expect_out "status 提示可归档" "三道门已通过" bash scripts/ai-gate.sh status t-good
-expect_out "metrics 从门记录派生耗时" "g1 → g2:" bash scripts/ai-gate.sh metrics t-good
 expect_fail "拦住未过的前置门" "前置门 g1 未通过" bash scripts/ai-gate.sh pass t-auto g2
-expect_ok   "--force 越过前置门" bash scripts/ai-gate.sh pass t-auto g2 --force
-file_has    "--force 记入审计" process/specs/active/t-auto/.violations "force-skip"
 expect_ok   "reset 使 g2 及之后失效" bash scripts/ai-gate.sh reset t-good g2 --reason "需求变更"
-file_lacks  ".gates 已删除 g3" process/specs/active/t-good/.gates "g3"
+file_lacks  ".gates 已删除 g3" process/specs/active/t-good/.gates "^g3"
+file_has    "reset 记录原因" process/specs/active/t-good/.gates "需求变更"
 file_has    ".gates 保留 g1" process/specs/active/t-good/.gates "g1"
 expect_fail "未知门被拒" "未知门" bash scripts/ai-gate.sh pass t-good g4
 
@@ -221,12 +219,9 @@ mk_spec t-verify
 expect_fail "未配置检查时视为未验证" "未执行任何真实检查" bash scripts/ai-verify.sh --spec t-verify src/export/service.ts
 expect_fail "必须指定 Spec" "用法" bash scripts/ai-verify.sh src/export/service.ts
 expect_fail "拒绝流程文件作正式目标" "流程文件" bash scripts/ai-verify.sh --spec t-verify ./process/specs/active/t-verify/tasks.md
-printf "CUSTOM_CHECK='test -f \"\$TARGET_FILE\"'\nQUICK_CHECK='test -f \"\$TARGET_FILE\"'\n" >harness/verify.conf
+printf "CUSTOM_CHECK='test -f \"\$TARGET_FILE\"'\n" >harness/verify.conf
 expect_ok  "正式验证生成摘要" bash scripts/ai-verify.sh --spec t-verify src/export/service.ts
 expect_ok  "g2 接受真实生成的摘要" bash scripts/ai-gate.sh check t-verify g2
-cp "$(S t-verify)" "$TMP/formal-summary"
-expect_ok  "quick 执行快速检查" bash scripts/ai-verify.sh --quick --spec t-verify src/export/service.ts
-if cmp -s "$TMP/formal-summary" "$(S t-verify)"; then ok_msg "quick 不覆盖正式摘要"; else ng_msg "quick 覆盖了正式摘要"; fi
 printf "CUSTOM_CHECK='false'\n" >harness/verify.conf
 for i in 1 2; do bash scripts/ai-verify.sh --spec t-verify src/export/service.ts >/dev/null 2>&1; done
 expect_out "第 3 次连续失败亮黄卡" "黄卡" bash -c 'bash scripts/ai-verify.sh --spec t-verify src/export/service.ts; true'
@@ -235,11 +230,6 @@ rm -f harness/verify.conf
 section "8. 接手 ai-resume"
 expect_out  "owner 显示验证摘要" "可交接验证摘要" bash scripts/ai-resume.sh owner t-good
 expect_fail "拒绝未知角色" "未知角色" bash scripts/ai-resume.sh observer t-good
-expect_out  "worker 只输出指定任务" "实现导出" bash scripts/ai-resume.sh worker t-good 1
-worker_out=$(bash scripts/ai-resume.sh worker t-good 1)
-if printf '%s' "$worker_out" | grep -q '补测试'; then ng_msg "worker 混入其他任务"; else ok_msg "worker 未混入其他任务"; fi
-expect_out  "worker 识别加粗标题" "补测试" bash scripts/ai-resume.sh worker t-good 2
-expect_fail "worker 拒绝缺失 Task" "找不到 Task" bash scripts/ai-resume.sh worker t-good 9
 
 section "9. 状态指纹与审查接手（Git）"
 G="$TMP/git"
@@ -287,7 +277,7 @@ file_has    "补充落盘且原话保留" process/task-pool/T-000002.md "加入�
 file_has    "新 Spec 引用任务原件" process/specs/active/feat-t-000001/requirements.md "process/task-pool/T-000001.md"
 expect_out  "人工指定下一项" "已指定 T-000003" bash scripts/ai-task-pool.sh prefer T-000003
 expect_fail "拒绝指定已开始任务" "不是未关联" bash scripts/ai-task-pool.sh prefer T-000001
-expect_fail "已有活跃 Spec 时拒绝启动" "已有活跃 Spec" bash scripts/ai-task-pool.sh start T-000002 feat-x
+expect_out  "有活跃 Spec 时 start-next 只提示续做" "续做活跃 Spec" bash scripts/ai-task-pool.sh start-next
 mkdir process/task-pool/.lock
 expect_fail "任务池锁冲突时拒绝归档" "另一进程修改" bash scripts/ai-task-pool.sh archive feat-t-000001
 rmdir process/task-pool/.lock

@@ -2,7 +2,7 @@
 
 - **新需求入口**：维护者直接向 AI 提需求；AI 区分独立新需求和已有需求的补充，分别用 `intake` 自动收录与路由、`update` 追加。活跃 Spec 先续做；否则人工 `prefer` 指定的一次性下一项优先，默认按 T-ID 收录顺序。`start-next` 原子选取并建 Spec。
 
-- **职责**：`template/AGENTS.md` 给目标项目提供跨 IDE 入口；`template/.agents/skills/` 是按阶段读取的普通 Markdown；`skill/SKILL.md` 是仓库内共享技能入口，Codex/Claude Code 用户技能目录只放带源路径的薄适配器。主 Agent、限定任务 worker 和审查者按角色读取项目原件，避免转贴整个 Spec 或上一 Agent 对话。
+- **职责**：`template/AGENTS.md` 给目标项目提供跨 IDE 入口；`template/.agents/skills/` 是按阶段读取的普通 Markdown；`skill/SKILL.md` 是仓库内共享技能入口，Codex/Claude Code 用户技能目录只放带源路径的薄适配器。主 Agent 与审查者按角色读取项目原件，避免转贴整个 Spec 或上一 Agent 对话。
 - **边界**：项目事实写在任务文件、Spec、活文档与 Git 中；任务文件只关联稳定 Spec ID，创建脚本拒绝重用已归档 ID，目录和阶段由 `ai-gate.sh status <ID>` 解析。`MEMORY.md`、路线图等参与代码指纹的文件在最后一次正式验证前更新，归档时只复核。指南不得把示例事实当作真实架构，也不复述 `harness/redlines.conf` 的可变阈值数字，只引用配置键。
 - **验证**：正式验证的目标须是归档后路径与内容稳定的项目文件，验证器拒绝 `process/` 下的目标；交付物在验证后变化则重验。检查指南命令与门禁实现一致。
 - **需求与审查**：requirements.md 只留原话、「需人决定」、做什么 / 为谁做 / 不做与验收标准；方案并入 tasks.md。独立审查用 `ai-resume.sh review <feat> <base-ref>` 定位原文、完整 diff 与验证摘要，语义由审查判断，机器只查记录完整。2.0 删除了象限分级、覆盖矩阵、任务追溯与 `design.md` / `acceptance.md`：它们只检查文档格式，真实缺陷都由独立审查发现（ADR-0003）。

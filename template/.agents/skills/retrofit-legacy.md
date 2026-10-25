@@ -22,7 +22,7 @@
 
 升级和降级是同一套步骤，只是目标版本不同。
 1. 先提交项目当前改动；有在途 Spec 先归档，或确认本次变化不影响它。
-2. 机制文件是 `AGENTS.md`、`CLAUDE.md`、`.cursorrules`、`scripts/*.sh`、`.agents/skills/*.md`、`process/specs/_templates/*.md`、`process/task-pool/README.md`、`harness/CI.md`、`harness/verify.conf.example`。逐个与目标版本 `template/` 下的同名文件比对：
+2. 机制文件是 `AGENTS.md`、`CLAUDE.md`、`scripts/*.sh`、`.agents/skills/*.md`、`process/specs/_templates/*.md`、`process/task-pool/README.md`、`harness/CI.md`、`harness/verify.conf.example`。逐个与目标版本 `template/` 下的同名文件比对：
    - 项目没改过的直接覆盖（以 `.ai-harness/version` 记录版本对应的模板为基线；判断不了就当作改过）；
    - 项目改过的，把新版差异合并进去；
    - 目标版本新增的复制过来；目标版本已删除的删掉，项目改过的先问人。

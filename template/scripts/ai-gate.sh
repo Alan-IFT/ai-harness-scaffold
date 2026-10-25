@@ -7,9 +7,8 @@
 #   bash scripts/ai-gate.sh                                # 全局状态（含红线基线检查）
 #   bash scripts/ai-gate.sh status [<feat>]                # 某个 / 全部 spec 的门禁状态
 #   bash scripts/ai-gate.sh check <feat> <gate>            # 只校验，不推进
-#   bash scripts/ai-gate.sh pass  <feat> <gate> [--force]  # 校验通过后记录（--force 越过前置门会记审计）
+#   bash scripts/ai-gate.sh pass  <feat> <gate>            # 前置门已过且校验通过后记录
 #   bash scripts/ai-gate.sh reset <feat> <gate> [--reason "why"]  # 回退：使该门及之后的门失效
-#   bash scripts/ai-gate.sh metrics <feat>                 # 门间耗时
 #   bash scripts/ai-gate.sh baseline                       # 人类确认红线后记录基线
 #
 # 约定：门禁状态写在 <spec>/.gates，由本脚本维护；手改它不会让 check 通过。
@@ -30,11 +29,6 @@ ai_config_load "$REDLINES" CR_MAX_ROUNDS || exit 1
 say() { printf '%s\n' "$*"; }
 die() { printf '❌ %s\n' "$*" >&2; exit 1; }
 ok()  { printf '✅ %s\n' "$*"; }
-
-audit_ev() {   # $1=事件类型 $2=说明；写入 <spec>/.violations（随 spec 入库的审计流水）
-  [ -n "${DIR:-}" ] && [ -d "$DIR" ] || return 0
-  printf '%s\t%s\t%s\t%s\n' "$1" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${FEAT:-?}" "${2:-}" >>"$DIR/.violations"
-}
 
 gate_name() {
   case "$1" in g1) printf '计划' ;; g2) printf '验证' ;; g3) printf '审查' ;; *) printf '%s' "$1" ;; esac
@@ -170,22 +164,15 @@ cmd_check() {
 }
 
 cmd_pass() {
-  [ $# -ge 2 ] || die "用法：ai-gate.sh pass <feat> <gate> [--force]"
-  FEAT="$1"; local gate force=0 i
-  gate=$(printf '%s' "$2" | tr 'A-Z' 'a-z'); shift 2
-  while [ $# -gt 0 ]; do
-    case "$1" in --force) force=1; shift ;; *) die "未知参数 $1" ;; esac
-  done
+  [ $# -eq 2 ] || die "用法：ai-gate.sh pass <feat> <gate>"
+  FEAT="$1"; local gate i
+  gate=$(printf '%s' "$2" | tr 'A-Z' 'a-z')
   valid_gate "$gate"
   DIR=$(feat_dir "$FEAT") || die "找不到 spec: $FEAT（先 bash scripts/ai-new-spec.sh $FEAT）"
   guard_redlines || exit 1
   for i in $GATES; do
     [ "$i" = "$gate" ] && break
-    if ! { [ -f "$DIR/.gates" ] && grep -qE "^$i[[:space:]]" "$DIR/.gates"; }; then
-      [ "$force" -eq 1 ] || die "前置门 $i 未通过（先 pass $i）"
-      say "⚠️  --force：跳过未通过的前置门 $i（已记入 .violations 审计）"
-      audit_ev "force-skip" "跳过未通过的前置门 $i"
-    fi
+    [ -f "$DIR/.gates" ] && grep -qE "^$i[[:space:]]" "$DIR/.gates" || die "前置门 $i 未通过（先 pass $i）"
   done
   if ! check_gate "$gate" >/dev/null 2>&1; then check_gate "$gate"; die "门禁校验未通过，拒绝推进 $gate"; fi
   printf '%s\t%s\t%s\n' "$gate" agent "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$DIR/.gates"
@@ -208,7 +195,7 @@ cmd_reset() {   # 回退：使 <gate> 及之后的门失效（需求 / 方案变
   [ "$removed" -gt 0 ] || die "$FEAT 的 $gate 及之后没有已通过的门记录（无需回退）"
   awk -F'\t' -v n="$n" '$1 !~ /^g[0-9]+$/ || substr($1,2)+0 < n' "$DIR/.gates" > "$DIR/.gates.tmp"
   mv "$DIR/.gates.tmp" "$DIR/.gates"
-  audit_ev "reset" "回退 $gate 及之后（移除 $removed 条）：${reason:-未说明原因}"
+  printf 'reset\t%s\t%s\t%s\n' "$gate" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${reason:-未说明原因}" >> "$DIR/.gates"
   ok "$FEAT 已回退：$gate 及之后的 $removed 条门记录失效"
 }
 
@@ -226,7 +213,6 @@ render_spec() {
       [ -z "$next" ] && next="$g"
     fi
   done
-  [ -f "$DIR/.violations" ] && say "   🧾 审计事件：$(wc -l <"$DIR/.violations" | tr -d ' ') 条（$DIR/.violations）"
   [ -z "$next" ] && { say "   🎉 三道门已通过，可归档。"; return 0; }
   say "   下一门：$next（$(gate_name "$next")）"
   if out=$(check_gate "$next" 2>&1); then say "   可推进：bash scripts/ai-gate.sh pass $FEAT $next"
@@ -254,25 +240,6 @@ cmd_status() {
   [ "$any" -eq 1 ] || { say ""; say "  当前无活跃 Spec。新建：bash scripts/ai-new-spec.sh <feat-name>"; }
 }
 
-# 只从 .gates 计算有证据的门间耗时；不猜需求起点或人工等待。
-cmd_metrics() {
-  local feat="${1:-}" d from to a b ea eb
-  [ -n "$feat" ] || die "用法：ai-gate.sh metrics <feat>"
-  d=$(feat_dir "$feat") || die "找不到 spec: $feat"
-  say "== $feat 门间耗时（来源：$d/.gates）=="
-  for pair in 'g1 g2' 'g2 g3'; do
-    read -r from to <<<"$pair"
-    a=$(awk -F'\t' -v g="$from" '$1==g { t=$3 } END { print t }' "$d/.gates" 2>/dev/null)
-    b=$(awk -F'\t' -v g="$to" '$1==g { t=$3 } END { print t }' "$d/.gates" 2>/dev/null)
-    ea=$(date -u -d "$a" +%s 2>/dev/null); eb=$(date -u -d "$b" +%s 2>/dev/null)
-    if [ -n "$a" ] && [ -n "$b" ] && [ -n "$ea" ] && [ -n "$eb" ] && [ "$eb" -ge "$ea" ]; then
-      say "$from → $to: $((eb - ea)) 秒"
-    else
-      say "$from → $to: 未知"
-    fi
-  done
-}
-
 cmd_baseline() {
   [ -f "$REDLINES" ] || die "找不到 $REDLINES"
   [ -t 0 ] || die "红线基线需要在交互终端（TTY）确认；此检查只防误操作，不提供身份认证"
@@ -285,13 +252,12 @@ main() {
   [ $# -gt 0 ] && shift
   case "$cmd" in
     status)   cmd_status "${1:-}" ;;
-    metrics)  cmd_metrics "${1:-}" ;;
     check)    cmd_check "$@" ;;
     pass)     cmd_pass "$@" ;;
     reset)    cmd_reset "$@" ;;
     baseline) cmd_baseline ;;
     -h|--help|help) sed -n '3,15p' "$0" | sed 's/^# \{0,1\}//' ;;
-    *) die "未知命令 $cmd（可用：status / check / pass / reset / metrics / baseline）" ;;
+    *) die "未知命令 $cmd（可用：status / check / pass / reset / baseline）" ;;
   esac
 }
 

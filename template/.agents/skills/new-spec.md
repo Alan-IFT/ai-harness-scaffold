@@ -22,4 +22,4 @@
 - 「需人决定：是」的需求，编码前让没写过方案的上下文只读审一遍 requirements.md 与 tasks.md（subagent、新会话或另一个 AI 工具都行），结论写回方案。
 
 ## Step 4: 过计划门
-`bash scripts/ai-gate.sh check <feat> g1`，按报错补齐后 `pass`，再从 Task 1 开始编码。开发中可用 `ai-verify.sh --quick`；收尾按 `code-review.md` 做正式验证与独立审查。
+`bash scripts/ai-gate.sh check <feat> g1`，按报错补齐后 `pass`，再从 Task 1 开始编码。收尾按 `code-review.md` 做正式验证与独立审查。

@@ -13,7 +13,6 @@ usage() {
   bash scripts/ai-task-pool.sh prefer <T-ID>
   bash scripts/ai-task-pool.sh list
   bash scripts/ai-task-pool.sh next
-  bash scripts/ai-task-pool.sh start <T-ID> <feat-id>
   bash scripts/ai-task-pool.sh start-next
   bash scripts/ai-task-pool.sh archive <feat-id>
 待办按收录 ID 排序；prefer 一次性指定下一项。
@@ -180,7 +179,7 @@ case "${1:-}" in
         printf '下一项：%s（按收录顺序）\n' "$id"
       fi
       printf '原始需求：%s\n' "$(summary_for "$POOL/$id.md")"
-      printf '原件：%s/%s.md；开始：bash scripts/ai-task-pool.sh start %s <feat-id>\n' "$POOL" "$id" "$id"
+      printf '原件：%s/%s.md；开始：bash scripts/ai-task-pool.sh start-next\n' "$POOL" "$id"
     fi
     ;;
   archive)
@@ -196,37 +195,20 @@ case "${1:-}" in
     mv -- "$source_dir" "$target_parent/$feat" || die "归档移动失败：$feat"
     printf '✅ 已归档 %s：%s/%s\n' "$feat" "$target_parent" "$feat"
     ;;
-  start|start-next)
-    command=$1
-    if [ "$command" = start ]; then
-      [ "$#" -eq 3 ] || die "用法：start <T-ID> <feat-id>"
-      task_id=$2
-      f=$(task_file "$task_id")
-      feat=$3
-      valid_feat "$feat" || die "Spec ID 无效：$feat"
-    else
-      [ "$#" -eq 1 ] || die "start-next 不接受参数"
-    fi
+  start-next)
+    [ "$#" -eq 1 ] || die "start-next 不接受参数"
     lock_pool
-    if [ "$command" = start ]; then
-      [ "$(field "$f" '关联 Spec')" = 无 ] && [ "$(field "$f" '队列状态')" = 待办 ] || die "任务不是未关联的待办：$task_id"
-    fi
     for specdir in process/specs/active/*/; do
       [ -d "$specdir" ] || continue
-      if [ "$command" = start-next ]; then
-        spec=${specdir%/}; spec=${spec##*/}
-        printf '续做活跃 Spec：%s；运行 bash scripts/ai-resume.sh owner %s\n' "$spec" "$spec"
-        exit 0
-      fi
-      die "已有活跃 Spec：${specdir%/}；先完成或移交后再开始下一项"
+      spec=${specdir%/}; spec=${spec##*/}
+      printf '续做活跃 Spec：%s；运行 bash scripts/ai-resume.sh owner %s\n' "$spec" "$spec"
+      exit 0
     done
-    if [ "$command" = start-next ]; then
-      row=$(selected_pending)
-      [ -n "$row" ] || die "暂无可启动的待办任务"
-      task_id=${row%%|*}
-      f=$(task_file "$task_id")
-      feat="feat-${task_id,,}"
-    fi
+    row=$(selected_pending)
+    [ -n "$row" ] || die "暂无可启动的待办任务"
+    task_id=${row%%|*}
+    f=$(task_file "$task_id")
+    feat="feat-${task_id,,}"
     [ "$(field "$f" '关联 Spec')" = 无 ] && [ "$(field "$f" '队列状态')" = 待办 ] || die "任务不是未关联的待办：$task_id"
     [ ! -e "process/specs/active/$feat" ] || die "Spec ID 已占用：$feat"
     if find process/specs/archive -mindepth 2 -maxdepth 2 -type d -name "$feat" -print -quit 2>/dev/null | grep -q .; then
