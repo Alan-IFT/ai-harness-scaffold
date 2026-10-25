@@ -154,6 +154,12 @@ expect_fail "拒绝验收标准没有任务对应" "没有任务对应" bash scr
 mk_spec t-badacref
 sed -i 's/对应验收：AC-01/对应验收：AC-01、AC-02/' "$(T t-badacref)"
 expect_fail "拒绝任务引用不存在的验收标准" "不存在的验收标准 AC-02" bash scripts/ai-gate.sh check t-badacref g1
+mk_spec t-acprose
+printf '%s\n' '## 3. 发现但不碰' '- 与旧需求的 AC-07 冲突，另开任务' >>"$(T t-acprose)"
+expect_ok   "正文提到别的 AC 编号不误拒" bash scripts/ai-gate.sh check t-acprose g1
+mk_spec t-acnoline
+sed -i 's/^  - 对应验收：AC-01$/  - 说明：覆盖 AC-01/' "$(T t-acnoline)"
+expect_fail "验收标准只在正文出现时拒绝" "没有任务对应" bash scripts/ai-gate.sh check t-acnoline g1
 
 section "3. g2 验证"
 mk_spec t-open
@@ -165,6 +171,10 @@ expect_fail "拒绝失败摘要" "未通过" bash scripts/ai-gate.sh check t-fai
 mk_spec t-offtask
 sed -i 's#^- target: .*#- target: harness/redlines.conf#' "$(S t-offtask)"
 expect_fail "拒绝验证目标不在涉及文件里" "不在 tasks.md" bash scripts/ai-gate.sh check t-offtask g2
+mk_spec t-wiponly
+printf '%s\n' '- 正在编辑的文件：`harness/redlines.conf`' >>"$(T t-wiponly)"
+sed -i 's#^- target: .*#- target: harness/redlines.conf#' "$(S t-wiponly)"
+expect_fail "验证目标只在 WIP 区出现时拒绝" "不在 tasks.md" bash scripts/ai-gate.sh check t-wiponly g2
 mk_spec t-stale
 printf '// changed after verify\n' >>src/export/service.ts
 expect_fail "拒绝代码变化后的过期摘要" "过期" bash scripts/ai-gate.sh check t-stale g2
