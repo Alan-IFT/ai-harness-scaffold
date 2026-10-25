@@ -22,7 +22,7 @@ TPL="$ROOT/template"
 MARK_BEGIN="# >>> ai-harness managed block（勿手改，升级整体替换）>>>"
 MARK_END="# <<< ai-harness managed block <<<"
 
-DRY=0; NOGIT=0; FORCE=0; SKIP_DOCTOR=0; NOGIT_TARGET=1; TGT_ROOT=""
+DRY=0; NOGIT=0; FORCE=0; SKIP_DOCTOR=0
 CONFLICTS=0; COPIED=0; SKIPPED=0; REMOVED=0; RETIRED_KEPT=0; SUGGESTED=""
 IGNORE_FILES=".gitignore .gitattributes .cursorignore .claudeignore"
 
@@ -313,138 +313,6 @@ rewrite_allowed_dirs() { # <dir> <stack>
   info "ALLOWED_WRITE_DIRS 候选已写入 .ai-harness/suggested/harness/allowed-write-dirs.txt；请审核后手动合并红线"
 }
 
-# ------------------------------------------------- 2.0 流程记录迁移（docs/ → process/）
-# 旧布局只认 harness 创建的标记，与 scripts/ai-config.sh 的 ai_require_process_layout 同一判据。
-LEGACY_MOVES="docs/specs/_templates:process/specs/_templates docs/specs/active:process/specs/active docs/specs/archive:process/specs/archive docs/task-pool:process/task-pool docs/metrics.md:process/metrics.md"
-legacy_layout() { # <dir>
-  [ -d "$1/docs/specs/active" ] || [ -d "$1/docs/specs/archive" ] || [ -d "$1/docs/specs/_templates" ] \
-    || [ -f "$1/docs/task-pool/README.md" ]
-}
-
-legacy_ref_stream() { # <rel>; stdin → stdout，旧前缀改为新前缀；幂等
-  case "$1" in
-    .ai-harness/manifest.tsv)
-      awk -F '\t' 'BEGIN { OFS = "\t" } NF == 3 { sub(/^docs\/specs\//, "process/specs/", $3); sub(/^docs\/task-pool\//, "process/task-pool/", $3) } { print }' ;;
-    *) # 只改 managed block 内的行，保留 CRLF
-      awk -v b="$MARK_BEGIN" -v e="$MARK_END" '{
-        line = $0; cr = ""
-        if (sub(/\r$/, "", line)) cr = "\r"
-        if (line == b) inside = 1
-        else if (line == e) inside = 0
-        else if (inside) {
-          sub(/^docs\/specs\//, "process/specs/", line); sub(/^docs\/task-pool\//, "process/task-pool/", line)
-          sub(/^docs\/metrics\.md/, "process/metrics.md", line)
-        }
-        print line cr
-      }' ;;
-  esac
-}
-
-# 改写后的 manifest / ignore 先写到同目录临时文件，STAGED 每行「临时文件<TAB>目标」；只读预演时只报告。
-STAGED=""
-stage_legacy_refs() { # <dir>
-  local tgt=$1 rel tmp
-  for rel in .ai-harness/manifest.tsv $IGNORE_FILES; do
-    [ -f "$tgt/$rel" ] && [ ! -L "$tgt/$rel" ] || continue
-    safe_path "$tgt" "$rel" || { discard_legacy_refs; die "升级路径不安全: $rel"; }
-    if [ "$DRY" -eq 1 ]; then
-      legacy_ref_stream "$rel" < "$tgt/$rel" | cmp -s - "$tgt/$rel" || info "↳ [dry-run] 将改写旧路径引用: $rel"
-      continue
-    fi
-    tmp=$(mktemp "$(dirname "$tgt/$rel")/.ai-harness-rewrite.XXXXXX") || { discard_legacy_refs; die "无法创建临时文件: $rel"; }
-    STAGED="$STAGED$(printf '%s\t%s' "$tmp" "$tgt/$rel")"$'\n'
-    legacy_ref_stream "$rel" < "$tgt/$rel" > "$tmp" || { discard_legacy_refs; die "无法改写旧路径引用: $rel"; }
-  done
-}
-discard_legacy_refs() {
-  local tmp dst
-  while IFS=$'\t' read -r tmp dst; do [ -z "$tmp" ] || rm -f -- "$tmp"; done <<< "$STAGED"
-  STAGED=""
-}
-commit_legacy_refs() { # 返回 1 表示有文件未落盘
-  local tmp dst rc=0
-  while IFS=$'\t' read -r tmp dst; do
-    [ -n "$tmp" ] || continue
-    if cmp -s "$tmp" "$dst"; then rm -f -- "$tmp"; continue; fi
-    if mv -f -- "$tmp" "$dst"; then info "↳ 已改写旧路径引用: ${dst#"$TGT_ROOT"/}"; else rc=1; fi
-  done <<< "$STAGED"
-  [ "$rc" -eq 0 ] || discard_legacy_refs
-  STAGED=""
-  return "$rc"
-}
-
-MOVED=""
-move_item() { # <dir> <src> <dst>; Git 已跟踪的用 git mv，其余用 mv
-  local tgt=$1 src=$2 dst=$3
-  if [ "$NOGIT_TARGET" -eq 0 ] && git -C "$tgt" ls-files --error-unmatch -- "$src" >/dev/null 2>&1; then
-    git -C "$tgt" mv -- "$src" "$dst" || return 1
-    MOVED="git:$dst:$src"$'\n'"$MOVED"
-  else
-    mv -- "$tgt/$src" "$tgt/$dst" || return 1
-    MOVED="fs:$dst:$src"$'\n'"$MOVED"
-  fi
-}
-undo_moves() { # <dir>; 逆序移回
-  local tgt=$1 kind from to
-  while IFS=: read -r kind from to; do
-    [ -n "$kind" ] || continue
-    if [ "$kind" = git ]; then git -C "$tgt" mv -- "$from" "$to" || warn "无法移回 $from → $to，请人工处理"
-    else mv -- "$tgt/$from" "$tgt/$to" || warn "无法移回 $from → $to，请人工处理"; fi
-  done <<< "$MOVED"
-  rmdir "$tgt/process/specs" "$tgt/process" 2>/dev/null || true
-  MOVED=""
-}
-
-# 拒绝条件全部先于写入；移动或落盘任一步失败都回滚已移动的目录。
-migrate_process_layout() { # <dir>
-  local tgt=$1 pair src dst active n=0
-  TGT_ROOT=$tgt
-  legacy_layout "$tgt" || return 0
-  if [ -e "$tgt/process" ] || [ -L "$tgt/process" ]; then
-    die "检测到旧布局，但 process/ 已存在：拒绝迁移，未写入任何文件。请人工核对 process/ 内容，把 docs/specs、docs/task-pool、docs/metrics.md 合并进 process/ 或删除其中一份后重跑 upgrade"
-  fi
-  if [ -d "$tgt/docs/specs/active" ]; then
-    active=$(find "$tgt/docs/specs/active" -mindepth 1 -maxdepth 1 \( -type d -o -type l \) ! -name '.*' 2>/dev/null | head -n 1)
-    [ -z "$active" ] || die "docs/specs/active/ 下有活跃 Spec（${active##*/}）：拒绝迁移，未写入任何文件。先归档在途 Spec 后重跑 upgrade"
-  fi
-  for pair in $LEGACY_MOVES; do
-    src=${pair%%:*}; dst=${pair#*:}
-    [ -e "$tgt/$src" ] || [ -L "$tgt/$src" ] || continue
-    safe_path "$tgt" "$src" && safe_path "$tgt" "$dst" && [ ! -L "$tgt/$src" ] || die "迁移路径不安全（含符号链接）: $src"
-  done
-  NOGIT_TARGET=1
-  git -C "$tgt" rev-parse --is-inside-work-tree >/dev/null 2>&1 && NOGIT_TARGET=0
-  say "📦 流程记录迁移：docs/ → process/"
-  if [ "$DRY" -eq 1 ]; then
-    for pair in $LEGACY_MOVES; do
-      src=${pair%%:*}; dst=${pair#*:}
-      [ -e "$tgt/$src" ] && info "→ [dry-run] 将迁移 $src → $dst"
-    done
-    stage_legacy_refs "$tgt"
-    say "只读预演：迁移完成后再运行 upgrade --dry-run 查看托管文件差异。"
-    return 0
-  fi
-  stage_legacy_refs "$tgt"
-  mkdir -p "$tgt/process/specs" || { discard_legacy_refs; die "无法创建 process/"; }
-  for pair in $LEGACY_MOVES; do
-    src=${pair%%:*}; dst=${pair#*:}
-    [ -e "$tgt/$src" ] || continue
-    move_item "$tgt" "$src" "$dst" || { discard_legacy_refs; undo_moves "$tgt"; die "迁移失败: $src → $dst；已移回原处"; }
-    info "→ $src → $dst"; n=$((n+1))
-  done
-  commit_legacy_refs || { undo_moves "$tgt"; die "改写旧路径引用失败；已移回原处"; }
-  rmdir "$tgt/docs/specs" 2>/dev/null || true
-  MOVED=""
-  say "  已迁移 $n 项；Git 项目请提交这次重命名，CI 或项目脚本若引用 docs/specs 等旧路径需自行改为 process/。"
-}
-
-legacy_hints() { # <dir>
-  if grep -q 'docs/specs/active/' "$1/harness/redlines.conf" 2>/dev/null; then
-    warn "harness/redlines.conf 的 ALLOWED_WRITE_DIRS 仍含 docs/specs/active/：红线由人维护，请人工改为 process/specs/active/ 并运行 bash scripts/ai-gate.sh baseline"
-  fi
-  return 0
-}
-
 # ------------------------------------------------------------------ 命令实现
 cmd_init() {
   local tgt="" a dry_label=""
@@ -569,15 +437,6 @@ cmd_upgrade() {
     done <<< "$retired"
   fi
   say "⬆️  upgrade → $tgt （template v$VERSION）"
-  TGT_ROOT=$tgt
-  if legacy_layout "$tgt"; then
-    migrate_process_layout "$tgt"
-    if [ "$DRY" -eq 1 ]; then legacy_hints "$tgt"; return 0; fi
-  else
-    # 幂等补齐：上次迁移若在目录移动后中断，这里把 manifest / ignore 中的旧前缀改完。
-    stage_legacy_refs "$tgt"
-    [ "$DRY" -eq 1 ] || commit_legacy_refs || die "改写旧路径引用失败"
-  fi
   if [ "$DRY" -eq 0 ]; then
     tmp=$(mktemp "$tgt/.ai-harness/.manifest.XXXXXX") || die "无法创建 manifest 临时文件"
   fi
@@ -655,7 +514,6 @@ cmd_upgrade() {
   else say "升级完成：$COPIED 个新增/更新，$SKIPPED 个已是新版，$REMOVED 个已删除，$CONFLICTS 个冲突。"; fi
   [ "$RETIRED_KEPT" -eq 0 ] || warn "$RETIRED_KEPT 个模板已删除的文件有本地改动，已保留为项目文件；请人工决定删除或保留后重跑 upgrade。"
   [ "$CONFLICTS" -eq "$RETIRED_KEPT" ] || warn "冲突需合并；版本标记保留旧值，合并后重跑 upgrade。"
-  legacy_hints "$tgt"
   [ "$CONFLICTS" -eq 0 ] || return 1
 }
 

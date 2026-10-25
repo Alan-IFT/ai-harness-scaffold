@@ -30,16 +30,3 @@ ai_config_load() {
     printf -v "$key" '%s' "$normalized"
   done
 }
-
-# 流程记录在 process/；旧版 docs/ 下的布局须先由 ai-harness upgrade 迁移，避免两套状态分叉。
-# 只认 harness 创建的标记，项目自有的 docs/specs/*.md 不算旧布局。
-ai_require_process_layout() {
-  [ -d docs/specs/active ] || [ -d docs/specs/archive ] || [ -d docs/specs/_templates ] \
-    || [ -f docs/task-pool/README.md ] || return 0
-  if [ -e process ] || [ -L process ]; then
-    printf '❌ process/ 与旧布局（docs/specs 或 docs/task-pool）并存；先人工核对 process/ 内容，再把旧目录合并进 process/ 或删除其中一份\n' >&2
-  else
-    printf '❌ 检测到旧布局（docs/specs 或 docs/task-pool）；请运行 ai-harness upgrade 迁移到 process/\n' >&2
-  fi
-  return 1
-}

@@ -20,15 +20,9 @@
 
 已安装项目后续获取新版脚手架时，运行 `bash <脚手架路径>/bin/ai-harness upgrade <项目路径> --dry-run` 查看计划，再运行 `upgrade <项目路径>`。安装基线记录在 `.ai-harness/manifest.tsv`；未改过的机制文件自动更新，缺失文件自动补齐。项目状态与红线不自动替换。冲突时保留原文件并输出 `.ai-harness/suggested/` 建议文件；合并一处后用 `upgrade <项目路径> --accept-custom <相对路径>` 确认其当前定制基线。旧安装若无 manifest，已有不同内容均作为冲突处理。模板已删除的托管文件（如旧版的知识卡脚本与指南）：未改动的随升级删除；本地改过或经 `--accept-custom` 定制的保留、列出并以非零退出提示人工处理，此后归项目所有，再次升级不再报告。`.knowledge/` 属项目状态，不自动删除。在途 Spec 的 `acceptance.md` 须改为每项以「通过」开头，并去掉条件委托字段，否则 G6 会拒绝。升级会改动 `scripts/ai-state-id.sh`，已过 G4 的在途 Spec 须重跑正式验证再继续。
 
-**从 1.x 升级到 2.0（流程记录迁入 `process/`）**：
-- 迁移内容：`upgrade` 把 `docs/specs/` 下的 `_templates`、`active`、`archive` 移到 `process/specs/`，把 `docs/task-pool/` 移到 `process/task-pool/`，把 `docs/metrics.md` 移到 `process/metrics.md`。Git 已跟踪的用 `git mv`（重命名会暂存），其余用 `mv`。`docs/specs/` 下项目自有的文件留在原处。
-- 同步改写：`.ai-harness/manifest.tsv` 的路径列，以及 ignore 文件 managed block 中的旧路径。
-- 拒绝条件：`docs/specs/active/` 下有在途 Spec（隐藏的 `.*.tmp.*` 临时目录除外）或已存在 `process/` 时拒绝，不写任何文件。先归档在途 Spec；`process/` 已存在时人工核对后合并或删除其中一份。
-- `--dry-run`：只列迁移计划，迁移完成后再预演一次才能看到托管文件差异。
-- 中断恢复：迁移在移动目录后中断时，再次 `upgrade` 会补齐 manifest 与 ignore 的改写。
-- 需人工处理：`harness/redlines.conf` 不自动修改；若 `ALLOWED_WRITE_DIRS` 含 `docs/specs/active/`，人工改为 `process/specs/active/` 后运行 `bash scripts/ai-gate.sh baseline`。CI 或项目脚本若引用旧路径，自行改为 `process/`。迁移后提交这次重命名。
-- 新版脚本在旧布局上会拒绝运行并提示 upgrade。
-- 回滚：没有反向命令。重新使用 1.x 版 CLI 与脚本，`git mv process/specs/<子目录> docs/specs/<子目录>`、`git mv process/task-pool docs/task-pool`、`git mv process/metrics.md docs/metrics.md`，再把 manifest 第 3 列与 ignore managed block 中的 `process/` 前缀改回 `docs/`。
+**跨版本布局变化（升级与降级）**：CLI 不做布局迁移，由项目 AI 按本说明手动完成，完成后再运行 `upgrade`。
+- 1.x → 2.0：先归档在途 Spec；用 `git mv` 把 `docs/specs/{_templates,active,archive}` 移到 `process/specs/`，`docs/task-pool` 移到 `process/task-pool`，`docs/metrics.md` 移到 `process/metrics.md`；把 `.ai-harness/manifest.tsv` 第 3 列、ignore 文件和项目脚本里的这些旧路径改为新路径；`harness/redlines.conf` 的 `ALLOWED_WRITE_DIRS` 由人改为 `process/specs/active/` 后运行 `bash scripts/ai-gate.sh baseline`；提交这次重命名。
+- 降级：反向执行上述 `git mv` 与路径改写，再用旧版 CLI 运行 `upgrade`。
 
 ## 3. 小范围试点与扩展
 

@@ -857,22 +857,6 @@ file_has "自动启动失败仍保留任务" process/task-pool/T-000004.md "第�
 file_has "自动启动失败不关联旧待办" process/task-pool/T-000003.md "- 关联 Spec: 无"
 cd "$SB" || exit 1
 
-section "14. 旧布局守卫"
-LEGACY_SB="$TMP/legacy-layout"
-mkdir -p "$LEGACY_SB/docs/specs/active" "$LEGACY_SB/harness"
-cp -r "$ROOT/scripts" "$LEGACY_SB/scripts"
-cp "$TMP/redlines.fixture" "$LEGACY_SB/harness/redlines.conf"
-expect_fail "旧布局下门禁提示 upgrade" "upgrade" bash -c 'cd "$1" && bash scripts/ai-gate.sh status' _ "$LEGACY_SB"
-expect_fail "旧布局下任务池提示 upgrade" "upgrade" bash -c 'cd "$1" && bash scripts/ai-task-pool.sh next' _ "$LEGACY_SB"
-expect_fail "旧布局下新建 Spec 提示 upgrade" "upgrade" bash -c 'cd "$1" && bash scripts/ai-new-spec.sh feat-x' _ "$LEGACY_SB"
-if [ ! -e "$LEGACY_SB/process" ]; then ok_msg "旧布局下不新建 process/"; else ng_msg "旧布局下被新建了 process/"; fi
-mkdir -p "$LEGACY_SB/process"
-expect_fail "process/ 与旧布局并存时给人工处置提示" "并存" bash -c 'cd "$1" && bash scripts/ai-task-pool.sh next' _ "$LEGACY_SB"
-rm -rf "$LEGACY_SB/docs/specs/active" "$LEGACY_SB/process"
-printf '# 项目自有规格\n' >"$LEGACY_SB/docs/specs/api.md"
-expect_ok "项目自有 docs/specs/*.md 不算旧布局" bash -c 'cd "$1" && bash scripts/ai-task-pool.sh next' _ "$LEGACY_SB"
-cd "$SB" || exit 1
-
 # ---------------------------------------------------------------- 汇总 --------
 echo ""
 printf '== %s: %ss ==\n' "$SECTION_NAME" "$((SECONDS - SECTION_START))"

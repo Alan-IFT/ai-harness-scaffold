@@ -20,7 +20,6 @@ case "$FEAT_NAME" in
 esac
 
 . "$(dirname "${BASH_SOURCE[0]}")/ai-config.sh" || exit 1
-ai_require_process_layout || exit 1
 
 TARGET_DIR="process/specs/active/$FEAT_NAME"
 if [ -d "$TARGET_DIR" ]; then

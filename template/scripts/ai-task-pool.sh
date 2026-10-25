@@ -4,7 +4,6 @@ set -euo pipefail
 
 POOL=process/task-pool
 . "$(dirname "${BASH_SOURCE[0]}")/ai-config.sh" || exit 1
-ai_require_process_layout || exit 1
 usage() {
   cat <<'EOF'
 用法：

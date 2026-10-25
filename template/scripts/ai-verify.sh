@@ -10,7 +10,6 @@
 # ==============================================================================
 set -u
 . "$(dirname "${BASH_SOURCE[0]}")/ai-config.sh" || exit 1
-ai_require_process_layout || exit 1
 
 QUICK=0
 if [ "${1:-}" = "--quick" ]; then QUICK=1; shift; fi

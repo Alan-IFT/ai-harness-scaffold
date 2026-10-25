@@ -115,7 +115,7 @@ bash scripts/harness-selftest.sh
 老项目 `retrofit --dry-run` 只读；正式接入不会覆盖已有文件、删除同名示例文件或自动改写红线。目录扫描结果放在 `.ai-harness/suggested/` 供审核。
 安装时记录 `.ai-harness/manifest.tsv`，之后用本仓库的 `upgrade <项目路径>` 自动补齐新脚本、更新安装后未改动的机制文件。项目自己的任务、Spec、架构文档、红线及 ignore 文件不在自动替换范围。定制文件保留原样，新版模板写到 `.ai-harness/suggested/<相对路径>.upgrade-<哈希>`；命令返回非零且版本号暂不推进。合并后逐文件运行 `upgrade <项目路径> --accept-custom <相对路径>` 确认当前定制内容；后续模板变化会再次提示冲突。`upgrade --dry-run` 严格只读。旧安装没有 manifest 时只能自动补缺，已有不同内容须逐项确认。升级前建议先提交目标项目当前改动。
 
-从 1.x 升级到 2.0 时，`upgrade` 会先把 Spec、任务池与度量迁入顶层 `process/`（有在途 Spec 或已有 `process/` 时拒绝，不写任何文件），再常规同步；拒绝条件、红线人工更新与回滚步骤见 `template/.agents/skills/retrofit-legacy.md`。
+跨版本的目录布局变化（如 2.0 把 Spec、任务池与度量移到顶层 `process/`）不由 CLI 迁移，由项目 AI 按 `template/.agents/skills/retrofit-legacy.md` 的说明手动完成，升级和降级都一样。
 
 若旧项目的红线配置缺少必要键或值无效，脚本会指出键名并停止；维护者按项目需要补齐 `harness/redlines.conf` 后再运行。脚本不使用另一套隐含默认阈值。
 示例领域图与路线图不会复制进老项目，避免把虚构架构当成项目事实。

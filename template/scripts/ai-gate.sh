@@ -26,7 +26,6 @@ DIR=""
 
 # 阈值只从当前项目配置读取；缺失或无效时明确拒绝。
 . "$(dirname "${BASH_SOURCE[0]}")/ai-config.sh" || exit 1
-ai_require_process_layout || exit 1
 ai_config_load "$REDLINES" CR_MAX_ROUNDS || exit 1
 
 say() { printf '%s\n' "$*"; }
