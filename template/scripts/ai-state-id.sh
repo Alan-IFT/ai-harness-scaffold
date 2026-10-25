@@ -3,8 +3,6 @@
 # 流程记录统一放在 process/ 下，不参与指纹；索引内容提交后保持稳定。
 set -uo pipefail
 
-# --spec 为兼容旧调用保留，不影响结果。
-if [ "${1:-}" = "--spec" ]; then shift 2 2>/dev/null || shift; fi
 target="${1:-}"
 [ -f "$target" ] || { echo "目标文件不存在：$target" >&2; exit 1; }
 

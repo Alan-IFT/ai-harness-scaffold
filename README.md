@@ -52,7 +52,7 @@ bash scripts/harness-selftest.sh
 `template/` 里包含：`AGENTS.md`（L1 入口）、`MEMORY.md`（踩坑池）、`docs/`（轻量需求入口 + 模块活文档 + Spec 与验证摘要模板 + 度量）、
 `scripts/`（ai-task-pool / ai-gate / ai-verify / ai-resume / ai-new-spec / ai-state-id / ai-config / ai-check-bloat / harness-selftest）、
 `harness/redlines.conf`（唯一阈值来源）、`MEMORY.md`（踩坑记忆）、`.agents/skills/`（阶段技能）。
-通用 CI 接入命令见 `template/harness/CI.md`；覆盖率和变异测试阈值须由目标项目的 CI 实现，并用低于阈值的样本确认失败路径。未接线时配置值不代表检查已通过。
+通用 CI 接入命令见 `template/harness/CI.md`。
 接入老项目时先列计划再动手，不覆盖已有文件、不删除同名示例文件、不自动改写红线。
 升级与降级不提供命令：让项目 AI 按 `template/.agents/skills/retrofit-legacy.md` 的「升级与降级」比对目标版本 `template/` 手动完成，项目状态与红线不替换；跨版本的目录变化（如 2.0 把 Spec、任务池与度量移到顶层 `process/`）写在同一处的版本说明里。
 
@@ -78,7 +78,7 @@ bash scripts/ai-gate.sh metrics feat-example
 ```
 
 换 IDE 且使用同一工作区，可直接接手未提交改动；换 worktree 或电脑时，须用 Git 提交或补丁传递未提交代码。
-接手命令必须显式选择 `owner`、`worker` 或 `review`；旧式 `ai-resume.sh [feat]` 会报错并提示新用法。worker 读取指定任务的项目原件；review 独立读取需求、完整相关 diff 与验证摘要，不接收实现者的自评作为审查依据。
+接手命令必须显式选择 `owner`、`worker` 或 `review`；worker 读取指定任务的项目原件；review 独立读取需求、完整相关 diff 与验证摘要，不接收实现者的自评作为审查依据。
 没有 Git 时摘要只能检测目标文件本身的变化，因此完整的跨工作区接力应使用 Git。
 g2 只认不带 `--quick` 的正式验证摘要。状态指纹全仓计算，只排除 `process/`：其下的 Spec、任务池与度量是流程记录，不计入指纹，Spec 进行中收录任务不会使摘要过期。修改相关代码或暂存后请重验；相同索引内容提交后指纹保持稳定。TTY 和本地红线哈希只防误操作；
 正式验证前，先对照需求原文、AC 和实际交付物，检查 `git status --short` 中的未跟踪、未暂存及已暂存文件；项目检查可同时运行 `git diff --check` 和 `git diff --cached --check`。quick 适合短反馈，不能替代完整验证。本仓库的完整验证先做双区 diff，再跑自检；本地报告逐阶段打印耗时，便于依据实测定位慢阶段。

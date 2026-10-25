@@ -13,7 +13,6 @@ usage() {
   bash scripts/ai-resume.sh owner [feat]
   bash scripts/ai-resume.sh worker <feat> <task-id>
   bash scripts/ai-resume.sh review <feat> <base-ref>
-旧式 ai-resume.sh [feat] 已移除；请显式选择角色。
 EOF
 }
 
@@ -83,7 +82,7 @@ case "$ROLE" in
     target=$(sed -n 's/^- target: //p' "$spec_dir/verification.md" | head -n 1)
     saved=$(sed -n 's/^- state: //p' "$spec_dir/verification.md" | head -n 1)
     [ -n "$target" ] && [ -f "$target" ] || fail "verification.md 的目标文件不存在；先完成正式验证"
-    current=$(bash scripts/ai-state-id.sh --spec "$FEATURE" "$target" 2>/dev/null) || fail "无法核对验证摘要状态"
+    current=$(bash scripts/ai-state-id.sh "$target" 2>/dev/null) || fail "无法核对验证摘要状态"
     [ "$current" = "$saved" ] || fail "verification.md 已过期；先重新正式验证"
     changed=$({ git diff --name-only "$BASE"...HEAD; git diff --name-only; git diff --cached --name-only; git ls-files --others --exclude-standard; } | sort -u)
     [ -n "$changed" ] || fail "从 $BASE 到当前没有可审查的变更；请提供正确基准"
@@ -95,7 +94,7 @@ case "$ROLE" in
     echo "不使用实现者自述代替原件；此接手输出不代表审查已通过。"
     exit 0
     ;;
-  *) fail "未知角色或旧式调用：$ROLE" ;;
+  *) fail "未知角色：$ROLE" ;;
 esac
 
 echo "=="
@@ -136,7 +135,7 @@ if [ -d process/specs/active ]; then
       target=$(sed -n 's/^- target: //p' "$spec/verification.md" | head -n 1)
       saved=$(sed -n 's/^- state: //p' "$spec/verification.md" | head -n 1)
       if [ -f "$target" ] && [ -n "$saved" ]; then
-        current=$(bash scripts/ai-state-id.sh --spec "$(basename "$spec")" "$target" 2>/dev/null || true)
+        current=$(bash scripts/ai-state-id.sh "$target" 2>/dev/null || true)
         [ "$current" = "$saved" ] || echo "  ⚠️  验证摘要已过期：代码或提交在验证后变化"
       fi
     fi

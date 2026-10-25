@@ -15,7 +15,7 @@ version: 2.0.0
 - **已接入**：目标项目有 `.ai-harness/version` 时，说明已经接入过。这时按 `template/.agents/skills/retrofit-legacy.md` 的「升级与降级」处理，不要重装。
 
 ## 1. 新项目（空目录或只有 `.git`）
-1. 复制全部模板文件；示例模块文档（`docs/architecture/modules/example-*.md`、`domain-map.md`）保留作参考，等有真实模块时再替换。
+1. 复制全部模板文件；有了第一个真实模块再写活文档并登记 `docs/architecture/00-INDEX.md`。
 2. 没有 Git 仓库时运行 `git init -b main`；目标位于别的仓库里或 Git 状态判断不了时，先问人。
 3. 跟用户确认技术栈后，在 `harness/verify.conf` 写一条真实的增量检查命令，可参照 `harness/verify.conf.example`。没有真实检查时，`ai-verify` 会拒绝通过。
 4. 运行 `bash scripts/harness-selftest.sh`、`bash scripts/ai-check-bloat.sh` 和 `bash scripts/ai-gate.sh status`，记录红线初始基线后提交。
@@ -25,10 +25,9 @@ version: 2.0.0
 1. **先只读摸底**：记录 Git 状态、现有规则、构建、测试与 CI，不清理工作区。动手前先把计划列给用户：哪些文件新增、哪些冲突、哪些要合并。
 2. **只补缺失的文件**：目标里已有、内容不同的文件不覆盖，把模板与原文件的差异合并进去，或列给人决定。
    - `.gitignore`、`.gitattributes`、`.cursorignore`、`.claudeignore`：在原文件末尾追加 `# >>> ai-harness managed block >>>` 与 `# <<< ai-harness managed block <<<` 包住的模板内容；已有这个块就跳过。
-   - 示例模块文档不装。
 3. **验证命令**：从项目实际用的工具链里选一条能对单个文件跑的检查，比如 tsc、eslint、ruff、`go vet`，写进 `harness/verify.conf`，并实际跑一次确认可用。
 4. **试点模块**：从代码目录里挑**一个**真实模块写活文档，登记到 `docs/architecture/00-INDEX.md`；其他候选目录只列给用户，不建空文档。
-5. **红线**：`harness/redlines.conf` 的 `ALLOWED_WRITE_DIRS` 等权限类设置只给出建议，由人决定后再运行 `bash scripts/ai-gate.sh baseline`。
+5. **红线**：`harness/redlines.conf` 的阈值只给建议，由人决定后再运行 `bash scripts/ai-gate.sh baseline`。
 
 ## 3. 收尾（新旧项目都做）
 1. 写 `.ai-harness/version`：内容是 `version=<本文件 frontmatter 的 version>`，再加一行接入日期。
