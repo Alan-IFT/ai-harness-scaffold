@@ -52,9 +52,9 @@ bash scripts/harness-selftest.sh
 `template/` 里包含：`AGENTS.md`（L1 入口）、`MEMORY.md`（踩坑池）、`docs/`（轻量需求入口 + 模块活文档 + Spec 与验证摘要模板 + 度量）、
 `scripts/`（ai-task-pool / ai-gate / ai-verify / ai-resume / ai-new-spec / ai-state-id / ai-config / ai-check-bloat / harness-selftest）、
 `harness/redlines.conf`（唯一阈值来源）、`MEMORY.md`（踩坑记忆）、`.agents/skills/`（阶段技能）。
-通用 CI 接入命令见 `template/harness/CI.md`。
+接 CI 时在流水线里跑 `bash scripts/harness-selftest.sh` 与 `bash scripts/ai-check-bloat.sh`，再加项目自己的构建和测试。
 接入老项目时先列计划再动手，不覆盖已有文件、不删除同名示例文件、不自动改写红线。
-升级与降级不提供命令：让项目 AI 按 `template/.agents/skills/retrofit-legacy.md` 的「升级与降级」比对目标版本 `template/` 手动完成，项目状态与红线不替换；跨版本的目录变化（如 2.0 把 Spec、任务池与度量移到顶层 `process/`）写在同一处的版本说明里。
+升级与降级不提供命令：让项目 AI 按 `template/.agents/skills/upgrade.md` 比对目标版本 `template/` 手动完成，项目状态与红线不替换。
 
 若旧项目的红线配置缺少必要键或值无效，脚本会指出键名并停止；维护者按项目需要补齐 `harness/redlines.conf` 后再运行。脚本不使用另一套隐含默认阈值。
 

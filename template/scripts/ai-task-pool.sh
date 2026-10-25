@@ -38,12 +38,7 @@ lock_pool() {
 }
 cleanup_lock() {
   [ -z "${LINK_TMP:-}" ] || rm -f -- "$LINK_TMP"
-  if [ -n "${START_SPEC:-}" ]; then
-    for name in requirements.md tasks.md verification.md; do
-      rm -f -- "$START_SPEC/$name"
-    done
-    rmdir "$START_SPEC/reports" "$START_SPEC" 2>/dev/null || true
-  fi
+  [ -z "${START_SPEC:-}" ] || rm -rf -- "$START_SPEC"
   rmdir "$POOL/.lock"
 }
 spec_location() {

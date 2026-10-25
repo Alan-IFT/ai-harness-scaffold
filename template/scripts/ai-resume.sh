@@ -66,10 +66,6 @@ echo "=="
 echo "🔄 AI HARNESS: CROSS-TOOL HANDOFF & RESUME SNAPSHOT (跨工具接力快照)"
 echo "=="
 
-# 0. 上下文健康度
-echo -e "\n[0] 上下文体积体检"
-bash scripts/ai-check-bloat.sh || true
-
 # 1. 阶段门（下一门 + 阻断原因 + 红线基线）
 echo -e "\n[1] 阶段门状态"
 if [ -f scripts/ai-gate.sh ]; then
@@ -129,13 +125,3 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
 else
   echo "  (尚未初始化 Git 仓库；建议 git init，否则无法用 diff 接力)"
 fi
-
-echo ""
-echo "=="
-echo "💡 [给当前 AI Agent 的接力指令]"
-echo "1. 先看 [1] 的「下一门」：门禁未过，不要开始编码。"
-echo "2. 有未提交改动 → 先 git diff 看懂上一步；结合 [2] 的 WIP 区继续，严禁推倒重写已通过验证的代码。"
-echo "3. 按任务的代码路径读 docs/architecture/00-INDEX.md 和相关模块活文档。"
-echo "4. 本地跑 bash scripts/ai-verify.sh --spec <feat> <file>；摘要写入 verification.md，详细日志留本机。"
-echo "5. 「需人决定：是」的需求，g3 需要人当次的通过决定，不推断授权。"
-echo "=="

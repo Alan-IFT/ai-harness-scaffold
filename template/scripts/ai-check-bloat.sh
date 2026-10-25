@@ -17,7 +17,7 @@ check_lines() {
   lines=$(wc -l <"$file" | tr -d ' ')
   if [ "$lines" -gt "$limit" ]; then
     echo "⚠️  [防膨胀告警] $file 当前 $lines 行，超过硬上限 $limit 行。"
-    echo "    处理：先按 .agents/skills/gc-memory.md 做减法；确需放宽先改 harness/redlines.conf 并重跑 baseline。"
+    echo "    处理：先删过期、合并重复、移到模块活文档；确需放宽先改 harness/redlines.conf 并重跑 baseline。"
     STATUS=1
   fi
 }

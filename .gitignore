@@ -4,3 +4,4 @@ process/specs/active/*/reports/
 process/specs/archive/*/*/reports/
 process/specs/active/*/.attempts
 harness/.redlines.baseline
+process/task-pool/.lock/

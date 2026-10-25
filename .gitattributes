@@ -1,11 +1,2 @@
+# 统一 LF 换行，避免 CRLF 破坏 shell 脚本
 * text=auto eol=lf
-*.png binary
-*.jpg binary
-*.jpeg binary
-*.gif binary
-*.ico binary
-*.woff binary
-*.woff2 binary
-*.ttf binary
-*.zip binary
-*.pdf binary

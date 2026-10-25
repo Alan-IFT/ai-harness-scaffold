@@ -1,27 +1,6 @@
-# 依赖与构建产物
-node_modules/
-dist/
-build/
-coverage/
-
-# 本地环境与凭据（.env.example 可入库，其余不入库）
-.env
-.env.*
-!.env.example
-
-# 增量验证产物：本地证据，不入库（由 scripts/ai-verify.sh 生成）
+# ai-harness 本地产物，不入库
 process/specs/active/*/reports/
 process/specs/archive/*/*/reports/
-# 同一目标连续失败计数（黄卡依据，临时状态，不入库）
 process/specs/active/*/.attempts
-
-# 编辑器 / 系统杂项
-.DS_Store
-Thumbs.db
-*.log
-
-# 编辑器/工具临时锁文件
-.dsh-ops-update-*.lock
-
-# 每个项目本地生成的基线（不随模板分发）
+process/task-pool/.lock/
 harness/.redlines.baseline
