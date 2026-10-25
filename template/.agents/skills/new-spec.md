@@ -4,7 +4,7 @@
 **工作模式**：只读侦察 + 写文档；g1 通过前不改业务代码。
 
 ## Step 0: 入队与建 Spec
-维护者只用自然语言提需求。独立新需求调用 `bash scripts/ai-task-pool.sh intake "原话"`：有活跃 Spec 则只入队，无活跃 Spec 时自动启动并生成 Spec。补充已有需求用 `update <T-ID> "补充"`，已开始的任务同步改 Spec，必要时 `ai-gate.sh reset`。维护者说“先做某项”时用 `prefer <T-ID>`，无活跃 Spec 再 `start-next`。不经任务池的直接需求用 `bash scripts/ai-new-spec.sh <feat>`。
+按 `AGENTS.md` §1 的需求入口经任务池入队；不经任务池的直接需求用 `bash scripts/ai-new-spec.sh <feat>`。
 
 ## Step 1: 澄清（先复述，再追问，不替人拍板）
 1. 用 3~5 句复述「你要的是 X，因为 Y，做到 Z 就算完成」，让人确认或纠正。
