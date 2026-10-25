@@ -4,7 +4,7 @@
 **核心原则**：写代码的上下文不审查自己的代码；审查者只看产物、需求和验收标准，不看实现者的自述。
 
 ## Step 1: 正式验证（g2）
-1. `bash scripts/ai-verify.sh --spec <feat> <file>`，目标选归档后路径不变的项目文件（不能选 `process/` 下的文件）。
+1. `bash scripts/ai-verify.sh --spec <feat> <file>`，目标选 tasks.md「涉及文件」里归档后路径不变的项目文件（g2 会核对；不能选 `process/` 下的文件）。
 2. 摘要写进 `verification.md`，失败时终端打印输出末尾。验证后代码再变，就重跑。
 3. `bash scripts/ai-gate.sh pass <feat> g2`。
 
@@ -31,6 +31,7 @@
 - 未参与实现：是
 - CR 轮次：1 / <CR_MAX_ROUNDS>
 - 审查状态：<原样复制 verification.md 的 `- state:` 值>
+- 审查范围：<base-ref>...HEAD + 工作区（复审写本轮新增的修复提交）
 
 ## 结论
 - 关键问题：0

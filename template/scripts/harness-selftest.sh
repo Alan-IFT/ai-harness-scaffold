@@ -94,6 +94,7 @@ MD
 
 ## 2. 任务
 - [x] Task 1：实现导出与上限校验
+  - 对应验收：AC-01
   - 涉及文件：`src/export/service.ts`
 - [x] **Task 2：补测试**
   - 涉及文件：`src/export/other.ts`
@@ -147,6 +148,12 @@ expect_fail "拒绝待确认问题未清零" "待确认" bash scripts/ai-gate.sh
 mk_spec t-noplan
 sed -i 's/^- 思路：.*/- 思路：（怎么做）/' "$(T t-noplan)"
 expect_fail "拒绝方案未写" "思路" bash scripts/ai-gate.sh check t-noplan g1
+mk_spec t-noacref
+sed -i '/对应验收/d' "$(T t-noacref)"
+expect_fail "拒绝验收标准没有任务对应" "没有任务对应" bash scripts/ai-gate.sh check t-noacref g1
+mk_spec t-badacref
+sed -i 's/对应验收：AC-01/对应验收：AC-01、AC-02/' "$(T t-badacref)"
+expect_fail "拒绝任务引用不存在的验收标准" "不存在的验收标准 AC-02" bash scripts/ai-gate.sh check t-badacref g1
 
 section "3. g2 验证"
 mk_spec t-open
@@ -155,6 +162,9 @@ expect_fail "拒绝未完成任务" "未完成" bash scripts/ai-gate.sh check t-
 mk_spec t-fail
 sed -i 's/^- result: PASS/- result: FAIL/' "$(S t-fail)"
 expect_fail "拒绝失败摘要" "未通过" bash scripts/ai-gate.sh check t-fail g2
+mk_spec t-offtask
+sed -i 's#^- target: .*#- target: harness/redlines.conf#' "$(S t-offtask)"
+expect_fail "拒绝验证目标不在涉及文件里" "不在 tasks.md" bash scripts/ai-gate.sh check t-offtask g2
 mk_spec t-stale
 printf '// changed after verify\n' >>src/export/service.ts
 expect_fail "拒绝代码变化后的过期摘要" "过期" bash scripts/ai-gate.sh check t-stale g2
@@ -193,6 +203,13 @@ file_lacks  ".gates 已删除 g3" process/specs/active/t-good/.gates "^g3"
 file_has    "reset 记录原因" process/specs/active/t-good/.gates "需求变更"
 file_has    ".gates 保留 g1" process/specs/active/t-good/.gates "g1"
 expect_fail "未知门被拒" "未知门" bash scripts/ai-gate.sh pass t-good g4
+mk_spec t-arch
+expect_fail "未过三道门时拒绝归档" "g1 未通过" bash scripts/ai-task-pool.sh archive t-arch
+for g in g1 g2 g3; do bash scripts/ai-gate.sh pass t-arch "$g" >/dev/null; done
+printf '// changed after review\n' >>src/export/service.ts
+expect_fail "审查失效时拒绝归档" "已失效" bash scripts/ai-task-pool.sh archive t-arch
+sed -i '$d' src/export/service.ts
+expect_out  "三道门通过后归档" "已归档 t-arch" bash scripts/ai-task-pool.sh archive t-arch
 
 section "6. 红线配置"
 sed -i '/^CR_MAX_ROUNDS=/d' harness/redlines.conf
@@ -261,17 +278,15 @@ expect_fail "LC_ALL=C：拒绝只有全角空格的原话" "不能为空" env LC
 expect_out  "空池 intake 收录并启动" "已关联 feat-t-000001" bash scripts/ai-task-pool.sh intake "第一条需求"
 expect_out  "活跃期间新需求只入队" "续做活跃 Spec：feat-t-000001" bash scripts/ai-task-pool.sh intake "第二条需求"
 expect_out  "活跃期间再收录一条" "T-000003" bash scripts/ai-task-pool.sh add "第三条需求"
-expect_out  "追加补充" "已追加" bash scripts/ai-task-pool.sh update T-000002 "加入边界"
-file_has    "补充落盘且原话保留" process/task-pool/T-000002.md "加入边界"
 file_has    "新 Spec 引用任务原件" process/specs/active/feat-t-000001/requirements.md "process/task-pool/T-000001.md"
-expect_out  "人工指定下一项" "已指定 T-000003" bash scripts/ai-task-pool.sh prefer T-000003
-expect_fail "拒绝指定已开始任务" "不是未关联" bash scripts/ai-task-pool.sh prefer T-000001
+sed -i 's/^- 创建日期: .*/&\n- 优先: 是/' process/task-pool/T-000003.md
 expect_out  "有活跃 Spec 时 start-next 只提示续做" "续做活跃 Spec" bash scripts/ai-task-pool.sh start-next
 mkdir process/task-pool/.lock
 expect_fail "任务池锁冲突时拒绝归档" "另一进程修改" bash scripts/ai-task-pool.sh archive feat-t-000001
 rmdir process/task-pool/.lock
-expect_out  "归档活跃 Spec" "已归档 feat-t-000001" bash scripts/ai-task-pool.sh archive feat-t-000001
-expect_out  "归档后按指定选下一项" "下一项：T-000003" bash scripts/ai-task-pool.sh next
+expect_fail "任务池里未过门的 Spec 不能归档" "未通过" bash scripts/ai-task-pool.sh archive feat-t-000001
+mkdir -p process/specs/archive/2026-10 && mv process/specs/active/feat-t-000001 process/specs/archive/2026-10/
+expect_out  "按优先选下一项" "下一项：T-000003（维护者指定优先）" bash scripts/ai-task-pool.sh next
 expect_out  "归档状态由 Spec 派生" "已归档" bash scripts/ai-task-pool.sh list
 mv process/specs/_templates/tasks.md "$TMP/tasks.tpl"
 expect_fail "缺模板时启动失败" "模板缺失" bash scripts/ai-task-pool.sh start-next
@@ -279,7 +294,8 @@ expect_fail "缺模板时启动失败" "模板缺失" bash scripts/ai-task-pool.
 file_has    "失败后任务仍未关联" process/task-pool/T-000003.md "- 关联 Spec: 无"
 mv "$TMP/tasks.tpl" process/specs/_templates/tasks.md
 expect_out  "start-next 启动指定任务" "已关联 feat-t-000003" bash scripts/ai-task-pool.sh start-next
-[ ! -e process/task-pool/NEXT ] && ok_msg "启动后清除一次性指定" || ng_msg "启动后仍有指定"
+mkdir -p process/specs/archive/2026-01/feat-t-000009
+expect_out  "编号避开已有 Spec" "T-000010" bash scripts/ai-task-pool.sh add "第四条需求"
 cd "$SB" || exit 1
 
 # ---------------------------------------------------------------- 汇总 --------

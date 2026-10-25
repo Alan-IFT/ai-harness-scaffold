@@ -1,3 +1,5 @@
 # ai-harness 本地产物，不入库
 process/specs/active/*/.attempts
 process/task-pool/.lock/
+# 个人偏好，不入库
+/PREFERENCES.md

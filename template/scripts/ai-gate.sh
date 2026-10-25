@@ -53,7 +53,7 @@ needs_human() { case "$(field_value "$DIR/requirements.md" '需人决定')" in �
 
 # ------------------------------------------------------------------- 三道门 --
 ck_g1() { # 计划：原话、是否需人决定、验收标准、待确认清零、至少一个任务与方案
-  local r="$DIR/requirements.md" t="$DIR/tasks.md" bad
+  local r="$DIR/requirements.md" t="$DIR/tasks.md" bad acs a
   [ -f "$r" ] || { say "缺少 $r"; return 1; }
   [ -f "$t" ] || { say "缺少 $t"; return 1; }
   filled "$(field_value "$r" '原始问题 / 原话')" || { say "原始问题 / 原话未填：保留提出者的表达或链接任务文件"; return 1; }
@@ -65,6 +65,13 @@ ck_g1() { # 计划：原话、是否需人决定、验收标准、待确认清�
   grep -qE '^[[:space:]]*[-*][[:space:]]*\[ \]' "$r" && { say "待确认问题未清零（requirements.md 仍有未勾选项）"; return 1; }
   filled "$(field_value "$t" '思路')" || { say "tasks.md 的方案「思路」未填"; return 1; }
   grep -qE '^[[:space:]]*-[[:space:]]*\[[ xX]\].*Task' "$t" || { say "tasks.md 没有任何 Task"; return 1; }
+  acs=$(grep -oE '^\|[[:space:]]*AC-[0-9]+' "$r" | grep -oE 'AC-[0-9]+' | sort -u)
+  for a in $acs; do
+    grep -qE "$a([^0-9]|\$)" "$t" || { say "验收标准 $a 没有任务对应（在任务下写「对应验收：$a」）"; return 1; }
+  done
+  for a in $(grep -oE 'AC-[0-9]+' "$t" | sort -u); do
+    printf '%s\n' "$acs" | grep -qx "$a" || { say "tasks.md 引用了不存在的验收标准 $a"; return 1; }
+  done
   return 0
 }
 
@@ -79,6 +86,7 @@ ck_g2() { # 验证：任务全部完成，验证摘要通过、有真实检查�
   saved=$(sed -n 's/^- state: //p' "$s" | head -n 1)
   [ "$result" = PASS ] || { say "最近一次验证未通过：$s"; return 1; }
   [ -n "$target" ] && [ -f "$target" ] || { say "验证摘要缺少有效目标文件：$target"; return 1; }
+  grep -qF "\`$target\`" "$f" || { say "验证目标 $target 不在 tasks.md 的涉及文件里：选本次改动的文件"; return 1; }
   current=$(bash scripts/ai-state-id.sh "$target") || return 1
   [ "$saved" = "$current" ] || { say "验证摘要已过期：代码在验证后变化，请重新运行 ai-verify.sh"; return 1; }
   return 0

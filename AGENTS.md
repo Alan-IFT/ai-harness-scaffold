@@ -3,7 +3,7 @@
 这里是脚手架源码仓库。`template/` 是装进目标项目的唯一机制源码，`skill/SKILL.md` 是接入说明；根目录 `scripts/` 只转发到 `template/scripts/`，不在转发脚本里复制逻辑。本仓库也按 `template/AGENTS.md` 的流程开发（三道门、任务池、WIP 接力），下面只写本仓库特有的约定。
 
 ## 接手
-1. 运行 `bash scripts/ai-resume.sh owner [feat]`，再读 `MEMORY.md`、当前 Spec 的 `tasks.md` 与 `verification.md`、`git status` / `git diff`。
+1. 运行 `bash scripts/ai-resume.sh owner [feat]`，再读 `MEMORY.md`、`PREFERENCES.md`（有则读）、当前 Spec 的 `tasks.md` 与 `verification.md`、`git status` / `git diff`。
 2. 从 `docs/architecture/00-INDEX.md` 找到要改的模块；接入技能、模板脚本、项目指南是不同模块。
 
 ## 开发

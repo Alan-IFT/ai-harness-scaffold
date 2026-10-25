@@ -4,3 +4,5 @@ process/specs/active/*/.attempts
 process/task-pool/.lock/
 # 旧版留在本机的验证日志，不入库
 process/specs/**/reports/
+# 个人偏好，不入库
+/PREFERENCES.md
