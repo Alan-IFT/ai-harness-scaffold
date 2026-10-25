@@ -28,4 +28,5 @@ scripts/           # 只转发到 template/scripts/；本仓库自己也用这�
 - **少就是多**：会让脚手架变臃肿的功能、配置和文档直接删除，追溯交给 Git（见 ADR-0003）。
 - **不写 CLI 与兼容代码**：接入、升级、降级都写成说明，由 AI 判断执行；特殊情况比命令行处理得好。
 - **不覆盖、不猜测**：老项目已有的 `AGENTS.md` 等是团队约定，合并是判断题，不是复制题。
+- **编码原则取自 Karpathy 准则**：`template/AGENTS.md` §3 的四条原则译自 [andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills)（MIT 许可）。
 - **阈值只有一处**：每个项目以自己的 `harness/redlines.conf` 为准，只由人修改；缺键或值无效时脚本直接报错。
