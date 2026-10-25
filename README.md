@@ -98,7 +98,7 @@ skill/SKILL.md     # 共享技能入口：宿主薄入口指向这里，机械�
 
 ## 本仓库自用
 
-根目录也按这套流程开发：`AGENTS.md`、`docs/specs/`、`MEMORY.md` 与 Git 保存状态；根目录 `scripts/` 只转发到 `template/scripts/`，机制仍只维护一份。根目录的项目专属阈值与验证命令在 `harness/`。
+根目录也按这套流程开发：`AGENTS.md`、`process/specs/`、`MEMORY.md` 与 Git 保存状态；根目录 `scripts/` 只转发到 `template/scripts/`，机制仍只维护一份。根目录的项目专属阈值与验证命令在 `harness/`。
 
 ```bash
 bash scripts/ai-resume.sh owner
@@ -106,7 +106,7 @@ bash scripts/ai-gate.sh status
 bash scripts/harness-selftest.sh
 ```
 
-本仓库在接入前已有 Git 历史和 `main` 分支，因此自用接入保留原仓库；没有重新执行 `git init`。接入记录已归档在 `docs/specs/archive/2026-10/feat-self-hosting/`。
+本仓库在接入前已有 Git 历史和 `main` 分支，因此自用接入保留原仓库；没有重新执行 `git init`。接入记录已归档在 `process/specs/archive/2026-10/feat-self-hosting/`。
 
 `template/` 里包含：`AGENTS.md`（L1 入口）、`MEMORY.md`（踩坑池）、`docs/`（轻量需求入口 + 模块活文档 + Spec 与验证摘要模板 + 度量）、
 `scripts/`（ai-task-pool / ai-gate / ai-verify / ai-resume / ai-new-spec / ai-state-id / ai-config / ai-check-bloat / harness-selftest）、
@@ -114,6 +114,9 @@ bash scripts/harness-selftest.sh
 通用 CI 接入命令见 `template/harness/CI.md`；覆盖率和变异测试阈值须由目标项目的 CI 实现，并用低于阈值的样本确认失败路径。未接线时配置值不代表检查已通过。
 老项目 `retrofit --dry-run` 只读；正式接入不会覆盖已有文件、删除同名示例文件或自动改写红线。目录扫描结果放在 `.ai-harness/suggested/` 供审核。
 安装时记录 `.ai-harness/manifest.tsv`，之后用本仓库的 `upgrade <项目路径>` 自动补齐新脚本、更新安装后未改动的机制文件。项目自己的任务、Spec、架构文档、红线及 ignore 文件不在自动替换范围。定制文件保留原样，新版模板写到 `.ai-harness/suggested/<相对路径>.upgrade-<哈希>`；命令返回非零且版本号暂不推进。合并后逐文件运行 `upgrade <项目路径> --accept-custom <相对路径>` 确认当前定制内容；后续模板变化会再次提示冲突。`upgrade --dry-run` 严格只读。旧安装没有 manifest 时只能自动补缺，已有不同内容须逐项确认。升级前建议先提交目标项目当前改动。
+
+从 1.x 升级到 2.0 时，`upgrade` 会先把 Spec、任务池与度量迁入顶层 `process/`（有在途 Spec 或已有 `process/` 时拒绝，不写任何文件），再常规同步；拒绝条件、红线人工更新与回滚步骤见 `template/.agents/skills/retrofit-legacy.md`。
+
 若旧项目的红线配置缺少必要键或值无效，脚本会指出键名并停止；维护者按项目需要补齐 `harness/redlines.conf` 后再运行。脚本不使用另一套隐含默认阈值。
 示例领域图与路线图不会复制进老项目，避免把虚构架构当成项目事实。
 
@@ -138,7 +141,7 @@ bash scripts/ai-gate.sh metrics feat-example
 换 IDE 且使用同一工作区，可直接接手未提交改动；换 worktree 或电脑时，须用 Git 提交或补丁传递未提交代码。
 接手命令必须显式选择 `owner`、`worker` 或 `review`；旧式 `ai-resume.sh [feat]` 会报错并提示新用法。worker 读取指定任务的项目原件；review 独立读取需求、完整相关 diff 与验证摘要，不接收实现者的自评作为审查依据。
 没有 Git 时摘要只能检测目标文件本身的变化，因此完整的跨工作区接力应使用 Git。
-G4 只认不带 `--quick` 的正式验证摘要。设计 §4 逐条列精确文件路径（含测试、配置和依赖），并显式确认验证命令及其间接依赖后，新 Spec 才可依据 G3 基准提交隔离其他活跃 Spec 的改动；任一清单条目含多个路径、旧 Spec 无基准、清单不完整或存在未归属改动时保守回退全仓。任意 `CUSTOM_CHECK` 的依赖不能由脚本自动推断，无法确认时保持全仓指纹。`docs/specs/**`、`docs/metrics.md`、`docs/task-pool/**` 是流程记录，不计入指纹，Spec 进行中收录任务不会使摘要过期。修改相关代码或暂存后请重验；相同索引内容提交后指纹保持稳定。TTY 和本地红线哈希只防误操作；
+G4 只认不带 `--quick` 的正式验证摘要。状态指纹全仓计算，只排除 `process/`：其下的 Spec、任务池与度量是流程记录，不计入指纹，Spec 进行中收录任务不会使摘要过期。修改相关代码或暂存后请重验；相同索引内容提交后指纹保持稳定。TTY 和本地红线哈希只防误操作；
 首次正式 G4 前，先对照需求原文、AC、设计文件清单和实际交付物，检查 `git status --short` 中的未跟踪、未暂存及已暂存文件；项目检查可同时运行 `git diff --check` 和 `git diff --cached --check`。quick 适合短反馈，不能替代完整验证。本仓库的完整验证先做双区 diff，再跑自检和 CLI 回归；本地报告逐阶段打印耗时，便于依据实测定位慢阶段。
 需要强制人工审批时，用目标项目自己的外部权限机制。
 
@@ -146,5 +149,5 @@ G4 只认不带 `--quick` 的正式验证摘要。设计 §4 逐条列精确文�
 
 - **升级范围明确**：`upgrade` 只按安装基线更新未改动的脚手架机制文件；合并定制内容由项目维护者判断。
 - **不覆盖、不猜测**：老项目的 `AGENTS.md`、`00-INDEX.md` 可能已有团队约定，合并是判断题，不是复制题。
-- **过时内容归档而非删除**：被取代的旧文档移入 `docs/specs/archive/`，保持单一真相。
+- **过时内容归档而非删除**：被取代的旧文档移入 `process/specs/archive/`，保持单一真相。
 - **模板即实例**：这个仓库自身就是可运行的脚手架（`template/` 内可跑 `harness-selftest.sh` 自检）。

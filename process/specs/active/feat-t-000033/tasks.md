@@ -45,14 +45,14 @@
   - **验证命令**: `bash -n bin/ai-harness && bash tests/cli-upgrade.sh`
   - **检查点**: 有（检查点 2，人工看一遍迁移输出文案）
 
-- [ ] **Task 4: 指南、README 与活文档同步** `[<<< CURRENT ACTIVE TASK]`
+- [x] **Task 4: 指南、README 与活文档同步**
   - **涉及文件**: `template/AGENTS.md`、`template/.agents/skills/*.md`、`template/process/specs/_templates/*.md`、`template/docs/**`、`README.md`、`skill/SKILL.md`、`docs/architecture/modules/*.md`、ADR-0002
   - **对应需求 / 验收**: REQ-01 / AC-01
   - **对应设计**: design.md §2、§4
-  - **完成判据**: AC-01 的 `grep` 在 `template/`、`scripts/`、`skill/`、`README.md`、`AGENTS.md` 中无命中；`retrofit-legacy.md` 写明迁移、拒绝条件、红线提示与回滚
+  - **完成判据**: AC-01 的 `grep` 在 `template/`、`scripts/`、`skill/`、`README.md`、`AGENTS.md` 中只剩迁移相关命中（见 requirements AC-01）；`retrofit-legacy.md` 写明迁移、拒绝条件、红线提示与回滚
   - **验证命令**: `grep -rn 'docs/specs\|docs/metrics\|docs/task-pool' template scripts skill README.md AGENTS.md`
 
-- [ ] **Task 5: 正式验证与收尾**
+- [ ] **Task 5: 正式验证与收尾** `[<<< CURRENT ACTIVE TASK]`
   - **涉及文件**: `process/specs/active/feat-t-000033/verification.md`
   - **对应需求 / 验收**: AC-06
   - **对应设计**: design.md §2
@@ -72,12 +72,12 @@
 > **致下一个接手的 AI Agent (Claude / Codex / DeepSeek)**：
 > 上一个工具可能因额度耗尽（429）或超时中断。请结合 `git diff` 与本区继续，**严禁推倒重写已通过验证的代码**！
 
-- **当前正在执行的任务**: `Task 4`
+- **当前正在执行的任务**: `Task 5`
 - **前置依赖 / 并行关系**: 无（并行任务须写明依赖和各自负责的文件）
-- **已完成的小步进展**: Task 1、2 完成：指纹全仓模式；模板与本仓库已迁到 process/；旧布局守卫在五个脚本入口；自检 214 项全过。Task 3 完成：CLI 迁移 + 幂等改写，cli-upgrade 全过（含拒绝、dry-run、Git、中断自愈、自有 docs/specs），retrofit --dry-run 只读。AC-01 已注明守卫与升级说明可引用旧路径（与 ERR-02 的固有矛盾）。
+- **已完成的小步进展**: Task 1、2 完成：指纹全仓模式；模板与本仓库已迁到 process/；旧布局守卫在五个脚本入口；自检 214 项全过。Task 3 完成：CLI 迁移 + 幂等改写，cli-upgrade 全过（含拒绝、dry-run、Git、中断自愈、自有 docs/specs），retrofit --dry-run 只读。Task 4 完成：指南、README、活文档、ADR 同步，AC-01 grep 只剩迁移相关命中。AC-01 已注明守卫与升级说明可引用旧路径（与 ERR-02 的固有矛盾）。
 - **正在编辑的文件**（下一个 Agent 必须**重新读**这些文件，不要凭记忆）：
   - 
 - **已排除的死胡同 / 错误方案 (勿重复踩坑)**: 无
 - **上次验证与未验证改动**: 看 `verification.md`；G4 前若代码内容变化，重跑正式验证。`ai-resume.sh owner <feat>` 会提示摘要是否过期；G5 用 `review <feat> <base-ref>` 检查审查证据。
-- **下一步立即执行的唯一动作 (Next Immediate Action)**：开始 Task 4：同步指南、README、活文档。
+- **下一步立即执行的唯一动作 (Next Immediate Action)**：Task 5：正式验证 `template/scripts/ai-state-id.sh`，过 G4 后交独立 G5。
 - **knowledge_feedback**（若 `MEMORY.md`、规则或模块活文档与代码不符，记在这里，GC 时修正或删除）：

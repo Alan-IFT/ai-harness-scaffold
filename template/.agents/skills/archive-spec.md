@@ -2,9 +2,9 @@
 
 **前置条件**：`bash scripts/ai-gate.sh status <feat>` 显示 G1~G6 全绿；实现相关活文档与路线图已在最后一次正式 G4 验证前同步，G6 后不再改动这些文件。
 **产出**：已复核的活文档 + 归档目录 + 度量行 + 一个干净的 commit。
-正式 G4 的验证目标须选归档后路径不变的项目文件；`docs/specs/**`、`docs/metrics.md` 和 `docs/task-pool/**` 是流程记录，不计入状态指纹，也不能作为正式目标；Spec 进行中收录或补充任务不会使验证摘要过期。
+正式 G4 的验证目标须选归档后路径不变的项目文件；`process/` 下是流程记录，不计入状态指纹，也不能作为正式目标；Spec 进行中收录或补充任务不会使验证摘要过期。
 
-象限④是分析与人工移交，不走本技能的 G6/G7 交付归档：在关联任务文件记录人工接管决定；若已经建立 Spec，G1 后将其移到 `docs/specs/archive/YYYY-MM/`，不写交付度量行。保留需求和分析作为依据，但不让它长期占用 active 名额。
+象限④是分析与人工移交，不走本技能的 G6/G7 交付归档：在关联任务文件记录人工接管决定；若已经建立 Spec，G1 后将其移到 `process/specs/archive/YYYY-MM/`，不写交付度量行。保留需求和分析作为依据，但不让它长期占用 active 名额。
 
 ## Step 1: 复核「活态真相区」(`docs/architecture/`)
 1. 对照 `design.md` §3 / §4，确认新增模块、公共契约、核心数据表和红线已在最后一次正式 G4 验证前同步。
@@ -16,19 +16,19 @@
 2. 若本次涉及里程碑，核对 `docs/roadmap/ROADMAP.md` 已在最后一次正式 G4 前更新。
 3. 若 G5 审查或 G6 核验产生必须写入 `MEMORY.md`、路线图或其他非流程文件的新结论，先按门禁规则回退并重跑正式 G4 与后续门；不能在归档时补写后仍沿用旧摘要。
 
-## Step 3: 记录度量（`docs/metrics.md` 追加一行）
+## Step 3: 记录度量（`process/metrics.md` 追加一行）
 先运行 `bash scripts/ai-gate.sh metrics <feat>`，从 `.gates` 自动得到门间耗时；再从关联任务文件（或旧 `docs/INTAKE.md`）、当前 Spec、`review.md`、`.violations` 和本地 `reports/` 补充非门禁事实。不要另算一份时间或美化；缺少时间戳写「未知」：
 - 需求提出 → G1、G3 → G4、G4 → G6 的耗时；人工或外部依赖等待只记有证据的时间。
 - 遗漏的间接影响与返工、交付形态及实际反馈；待发布或未观察写清状态。
-- 若 G7 时仍待发布，在 `acceptance.md` 留回访时间；发布后补记结果并更新 `docs/metrics.md` 对应行，不把「测试通过」写成用户效果。
+- 若 G7 时仍待发布，在 `acceptance.md` 留回访时间；发布后补记结果并更新 `process/metrics.md` 对应行，不把「测试通过」写成用户效果。
 - CR 轮次、验证失败次数、门禁回退次数可留在备注或月度分析，不必为凑数伪造。
 
 ## Step 4: 同锁物理归档
 ```bash
 bash scripts/ai-task-pool.sh archive <feat>
 ```
-本命令与 `start-next` 共用任务池锁；锁冲突时归档失败、active 不移动，稍后重试，不能把失败当作已归档。归档前后的详细 `reports/` 只留本机，不入 Git。提交前用 `git ls-files docs/specs/archive/YYYY-MM/<feat>/reports/` 检查，若有输出，用 `git rm --cached -r -- docs/specs/archive/YYYY-MM/<feat>/reports/` 取消跟踪（`--cached` 保留本机文件）。可交接的结果仍以 `verification.md` 摘要为准。
-> `docs/specs/archive/**` 已被 `.cursorignore` / `.claudeignore` 屏蔽，归档后不再进入任何 AI 会话的检索范围。
+本命令与 `start-next` 共用任务池锁；锁冲突时归档失败、active 不移动，稍后重试，不能把失败当作已归档。归档前后的详细 `reports/` 只留本机，不入 Git。提交前用 `git ls-files process/specs/archive/YYYY-MM/<feat>/reports/` 检查，若有输出，用 `git rm --cached -r -- process/specs/archive/YYYY-MM/<feat>/reports/` 取消跟踪（`--cached` 保留本机文件）。可交接的结果仍以 `verification.md` 摘要为准。
+> `process/specs/archive/**` 已被 `.cursorignore` / `.claudeignore` 屏蔽，归档后不再进入任何 AI 会话的检索范围。
 
 ## Step 5: 记录归档门
 1. `bash scripts/ai-gate.sh pass <feat> g7`（此时 spec 已在 archive，g7 校验依赖这一点）。

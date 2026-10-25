@@ -1,9 +1,9 @@
 # 原子执行队列与跨工具接力棒 (Tasks & Handoff): {{FEATURE_NAME}}
 
-- **需求文档**: `docs/specs/active/{{FEATURE_NAME}}/requirements.md`
-- **设计文档**: `docs/specs/active/{{FEATURE_NAME}}/design.md`
+- **需求文档**: `process/specs/active/{{FEATURE_NAME}}/requirements.md`
+- **设计文档**: `process/specs/active/{{FEATURE_NAME}}/design.md`
 - 追溯版本：1（与 design.md 配套；旧 Spec 无此行仍沿用旧门禁）
-- **当前阶段**: 以 `bash scripts/ai-gate.sh status {{FEATURE_NAME}}` 为准。`docs/specs/active/{{FEATURE_NAME}}/.gates` 由脚本维护，**禁止手改**。
+- **当前阶段**: 以 `bash scripts/ai-gate.sh status {{FEATURE_NAME}}` 为准。`process/specs/active/{{FEATURE_NAME}}/.gates` 由脚本维护，**禁止手改**。
 
 ## 0. 阶段门
 以 `bash scripts/ai-gate.sh status {{FEATURE_NAME}}` 的 `.gates` 结果为准；规则见 `AGENTS.md`。此处只记未完成任务，不复制阶段表。回滚后用 `ai-gate.sh reset` 使受影响门失效。
@@ -11,7 +11,7 @@
 ## 1. 上下文清单（开工前先填，避免乱读）
 - **必读**：`requirements.md`、`design.md`、本文件、涉及模块的活文档
 - **条件读**（命中才读）：其他模块公共契约（`index.ts` / `types.ts`）、`harness/redlines.conf`（涉及阈值时）
-- **明确不读**：`docs/specs/archive/**`、其他模块内部实现、全量测试输出
+- **明确不读**：`process/specs/archive/**`、其他模块内部实现、全量测试输出
 - **相关记忆**（`MEMORY.md` 中与本任务有关的条目；没有写「无」）：
 - **本次不变量**（改坏即视为回归，例如：「对外 API 路径不变」「旧数据无需迁移」）：
 

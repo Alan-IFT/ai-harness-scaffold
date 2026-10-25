@@ -51,7 +51,7 @@
 
 ## 5. 防膨胀与验证口径 (Anti-Bloat & Verification)
 - **只读契约，不读实现**：跨模块只读目标模块的公共契约文件（`index.ts` / `types.ts` / 接口定义）。
-- **验证口径**：开发中可跑 `bash scripts/ai-verify.sh --quick --spec <feat> <file>`，需在 `harness/verify.conf` 配 `QUICK_CHECK`，它不生成 G4 摘要；G4 前跑不带 `--quick` 的正式验证，目标选择归档后路径与内容稳定的项目文件，不用 `docs/specs/**`、`docs/metrics.md` 或 `docs/task-pool/**`；这三处是流程记录，不计入状态指纹，代码与构建不得引用，也不写进 §4 清单。设计 §4 的精确路径清单经显式确认覆盖验证命令、脚本、配置与测试依赖后才可缩小指纹；无法安全判定时保守回退全仓。摘要在 `verification.md`，详细日志留本机；全量回归仍按 CI 配置执行。
+- **验证口径**：开发中可跑 `bash scripts/ai-verify.sh --quick --spec <feat> <file>`，需在 `harness/verify.conf` 配 `QUICK_CHECK`，它不生成 G4 摘要；G4 前跑不带 `--quick` 的正式验证，目标选择归档后路径与内容稳定的项目文件，不用 `process/` 下的文件；`process/` 只放流程记录（Spec、任务池、度量），不计入状态指纹，代码与构建不得引用。状态指纹全仓计算，只排除 `process/`。摘要在 `verification.md`，详细日志留本机；全量回归仍按 CI 配置执行。
 - **实时存盘**：每完成一个子步骤，立即更新 `tasks.md` 的 WIP 区（含「正在编辑的文件」）；每个 `[x]` 任务先验证再原子 commit。
 - **红 / 黄 / 绿卡**：🟢 绿＝单个 `[x]` 任务通过验证，可自动流转；🟡 黄＝同一目标连续失败达到 `VERIFY_MAX_ATTEMPTS` / 门禁互相冲突 / 需扩范围或改契约 → 停下说明并等人；🔴 红＝不可逆或高爆炸半径（删数据、`git push --force`、改 `redlines.conf`、②③的 G6 风险决定、发布上线）→ 必须人明确同意。
 - **参数缺省即拒**：部署、发布、批量、删除类命令必须显式指定环境与范围；没有"默认全量 / 默认所有用户"，不确定就报错退出。

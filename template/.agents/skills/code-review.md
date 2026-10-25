@@ -44,7 +44,7 @@
 - **判定规则「改善即批准」**：关键问题 = 0 且测试通过 → 判定"通过"，改进建议写成待办即可，不要求本次修完。
 - **修复包络（防止无限自我修复）**：每轮只修关键问题，**不做"顺手重构 / 泛化重写"**；轮次上限取 `harness/redlines.conf` 的 `CR_MAX_ROUNDS`，触顶必须停下转人工。当前轮次写进 `review.md` 的 `- **CR 轮次**：<当前轮次> / <配置上限>`，G5 校验超过上限即拒绝。
 
-## Step 3: 产出 `docs/specs/active/<feat>/review.md`（G5 门禁按此格式机械校验）
+## Step 3: 产出 `process/specs/active/<feat>/review.md`（G5 门禁按此格式机械校验）
 
 ```md
 # 代码审查报告 (Code Review): <feat>
