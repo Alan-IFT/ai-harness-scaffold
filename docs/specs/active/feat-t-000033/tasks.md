@@ -22,14 +22,14 @@
 > 3. 完成后：勾 `[x]` → 清空 WIP → 原子 commit。
 > 4. 拆分出口：每个任务引用设计章节；实现入口：写代码前回读该章节和 requirements.md §2.3 的相关原文锚点。任务摘要与设计冲突时先修任务，不据摘要实现。
 
-- [ ] **Task 1: 指纹简化为全仓模式（仍用旧路径）** `[<<< CURRENT ACTIVE TASK]`
+- [x] **Task 1: 指纹简化为全仓模式（仍用旧路径）**
   - **涉及文件**: `template/scripts/ai-state-id.sh`、`template/scripts/harness-selftest.sh`
   - **对应需求 / 验收**: REQ-02 / AC-02
   - **对应设计**: design.md §1、§2、§3.2
   - **完成判据**: scoped 函数与分支全部删除；`--spec` 与无参数指纹相同；自检全过
   - **验证命令**: `bash scripts/harness-selftest.sh`
 
-- [ ] **Task 2: 路径迁移到 process/ 与本仓库自迁移（同一提交）**
+- [ ] **Task 2: 路径迁移到 process/ 与本仓库自迁移（同一提交）** `[<<< CURRENT ACTIVE TASK]`
   - **涉及文件**: `template/scripts/*.sh`、`template/process/**`（`git mv`）、`template/harness/redlines.conf`、`template/.gitignore`、`template/.cursorignore`、`template/.claudeignore`、`process/**`（`git mv`）、`.gitignore`、`scripts/ai-new-spec.sh`、`AGENTS.md`、`MEMORY.md`、`docs/architecture/00-INDEX.md`
   - **对应需求 / 验收**: REQ-01, REQ-02, REQ-03, ERR-02 / AC-01, AC-02, AC-04, AC-05
   - **对应设计**: design.md §1、§2、§3.2、§4
@@ -72,12 +72,12 @@
 > **致下一个接手的 AI Agent (Claude / Codex / DeepSeek)**：
 > 上一个工具可能因额度耗尽（429）或超时中断。请结合 `git diff` 与本区继续，**严禁推倒重写已通过验证的代码**！
 
-- **当前正在执行的任务**: `Task 1`
+- **当前正在执行的任务**: `Task 2`
 - **前置依赖 / 并行关系**: 无（并行任务须写明依赖和各自负责的文件）
-- **已完成的小步进展**: 尚未开始（随开发进度实时更新）
+- **已完成的小步进展**: Task 1 完成：ai-state-id.sh 34 行，自检 206 项全过。
 - **正在编辑的文件**（下一个 Agent 必须**重新读**这些文件，不要凭记忆）：
   - 
 - **已排除的死胡同 / 错误方案 (勿重复踩坑)**: 无
 - **上次验证与未验证改动**: 看 `verification.md`；G4 前若代码内容变化，重跑正式验证。`ai-resume.sh owner <feat>` 会提示摘要是否过期；G5 用 `review <feat> <base-ref>` 检查审查证据。
-- **下一步立即执行的唯一动作 (Next Immediate Action)**：开始 Task 1（指纹简化）。
+- **下一步立即执行的唯一动作 (Next Immediate Action)**：开始 Task 2：git mv 模板三项并改脚本路径常量。
 - **knowledge_feedback**（若 `MEMORY.md`、规则或模块活文档与代码不符，记在这里，GC 时修正或删除）：

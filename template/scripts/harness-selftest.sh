@@ -622,70 +622,14 @@ printf '\n# changed\n' >>"$GIT_SB/scripts/ai-task-pool.sh"
 script_after=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh source.txt)
 if [ "$script_after" != "$pool_base" ]; then ok_msg "任务池脚本改动照常计入指纹"; else ng_msg "ai-task-pool.sh 被误排除"; fi
 (cd "$GIT_SB" && git checkout -- scripts/ai-task-pool.sh)
-mkdir -p "$GIT_SB/docs/specs/active/one" "$GIT_SB/docs/specs/active/two" "$GIT_SB/docs/specs/active/three"
-printf '## 4. 影响面与涉及文件清单\n- 指纹范围确认：已核对验证命令及其脚本、配置、测试依赖\n- `source.txt`：本任务\n' >"$GIT_SB/docs/specs/active/one/design.md"
-printf '## 4. 影响面与涉及文件清单\n- 指纹范围确认：已核对验证命令及其脚本、配置、测试依赖\n- `other.txt`：另一任务\n' >"$GIT_SB/docs/specs/active/two/design.md"
-printf '## 4. 影响面与涉及文件清单\n- 指纹范围确认：已核对验证命令及其脚本、配置、测试依赖\n- `scripts/ai-config.sh`：第三个任务\n- `package.json`：第三个任务\n' >"$GIT_SB/docs/specs/active/three/design.md"
-base=$(cd "$GIT_SB" && git rev-parse HEAD)
-printf 'g3\tagent\t2026-10-20T00:00:00Z\t%s\n' "$base" >"$GIT_SB/docs/specs/active/one/.gates"
-printf 'g3\tagent\t2026-10-20T00:00:00Z\t%s\n' "$base" >"$GIT_SB/docs/specs/active/two/.gates"
-printf 'g3\tagent\t2026-10-20T00:00:00Z\t%s\n' "$base" >"$GIT_SB/docs/specs/active/three/.gates"
-scope_before=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh --spec one source.txt)
-printf 'other spec change\n' >>"$GIT_SB/other.txt"
-scope_other=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh --spec one source.txt)
-if [ "$scope_before" = "$scope_other" ]; then ok_msg "其他活跃 Spec 的文件改动不使本 Spec 过期"; else ng_msg "其他 Spec 的改动误使本 Spec 过期"; fi
-printf '\n# verification dependency changed\n' >>"$GIT_SB/scripts/ai-config.sh"
-scope_dependency=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh --spec one source.txt)
-if [ "$scope_other" != "$scope_dependency" ]; then ok_msg "其他 Spec 修改验证器依赖仍使本 Spec 过期"; else ng_msg "验证器依赖被错误豁免"; fi
-(cd "$GIT_SB" && git checkout -- scripts/ai-config.sh)
-printf '\n' >>"$GIT_SB/package.json"
-scope_toolchain=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh --spec one source.txt)
-if [ "$scope_other" != "$scope_toolchain" ]; then ok_msg "其他 Spec 修改工具链声明仍使本 Spec 过期"; else ng_msg "工具链声明被错误豁免"; fi
-(cd "$GIT_SB" && git checkout -- package.json)
-printf 'own change\n' >>"$GIT_SB/source.txt"
-scope_own=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh --spec one source.txt)
-if [ "$scope_other" != "$scope_own" ]; then ok_msg "本 Spec 文件改动使指纹过期"; else ng_msg "本 Spec 文件改动未使指纹过期"; fi
-printf 'scoped intake\n' >"$GIT_SB/docs/task-pool/T-000009.md"
-printf '- 补充\n' >>"$GIT_SB/docs/task-pool/T-000001.md"
-scope_pool=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh --spec one source.txt)
-if [ "$scope_own" = "$scope_pool" ]; then ok_msg "精确清单模式下任务池改动不回退全仓"; else ng_msg "任务池改动使精确清单指纹回退或变化"; fi
-rm -f "$GIT_SB/docs/task-pool/T-000009.md"
-(cd "$GIT_SB" && git checkout -- docs/task-pool/T-000001.md)
-sed -i 's/`source.txt`：本任务/`source.txt`、`other.txt`：本任务/' "$GIT_SB/docs/specs/active/one/design.md"
-scope_multi_before=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh --spec one source.txt)
-printf 'multi path change\n' >>"$GIT_SB/other.txt"
-scope_multi_after=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh --spec one source.txt)
-if [ "$scope_multi_before" != "$scope_multi_after" ]; then ok_msg "多反引号清单回退全仓指纹"; else ng_msg "多反引号清单漏掉第二个路径"; fi
-sed -i 's/`source.txt`、`other.txt`：本任务/`source.txt`：本任务/' "$GIT_SB/docs/specs/active/one/design.md"
+# 指纹只有全仓模式：--spec 为兼容保留，不改变结果
+spec_arg=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh --spec one source.txt)
+no_arg=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh source.txt)
+if [ "$spec_arg" = "$no_arg" ]; then ok_msg "--spec 与不带参数的指纹相同"; else ng_msg "--spec 改变了指纹"; fi
 printf 'unclaimed\n' >"$GIT_SB/unclaimed.txt"
-scope_unclaimed=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh --spec one source.txt)
-if [ "$scope_own" != "$scope_unclaimed" ]; then ok_msg "未归属改动触发全仓保守指纹"; else ng_msg "未归属改动被 scoped 指纹忽略"; fi
-sed -i 's/`source.txt`/`*.txt`/' "$GIT_SB/docs/specs/active/one/design.md"
-scope_glob_before=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh --spec one source.txt)
-printf 'changed again\n' >>"$GIT_SB/other.txt"
-scope_glob_after=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh --spec one source.txt)
-if [ "$scope_glob_before" != "$scope_glob_after" ]; then ok_msg "通配清单回退全仓指纹"; else ng_msg "通配清单错误启用 scoped 指纹"; fi
-mkdir -p "$GIT_SB/docs/specs/active/legacy"
-printf '## 4. 影响面与涉及文件清单\n- source.txt：旧格式\n' >"$GIT_SB/docs/specs/active/legacy/design.md"
-legacy_before=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh --spec legacy source.txt)
-printf 'legacy unrelated\n' >>"$GIT_SB/other.txt"
-legacy_after=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh --spec legacy source.txt)
-if [ "$legacy_before" != "$legacy_after" ]; then ok_msg "旧 Spec 无精确清单时保守全仓"; else ng_msg "旧 Spec 被错误缩小指纹范围"; fi
-# 字节 locale：全角冒号的确认行启用 scoped，全角括号不算确认（「（」与「：」首字节相同）
-(cd "$GIT_SB" && git add -A && git -c user.name=selftest -c user.email=selftest@example.invalid commit -qm locale-baseline)
-mkdir -p "$GIT_SB/docs/specs/active/bytec" "$GIT_SB/docs/specs/active/paren"
-printf '## 4. 影响面与涉及文件清单\n- 指纹范围确认：已核对验证命令及其脚本、配置、测试依赖\n- `source.txt`：本任务\n' >"$GIT_SB/docs/specs/active/bytec/design.md"
-printf '## 4. 影响面与涉及文件清单\n- 指纹范围确认（已核对验证命令及其脚本、配置、测试依赖）\n- `source.txt`：本任务\n' >"$GIT_SB/docs/specs/active/paren/design.md"
-base=$(cd "$GIT_SB" && git rev-parse HEAD)
-printf 'g3\tagent\t2026-10-20T00:00:00Z\t%s\n' "$base" >"$GIT_SB/docs/specs/active/bytec/.gates"
-printf 'g3\tagent\t2026-10-20T00:00:00Z\t%s\n' "$base" >"$GIT_SB/docs/specs/active/paren/.gates"
-bytec_before=$(cd "$GIT_SB" && LC_ALL=C bash scripts/ai-state-id.sh --spec bytec source.txt)
-paren_before=$(cd "$GIT_SB" && LC_ALL=C bash scripts/ai-state-id.sh --spec paren source.txt)
-printf 'claimed by spec two\n' >>"$GIT_SB/other.txt"
-bytec_after=$(cd "$GIT_SB" && LC_ALL=C bash scripts/ai-state-id.sh --spec bytec source.txt)
-paren_after=$(cd "$GIT_SB" && LC_ALL=C bash scripts/ai-state-id.sh --spec paren source.txt)
-if [ "$bytec_before" = "$bytec_after" ]; then ok_msg "LC_ALL=C：全角冒号确认行启用 scoped"; else ng_msg "LC_ALL=C：全角冒号确认行未启用 scoped"; fi
-if [ "$paren_before" != "$paren_after" ]; then ok_msg "LC_ALL=C：全角括号不算指纹范围确认"; else ng_msg "LC_ALL=C：全角括号被误当成确认"; fi
+unclaimed=$(cd "$GIT_SB" && bash scripts/ai-state-id.sh --spec one source.txt)
+if [ "$unclaimed" != "$spec_arg" ]; then ok_msg "带 --spec 时非目标改动仍计入指纹"; else ng_msg "带 --spec 时漏掉非目标改动"; fi
+rm -f "$GIT_SB/unclaimed.txt"
 
 RESUME_SB="$TMP/resume-review"
 mkdir -p "$RESUME_SB/scripts" "$RESUME_SB/docs/specs/active/demo"
