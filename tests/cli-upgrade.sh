@@ -25,12 +25,12 @@ snapshot() {
 
 bash "$CLI" init "$TARGET" --no-git >/dev/null
 grep -q $'\tscripts/ai-task-pool.sh$' "$TARGET/.ai-harness/manifest.tsv"
-grep -q '^version=1.1.0$' "$TARGET/.ai-harness/version"
-sed -i 's/^version=1.1.0$/version=1.0.0/' "$TARGET/.ai-harness/version"
+grep -q '^version=2.0.0$' "$TARGET/.ai-harness/version"
+sed -i 's/^version=2.0.0$/version=1.0.0/' "$TARGET/.ai-harness/version"
 printf '\n# local customization\n' >> "$TARGET/AGENTS.md"
 printf '\n# template update\n' >> "$TMP/source/template/scripts/ai-task-pool.sh"
 printf '#!/usr/bin/env bash\n' > "$TMP/source/template/scripts/ai-future.sh"
-printf 'project state\n' > "$TARGET/docs/task-pool/T-000002.md"
+printf 'project state\n' > "$TARGET/process/task-pool/T-000002.md"
 cp "$TARGET/AGENTS.md" "$TMP/agents-before"
 snapshot "$TARGET" > "$TMP/before"
 
@@ -47,14 +47,14 @@ fi
 cmp "$TARGET/AGENTS.md" "$TMP/agents-before"
 grep -q '# template update' "$TARGET/scripts/ai-task-pool.sh"
 test -f "$TARGET/scripts/ai-future.sh"
-test -f "$TARGET/docs/task-pool/T-000002.md"
+test -f "$TARGET/process/task-pool/T-000002.md"
 grep -q '^version=1.0.0$' "$TARGET/.ai-harness/version"
 test -f "$TARGET/.ai-harness/suggested/AGENTS.md.upgrade-$(hash_one "$TMP/source/template/AGENTS.md" | cut -c1-12)"
 
 # The maintainer merges/reviews the custom file, then records its new baseline.
 bash "$CLI" upgrade "$TARGET" --accept-custom AGENTS.md > "$TMP/accepted-output"
 grep -q '已确认合并的定制文件' "$TMP/accepted-output"
-grep -q '^version=1.1.0$' "$TARGET/.ai-harness/version"
+grep -q '^version=2.0.0$' "$TARGET/.ai-harness/version"
 bash "$CLI" upgrade "$TARGET" > "$TMP/repeat-output"
 cmp "$TARGET/AGENTS.md" "$TMP/agents-before"
 grep -q '0 个冲突' "$TMP/repeat-output"
@@ -185,4 +185,106 @@ test -f "$TMP/ret-legacy/scripts/ai-old.sh"
 bash "$RCLI" upgrade "$TMP/ret-forged" > /dev/null
 test -f "$TMP/ret-forged/src/app.sh"
 test ! -e "$TMP/ret-forged/scripts/ai-old.sh"
+
+# 2.0: process records move from docs/ to process/ exactly once, refusing before any write.
+MSRC="$TMP/migrate-source"
+mkdir -p "$MSRC"
+cp -R "$ROOT/bin" "$ROOT/template" "$MSRC/"
+MCLI="$MSRC/bin/ai-harness"
+make_legacy() { # <dir>; rebuild the 1.x layout from a fresh install
+  local d=$1
+  mkdir -p "$d/docs"
+  mv "$d/process/specs" "$d/docs/specs"
+  mv "$d/process/task-pool" "$d/docs/task-pool"
+  mv "$d/process/metrics.md" "$d/docs/metrics.md"
+  rmdir "$d/process"
+  sed -i 's#\tprocess/#\tdocs/#' "$d/.ai-harness/manifest.tsv"
+  sed -i 's#^process/#docs/#' "$d/.gitignore" "$d/.cursorignore" "$d/.claudeignore"
+  sed -i 's#process/specs/active/#docs/specs/active/#' "$d/harness/redlines.conf"
+  sed -i 's/^version=2.0.0$/version=1.1.0/' "$d/.ai-harness/version"
+  mkdir -p "$d/docs/specs/archive/2026-10/feat-a"
+  printf 'archived spec\n' > "$d/docs/specs/archive/2026-10/feat-a/requirements.md"
+  printf 'task text\n' > "$d/docs/task-pool/T-000001.md"
+  printf '| metrics row |\n' >> "$d/docs/metrics.md"
+}
+expect_refusal() { # <dir> <message>
+  snapshot "$1" > "$TMP/refuse-before"
+  if bash "$MCLI" upgrade "$1" > "$TMP/refuse-output" 2>&1; then echo "expected refusal: $2" >&2; exit 1; fi
+  grep -q "$2" "$TMP/refuse-output"
+  snapshot "$1" > "$TMP/refuse-after"
+  cmp "$TMP/refuse-before" "$TMP/refuse-after"
+}
+
+MIG="$TMP/mig-ok"
+bash "$MCLI" init "$MIG" --no-git >/dev/null
+make_legacy "$MIG"
+mkdir -p "$MIG/docs/specs/active/.feat-x.tmp.abc123"
+printf 'own spec\n' > "$MIG/docs/specs/api.md"
+for f in docs/specs/archive/2026-10/feat-a/requirements.md docs/task-pool/T-000001.md docs/metrics.md; do
+  hash_one "$MIG/$f" > "$TMP/hash-$(basename "$f")"
+done
+cp "$MIG/harness/redlines.conf" "$TMP/redlines-before"
+snapshot "$MIG" > "$TMP/mig-dry-before"
+bash "$MCLI" upgrade "$MIG" --dry-run > "$TMP/mig-dry-output"
+snapshot "$MIG" > "$TMP/mig-dry-after"
+cmp "$TMP/mig-dry-before" "$TMP/mig-dry-after"
+grep -q '将迁移 docs/specs/archive → process/specs/archive' "$TMP/mig-dry-output"
+grep -q '将改写旧路径引用: .ai-harness/manifest.tsv' "$TMP/mig-dry-output"
+
+bash "$MCLI" upgrade "$MIG" > "$TMP/mig-output" 2>&1
+grep -q '0 个冲突' "$TMP/mig-output"
+grep -q 'ALLOWED_WRITE_DIRS' "$TMP/mig-output"
+cmp "$TMP/redlines-before" "$MIG/harness/redlines.conf"
+for f in specs/archive/2026-10/feat-a/requirements.md task-pool/T-000001.md metrics.md; do
+  [ "$(hash_one "$MIG/process/$f")" = "$(cat "$TMP/hash-$(basename "$f")")" ] || { echo "content changed: $f" >&2; exit 1; }
+done
+test -d "$MIG/process/specs/active/.feat-x.tmp.abc123"
+test ! -e "$MIG/docs/specs/active" && test ! -e "$MIG/docs/task-pool" && test ! -e "$MIG/docs/metrics.md"
+test -f "$MIG/docs/specs/api.md"
+grep -q $'\tprocess/specs/_templates/design.md$' "$MIG/.ai-harness/manifest.tsv"
+if grep -q $'\tdocs/' "$MIG/.ai-harness/manifest.tsv"; then echo 'legacy manifest rows left' >&2; exit 1; fi
+grep -q '^process/specs/archive/\*\*' "$MIG/.cursorignore"
+grep -q '^version=2.0.0$' "$MIG/.ai-harness/version"
+(cd "$MIG" && bash scripts/ai-gate.sh status >/dev/null && bash scripts/ai-task-pool.sh list | grep -q T-000001)
+bash "$MCLI" upgrade "$MIG" > "$TMP/mig-again" 2>&1
+grep -q '0 个冲突' "$TMP/mig-again"
+if grep -q '流程记录迁移' "$TMP/mig-again"; then echo 'migration ran twice' >&2; exit 1; fi
+
+# Interrupted after moving directories: the next upgrade completes the reference rewrite.
+sed -i 's#\tprocess/#\tdocs/#' "$MIG/.ai-harness/manifest.tsv"
+sed -i 's#^process/#docs/#' "$MIG/.cursorignore"
+bash "$MCLI" upgrade "$MIG" > "$TMP/mig-heal" 2>&1
+grep -q '0 个冲突' "$TMP/mig-heal"
+if grep -q $'\tdocs/' "$MIG/.ai-harness/manifest.tsv"; then echo 'interrupted manifest not healed' >&2; exit 1; fi
+grep -q '^process/specs/archive/\*\*' "$MIG/.cursorignore"
+
+MIG_ACTIVE="$TMP/mig-active"
+bash "$MCLI" init "$MIG_ACTIVE" --no-git >/dev/null
+make_legacy "$MIG_ACTIVE"
+mkdir -p "$MIG_ACTIVE/docs/specs/active/feat-live"
+expect_refusal "$MIG_ACTIVE" '活跃 Spec'
+
+MIG_BOTH="$TMP/mig-both"
+bash "$MCLI" init "$MIG_BOTH" --no-git >/dev/null
+make_legacy "$MIG_BOTH"
+mkdir -p "$MIG_BOTH/process"
+expect_refusal "$MIG_BOTH" 'process/ 已存在'
+
+if command -v git >/dev/null 2>&1; then
+  MIG_GIT="$TMP/mig-git"
+  bash "$MCLI" init "$MIG_GIT" --no-git >/dev/null
+  make_legacy "$MIG_GIT"
+  (cd "$MIG_GIT" && git init -q && git add -A && git -c user.name=t -c user.email=t@example.invalid commit -qm legacy)
+  bash "$MCLI" upgrade "$MIG_GIT" > "$TMP/mig-git-output" 2>&1
+  git -C "$MIG_GIT" status --porcelain | grep -q '^R  docs/task-pool/T-000001.md -> process/task-pool/T-000001.md$'
+  test ! -e "$MIG_GIT/docs/specs"
+fi
+
+# A fresh retrofit into a project with its own docs/specs/*.md is not a legacy layout.
+OWN="$TMP/own-specs"
+mkdir -p "$OWN/docs/specs"
+printf '# api\n' > "$OWN/docs/specs/api.md"
+bash "$MCLI" retrofit "$OWN" --no-git --skip-doctor >/dev/null
+(cd "$OWN" && bash scripts/ai-gate.sh status >/dev/null)
+test -f "$OWN/docs/specs/api.md"
 echo 'cli-upgrade: PASS'
