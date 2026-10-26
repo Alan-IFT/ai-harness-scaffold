@@ -26,7 +26,7 @@ description: 给新项目或已有代码项目接入 ai-harness 跨 IDE 开发�
 6. **红线**：`harness/redlines.conf` 的阈值只给建议，由人决定。
 
 ## 3. 收尾（新旧项目都做）
-1. 写 `.ai-harness/version`，只一行 `commit=<脚手架仓库 HEAD 的完整提交号>`；升级时靠它取回接入时的模板。
+1. 写 `.ai-harness/version`，只一行 `commit=<脚手架仓库 HEAD 的完整提交号>`（脚手架工作区有未提交改动时先停下问人，否则提交号与装入的内容对不上）；升级时靠它取回接入时的模板。
 2. 运行 `bash scripts/harness-selftest.sh`、`bash scripts/ai-check-bloat.sh`、`bash scripts/ai-gate.sh status`，修好后提交。
 3. 报告：接入了哪些文件、冲突怎么处理的、实际跑过哪些验证、还剩哪些事要人决定。
 
