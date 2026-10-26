@@ -1,7 +1,6 @@
 ---
 name: ai-harness-scaffold
 description: 给新项目或已有代码项目接入 ai-harness 跨 IDE 开发脚手架，或升级 / 降级已接入的项目。用户说“把这个项目接入脚手架”“用这套规范管理开发”“升级脚手架”等话时使用；先摸底、保护原文件，再由 AI 完成安装和验证。
-version: 2.0.0
 ---
 
 # ai-harness-scaffold
@@ -27,7 +26,7 @@ version: 2.0.0
 6. **红线**：`harness/redlines.conf` 的阈值只给建议，由人决定。
 
 ## 3. 收尾（新旧项目都做）
-1. 写 `.ai-harness/version`：`version=<本文件 frontmatter 的 version>`，再加一行接入日期。
+1. 写 `.ai-harness/version`，只一行 `commit=<脚手架仓库 HEAD 的完整提交号>`；升级时靠它取回接入时的模板。
 2. 运行 `bash scripts/harness-selftest.sh`、`bash scripts/ai-check-bloat.sh`、`bash scripts/ai-gate.sh status`，修好后提交。
 3. 报告：接入了哪些文件、冲突怎么处理的、实际跑过哪些验证、还剩哪些事要人决定。
 

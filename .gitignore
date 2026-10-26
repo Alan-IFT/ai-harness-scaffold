@@ -1,5 +1,4 @@
 .dsh-ops-update-*.lock
-.ai-harness/
 process/specs/active/*/.attempts
 process/task-pool/.lock/
 # 旧版留在本机的验证日志，不入库

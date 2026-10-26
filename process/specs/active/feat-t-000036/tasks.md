@@ -13,11 +13,11 @@
   - 对应验收：AC-01、AC-04
   - 涉及文件：`template/scripts/ai-verify.sh`、`template/harness/redlines.conf`、`docs/architecture/decisions/ADR-0003-three-gates-no-compat-code.md`
   - 验证：grep 无输出，自检通过
-- [ ] Task 2：接入记录改记脚手架提交号
+- [x] Task 2：接入记录改记脚手架提交号
   - 对应验收：AC-02
   - 涉及文件：`skill/SKILL.md`、`template/.agents/skills/upgrade.md`、`docs/architecture/modules/install-skill.md`
   - 验证：按 SKILL.md 在临时目录接入一次，自检通过
-- [ ] Task 3：删除本仓库无人读取的 `.ai-harness/`
+- [x] Task 3：删除本仓库无人读取的 `.ai-harness/`
   - 对应验收：AC-03
   - 涉及文件：`.gitignore`
   - 验证：grep 与 ls
@@ -31,8 +31,8 @@
 
 ## 4. WIP 接力区
 > 换工具或换会话前更新；下一个 Agent 先读这里和 `git diff`，不要推倒重写已验证的代码。
-- 当前任务：Task 1
-- 已完成：
+- 当前任务：全部完成，待验证与审查
+- 已完成：Task 1（df43759）、Task 2、Task 3；临时目录试点接入通过（72 项断言），git show 基线取回一致
 - 正在编辑的文件：
 - 已排除的方案：保留 ADR 编号（改名只带来引用改动）
 - 下一步：
