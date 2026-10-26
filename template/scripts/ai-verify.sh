@@ -19,7 +19,7 @@ case "$TARGET_FILE" in
   process/*) echo "❌ 验证目标不能选流程文件（process/ 下）: $TARGET_FILE" >&2; exit 1 ;;
 esac
 export TARGET_FILE
-ai_config_load harness/redlines.conf VERIFY_MAX_SECONDS VERIFY_MAX_ATTEMPTS || exit 1
+ai_config_load harness/redlines.conf VERIFY_MAX_ATTEMPTS || exit 1
 
 # 输出进终端前脱敏：token / secret / password / key 等一律 [REDACTED]
 redact() {
@@ -70,7 +70,6 @@ cat >"$SPEC_DIR/verification.md" <<EOF
 - verified_at_utc: $(date -u +%Y-%m-%dT%H:%M:%SZ)
 EOF
 
-[ "$DUR" -le "$VERIFY_MAX_SECONDS" ] || echo "⚠️  超出预算 ${VERIFY_MAX_SECONDS}s（实际 ${DUR}s）：验证正在变慢，检查是否误跑了全量。"
 if [ "$RESULT" = PASS ]; then echo "✅ 验证通过（${DUR}s）：$SPEC_DIR/verification.md"; exit 0; fi
 echo "❌ 验证失败（${DUR}s）"
 exit 1

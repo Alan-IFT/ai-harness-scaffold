@@ -20,7 +20,7 @@
 1. **三道门**：g1 计划（原话、需人决定是 / 否、验收标准、待确认清零、方案与任务）→ g2 验证（任务全勾、正式验证 PASS 且对应当前代码）→ g3 审查（独立上下文、关键问题 0、轮次上限、审的是当前验证状态；需人决定时有人的当次通过）→ 归档。
 2. **保留的核心**：任务池、Spec 与 WIP 接力、`ai-verify` 与状态指纹、独立审查与轮次上限、`ai-resume` 的 owner / review；红线配置只由人改，靠审查与 Git 把关。
 3. **不写 CLI 与兼容代码**：接入写在 `skill/SKILL.md`，升级与降级写在 `template/.agents/skills/upgrade.md`，由 AI 判断执行。只支持 Windows（Git Bash）。
-4. **持续做减法**：只要会让脚手架臃肿、累赘就删除，追溯交给 Git。已删除的包括：象限分级、覆盖矩阵与任务追溯、`design.md` / `acceptance.md`、`bin/ai-harness` 全部命令、manifest 与布局迁移、无脚本读取的红线键、任务优先级、`--quick`、工具链自动探测、worker 角色、手动 `start`、`--force` 与审计流水、`metrics` 子命令与度量表、红线哈希基线与 TTY 确认、验证报告文件、活跃 Spec 数量上限、示例 / 路线图 / CI 文档、宿主专属文件（`.cursorrules`、`.cursorignore`、`.claudeignore`）、`gc-memory` 与老项目接入指南（并入 `AGENTS.md` 与 `skill/SKILL.md`）。
+4. **持续做减法**：只要会让脚手架臃肿、累赘就删除，追溯交给 Git。已删除的包括：象限分级、覆盖矩阵与任务追溯、`design.md` / `acceptance.md`、`bin/ai-harness` 全部命令、manifest 与布局迁移、无脚本读取的红线键、只告警的验证秒级预算、P0~P2 优先级分档、`--quick`、工具链自动探测、worker 角色、手动 `start`、`--force` 与审计流水、`metrics` 子命令与度量表、红线哈希基线与 TTY 确认、验证报告文件、活跃 Spec 数量上限、示例 / 路线图 / CI 文档、宿主专属文件（`.cursorrules`、`.cursorignore`、`.claudeignore`）、`gc-memory` 与老项目接入指南（并入 `AGENTS.md` 与 `skill/SKILL.md`）。
 
 ## 3. 回滚
 
