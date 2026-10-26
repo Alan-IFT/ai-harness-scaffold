@@ -28,6 +28,7 @@
 - 本机 `process/specs/archive/2026-10/` 下 25 个只含 `reports/` 的旧版目录（被 gitignore，约 1.2MB）；删后可去掉 `.gitignore` 的 `reports/` 行，交维护者决定。
 - 本机 `.dsh-ops-update-*.lock` 文件来自外部工具，`.gitignore` 对应行保留。
 - T-000028（暂缓）的个人偏好去向需维护者决定。
+- `skill/SKILL.md:29` 记 HEAD 提交号时未提醒脚手架工作区需干净，否则提交号与装入内容可能不一致（审查建议）。
 
 ## 4. WIP 接力区
 > 换工具或换会话前更新；下一个 Agent 先读这里和 `git diff`，不要推倒重写已验证的代码。
