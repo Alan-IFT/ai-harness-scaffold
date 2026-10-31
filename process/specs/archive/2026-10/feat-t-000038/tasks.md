@@ -40,11 +40,14 @@
 - 改动检查本身（弱化 `verify.conf`、删减测试、改门禁脚本）目前靠「每一行改动对应需求」间接拦；分析阶段三方多数认为无需单列，若日后出现再在 `code-review.md` 测试条目补一句。
 - `template/.agents/skills/archive-spec.md:6`「公共契约…写进 `docs/architecture/`」与模板 00-INDEX 改后的「只写「为什么」与已知坑」略有张力，可读作路由表的「公共契约入口」列；方案审查建议只记录不动。
 - `template/harness/verify.conf` 的 Go 示例仍是静态检查 `go vet ./...`：`go test ./...` 零用例退出 0，不满足同文件「零用例时必须失败」，Go 项目接入时要自己加零用例保护。
+- `template/.agents/skills/code-review.md:19` 分号后的旧半句（矛盾、过时内容、一次性经验）紧挨「按关键问题处理」，可能被整体当成阻塞，可拆两条或补「其余记改进建议」；`:21`「引入或加重」可补边界（新增调用点、扩大影响面也算加重）；`:15` 可补「改为「是」后由 g3 人工决定兜底」（审查建议）。
+- `skill/SKILL.md:24` 改跑测试后，已失败或不稳定的测试会挡住所有需求，可补「现有测试已失败或不稳定时先问人」；`:18` 新项目一步可补「选法同第 2 节第 4 条」；`:25` 可补「写不出原因就留空」；`template/harness/verify.conf:6` 的 `go vet` 示例可删或注明仅静态检查（审查建议）。
+- `docs/architecture/modules/install-skill.md:7`：1e6697b 早于 fee16ca，叙述顺序可调换（审查建议）。
 
 ## 4. WIP 接力区
 > 换工具或换会话前更新；下一个 Agent 先读这里和 `git diff`，不要推倒重写已验证的代码。
-- 当前任务：全部完成，待正式验证与独立审查
+- 当前任务：无（g3 维护者 2026-10-31 回「通过」，已归档）
 - 已完成：需求与方案；独立方案审查（结论已写回方案）；Task 1（grep 全中，自检 72 项 0 失败）；Task 2（AGENTS.md 39 行，自检 72 项 0 失败）；Task 3（AC-04 grep 全中）；Task 4（AC-07 grep 全中；新增文件 0；`template/` 与 `skill/` 合计净减 65 字节，9 个文件 +14/−14 行）
-- 临时目录接入（2026-10-30，脚手架提交 1fe4577，工作区干净）：按 `skill/SKILL.md` 新项目流程装入 `git ls-files template` 的 24 个文件、`git init -b main`、写 `.ai-harness/version`；技术栈用 Python 小项目（`calc.py` + `test_calc.py`），`CUSTOM_CHECK='python -m unittest discover -q'`，空目录零用例退出 5；接入后自检 72 项 0 失败、体积检查与门禁状态通过；再走一遍 `ai-new-spec` → g1 → `ai-verify`（PASS）→ g2 校验通过，重跑测试后 g2 仍通过（`__pycache__/` 已忽略）。另实测要发布的示例零用例都失败：`npm test`（npm init 默认脚本）退出 1，`pytest -q` 退出 5。本机没有 pytest，试装改用 unittest。
+- 临时目录接入（2026-10-30，脚手架提交 1fe4577，工作区干净）：按 `skill/SKILL.md` 新项目流程装入 `git ls-files template` 的 24 个文件、`git init -b main`、写 `.ai-harness/version`；技术栈用 Python 小项目（`calc.py` + `test_calc.py`），`CUSTOM_CHECK='python -m unittest discover -q'`，空目录零用例退出 5；接入后自检 72 项 0 失败、体积检查与门禁状态通过；再走一遍 `ai-new-spec` → g1 → `ai-verify`（PASS）→ g2 校验通过，重跑测试后 g2 仍通过（`__pycache__/` 已忽略）。试装项目用 unittest 是因为本机没装 pytest；要发布的示例另行实测，零用例都失败：`npm test`（npm init 默认脚本）退出 1，`pytest -q`（用 `uvx` 临时运行）退出 5。正式验证 PASS（62 s）；g3 由两路独立视角审查、第三个独立上下文整合写 `review.md`。
 - 已排除的方案：多代理找 bug 加投票、风险三档与分类器、单独安全审查、事故评测集与度量、REVIEW.md 与 PR 模板文件、按类报告、误报申诉、审查者重跑验收命令、「怎么撤销」字段、漏网缺陷复盘、叫停流程、修根因、删 `template/CLAUDE.md`、放宽复述确认、去掉任务数上限、删 Karpathy 收尾句、写明「人工批准只是约定」、「非平凡变更」快速通道（理由见分析：宿主绑定、无实际问题、与维护者既有决定冲突，或会架空复核）
-- 下一步：过 g1，按 Task 1~4 顺序改
+- 下一步：维护者确认把审查建议 ①~④（SKILL.md 测试已失败先问人、code-review.md :19 拆句、:21 加重边界、:15 兜底）收成下一个任务
