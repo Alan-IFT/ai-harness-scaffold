@@ -172,7 +172,7 @@ mk_spec t-offtask
 sed -i 's#^- target: .*#- target: harness/redlines.conf#' "$(S t-offtask)"
 expect_fail "拒绝验证目标不在涉及文件里" "不在 tasks.md" bash scripts/ai-gate.sh check t-offtask g2
 mk_spec t-wiponly
-printf '%s\n' '- 正在编辑的文件：`harness/redlines.conf`' >>"$(T t-wiponly)"
+printf '%s\n' '- 下一步：改 `harness/redlines.conf`' >>"$(T t-wiponly)"
 sed -i 's#^- target: .*#- target: harness/redlines.conf#' "$(S t-wiponly)"
 expect_fail "验证目标只在 WIP 区出现时拒绝" "不在 tasks.md" bash scripts/ai-gate.sh check t-wiponly g2
 mk_spec t-stale

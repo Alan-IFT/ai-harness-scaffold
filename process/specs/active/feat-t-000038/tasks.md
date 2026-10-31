@@ -19,7 +19,7 @@
   - 对应验收：AC-01、AC-02、AC-03、AC-06
   - 涉及文件：`template/.agents/skills/code-review.md`
   - 验证：AC-01~03 与 AC-06 中 code-review.md 部分的 grep；`bash scripts/harness-selftest.sh`
-- [ ] Task 2：规则入口与模板删减（上下文上限提醒、「正在编辑的文件」、00-INDEX 只写为什么、自检夹具）
+- [x] Task 2：规则入口与模板删减（上下文上限提醒、「正在编辑的文件」、00-INDEX 只写为什么、自检夹具）
   - 对应验收：AC-05、AC-06
   - 涉及文件：`template/AGENTS.md`、`template/process/specs/_templates/tasks.md`、`template/docs/architecture/00-INDEX.md`、`template/scripts/harness-selftest.sh`
   - 验证：AC-05、AC-06 的 grep；`wc -l template/AGENTS.md` 为 39；`bash scripts/harness-selftest.sh`
@@ -43,7 +43,7 @@
 
 ## 4. WIP 接力区
 > 换工具或换会话前更新；下一个 Agent 先读这里和 `git diff`，不要推倒重写已验证的代码。
-- 当前任务：Task 2
-- 已完成：需求与方案；独立方案审查（结论已写回方案）；Task 1（grep 全中，自检 72 项 0 失败）
+- 当前任务：Task 3
+- 已完成：需求与方案；独立方案审查（结论已写回方案）；Task 1（grep 全中，自检 72 项 0 失败）；Task 2（AGENTS.md 39 行，自检 72 项 0 失败）
 - 已排除的方案：多代理找 bug 加投票、风险三档与分类器、单独安全审查、事故评测集与度量、REVIEW.md 与 PR 模板文件、按类报告、误报申诉、审查者重跑验收命令、「怎么撤销」字段、漏网缺陷复盘、叫停流程、修根因、删 `template/CLAUDE.md`、放宽复述确认、去掉任务数上限、删 Karpathy 收尾句、写明「人工批准只是约定」、「非平凡变更」快速通道（理由见分析：宿主绑定、无实际问题、与维护者既有决定冲突，或会架空复核）
 - 下一步：过 g1，按 Task 1~4 顺序改

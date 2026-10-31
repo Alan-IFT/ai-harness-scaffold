@@ -5,4 +5,4 @@
 | 模块 | 代码路径 | 公共契约入口 | 活文档 |
 | :-- | :-- | :-- | :-- |
 
-新增模块时在 `docs/architecture/modules/<module>.md` 写职责、契约与「为什么」，并在上表登记一行。
+新增模块时在 `docs/architecture/modules/<module>.md` 只写「为什么」与已知坑，并在上表登记一行。
