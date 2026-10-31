@@ -23,7 +23,7 @@
   - 对应验收：AC-02、AC-03、AC-04
   - 涉及文件：`template/.agents/skills/code-review.md`
   - 验证：AC-02~04 的 grep；`bash scripts/harness-selftest.sh`
-- [ ] Task 2：接入指南补「先问人」，整体验收与临时目录接入
+- [x] Task 2：接入指南补「先问人」，整体验收与临时目录接入
   - 对应验收：AC-01、AC-05
   - 涉及文件：`skill/SKILL.md`、`docs/architecture/modules/guidance.md`
   - 验证：AC-01 的 grep；`bash scripts/harness-selftest.sh`、`bash scripts/ai-check-bloat.sh`；提交后按 `skill/SKILL.md` 在临时目录接入一次新项目；正式验证 `bash scripts/ai-verify.sh --spec feat-t-000039 template/.agents/skills/code-review.md`
@@ -31,10 +31,14 @@
 ## 3. 发现但不碰
 > 范围外的问题只记录：位置 / 现象 / 建议归属。
 - feat-t-000038 审查建议中维护者未选的 3 条：`template/harness/verify.conf:6` 的 `go vet` 示例；`skill/SKILL.md:18` 新项目可补「选法同第 2 节第 4 条」、`:25` 可补「写不出原因就留空」；`docs/architecture/modules/install-skill.md:7` 两个提交号的叙述顺序。
+- `template/.agents/skills/code-review.md:15` 的「实现者改为「是」后不补审方案」是给实现者的约束，放在审查者清单里；`guidance.md:8` 写「审查后才改为「是」」，两处说法可统一（审查建议）。
+- `code-review.md:20`「指南与记忆」不写档位，矛盾或过时若让某句规则不再成立，会与 :19「按关键问题处理」重叠，审查者可能判得不一致（审查建议；方案阶段有意不写档位）。
+- `skill/SKILL.md:24`「停下问人」没写问什么、人答复后怎么续接（审查建议，仅提示）。
 
 ## 4. WIP 接力区
 > 换工具或换会话前更新；下一个 Agent 先读这里和 `git diff`，不要推倒重写已验证的代码。
-- 当前任务：Task 2
-- 已完成：需求与方案；独立方案审查；Task 1（AC-02~04 grep 全中，自检 72 项 0 失败）
+- 当前任务：无（g3 维护者 2026-10-31 回「通过」，已归档）
+- 已完成：需求与方案；独立方案审查；Task 1（AC-02~04 grep 全中，自检 72 项 0 失败）；Task 2（AC-01 grep 命中，guidance.md 补原因，自检 72 项 0 失败，体积检查通过，新增文件 0、工作区干净）
+- 临时目录接入（2026-10-31，脚手架提交 a737005）：按 `skill/SKILL.md` 新项目流程装入 `git ls-files template` 的 24 个文件、`git init -b main`、写 `.ai-harness/version`；Python 小项目，`CUSTOM_CHECK='python -m unittest discover -q'`，实测通过、空目录零用例退出 5；接入后自检 72 项 0 失败，体积检查与门禁状态通过；装入的 `code-review.md` 含新措辞。正式验证 PASS（48 s）
 - 已排除的方案：②给第二条写明「记改进建议」（会把有害的规则矛盾也降级，交给两档定义归类即可，有意不写档位）；④单独起子项（句末补半句即可）
-- 下一步：Task 2
+- 下一步：无；审查建议 3 条维护者决定都不做
