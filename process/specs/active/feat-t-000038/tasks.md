@@ -27,7 +27,7 @@
   - 对应验收：AC-04
   - 涉及文件：`skill/SKILL.md`、`template/harness/verify.conf`
   - 验证：AC-04 的 grep
-- [ ] Task 4：模块活文档补「为什么」，整体验收与临时目录接入
+- [x] Task 4：模块活文档补「为什么」，整体验收与临时目录接入
   - 对应验收：AC-07、AC-08
   - 涉及文件：`docs/architecture/modules/guidance.md`、`docs/architecture/modules/install-skill.md`
   - 验证：AC-07 的 grep；提交后按 `skill/SKILL.md` 在临时目录接入一次新项目并跑自检、体积检查与门禁状态；`bash scripts/harness-selftest.sh`、`bash scripts/ai-check-bloat.sh`；正式验证 `bash scripts/ai-verify.sh --spec feat-t-000038 template/.agents/skills/code-review.md`
@@ -43,7 +43,8 @@
 
 ## 4. WIP 接力区
 > 换工具或换会话前更新；下一个 Agent 先读这里和 `git diff`，不要推倒重写已验证的代码。
-- 当前任务：Task 4
-- 已完成：需求与方案；独立方案审查（结论已写回方案）；Task 1（grep 全中，自检 72 项 0 失败）；Task 2（AGENTS.md 39 行，自检 72 项 0 失败）；Task 3（AC-04 grep 全中）
+- 当前任务：全部完成，待正式验证与独立审查
+- 已完成：需求与方案；独立方案审查（结论已写回方案）；Task 1（grep 全中，自检 72 项 0 失败）；Task 2（AGENTS.md 39 行，自检 72 项 0 失败）；Task 3（AC-04 grep 全中）；Task 4（AC-07 grep 全中；新增文件 0；`template/` 与 `skill/` 合计净减 65 字节，9 个文件 +14/−14 行）
+- 临时目录接入（2026-10-30，脚手架提交 1fe4577，工作区干净）：按 `skill/SKILL.md` 新项目流程装入 `git ls-files template` 的 24 个文件、`git init -b main`、写 `.ai-harness/version`；技术栈用 Python 小项目（`calc.py` + `test_calc.py`），`CUSTOM_CHECK='python -m unittest discover -q'`，空目录零用例退出 5；接入后自检 72 项 0 失败、体积检查与门禁状态通过；再走一遍 `ai-new-spec` → g1 → `ai-verify`（PASS）→ g2 校验通过，重跑测试后 g2 仍通过（`__pycache__/` 已忽略）。另实测要发布的示例零用例都失败：`npm test`（npm init 默认脚本）退出 1，`pytest -q` 退出 5。本机没有 pytest，试装改用 unittest。
 - 已排除的方案：多代理找 bug 加投票、风险三档与分类器、单独安全审查、事故评测集与度量、REVIEW.md 与 PR 模板文件、按类报告、误报申诉、审查者重跑验收命令、「怎么撤销」字段、漏网缺陷复盘、叫停流程、修根因、删 `template/CLAUDE.md`、放宽复述确认、去掉任务数上限、删 Karpathy 收尾句、写明「人工批准只是约定」、「非平凡变更」快速通道（理由见分析：宿主绑定、无实际问题、与维护者既有决定冲突，或会架空复核）
 - 下一步：过 g1，按 Task 1~4 顺序改
