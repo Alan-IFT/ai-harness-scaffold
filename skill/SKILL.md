@@ -12,7 +12,7 @@ description: 给新项目或已有代码项目接入 ai-harness 跨 IDE 开发�
 - **要装的版本**：用户点名了版本就用它；否则先 `git -C <仓库> fetch --tags`（失败就停下问人），取 `git -C <仓库> tag --sort=-v:refname` 的第一个；没有 tag 才用 HEAD。用 `git -C <仓库> rev-parse <版本>^{commit}` 得到完整提交号。
 - **要装的文件**：`git -C <仓库> ls-tree -r --name-only <版本> template` 列出的文件，去掉 `template/` 前缀后就是目标项目里的相对路径。内容用 `git -C <仓库> show <版本>:<路径>` 取，在 bash 里重定向写入。不在该版本里的文件不装。
 - **目标项目**：从对话或当前工作区确定；有多个候选又判断不了时再问。
-- **已接入**：目标项目有 `.ai-harness/version` 时不要重装，按 `template/.agents/skills/upgrade.md` 升级或降级。
+- **已接入**：目标项目有 `.ai-harness/version` 时不要重装，读所选版本的升级说明（`git -C <仓库> show <版本>:template/.agents/skills/upgrade.md`），按它升级或降级。
 
 ## 1. 新项目（空目录或只有 `.git`）
 1. 复制全部模板文件；没有 Git 仓库时运行 `git init -b main`（目标在别的仓库里或判断不了时先问人）。

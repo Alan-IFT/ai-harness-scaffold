@@ -241,6 +241,14 @@ expect_ok  "g2 接受真实生成的摘要" bash scripts/ai-gate.sh check t-veri
 printf "CUSTOM_CHECK='false'\n" >harness/verify.conf
 for i in 1 2; do bash scripts/ai-verify.sh --spec t-verify src/export/service.ts >/dev/null 2>&1; done
 expect_out "第 3 次连续失败亮黄卡" "黄卡" bash -c 'bash scripts/ai-verify.sh --spec t-verify src/export/service.ts; true'
+mk_spec t-redact
+# 私钥头拆开写，自检文件本身才不会被 detect-private-key 拦下
+cat >harness/verify.conf <<'CONF'
+CUSTOM_CHECK='echo "-----BEG""IN RSA PRIVATE"" KEY----- abc"; false'
+CONF
+expect_fail "失败输出脱敏私钥头" "PRIVATE KEY REDACTED" bash scripts/ai-verify.sh --spec t-redact src/export/service.ts
+redacted=$(bash scripts/ai-verify.sh --spec t-redact src/export/service.ts 2>&1)
+case "$redacted" in *BEGIN*) ng_msg "失败输出残留私钥头" "$redacted" ;; *) ok_msg "失败输出不残留私钥头" ;; esac
 rm -f harness/verify.conf
 
 section "8. 接手 ai-resume"
