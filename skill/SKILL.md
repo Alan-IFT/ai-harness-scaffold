@@ -8,7 +8,7 @@ description: 给新项目或已有代码项目接入 ai-harness 跨 IDE 开发�
 没有安装命令，全部由 AI 按本文判断着做。遇到本文没写到的情况，按「不覆盖、不删除、拿不准就问人」处理。
 
 ## 0. 定位
-- **脚手架仓库**：本文件所在目录的上一级，以其中存在 `template/AGENTS.md` 为准；找不到就停下报告路径，不凭记忆重建。
+- **脚手架仓库**：本文件所在目录的上一级，以其中存在 `template/AGENTS.md` 为准；找不到就停下报告路径，不凭记忆重建。选版本和升级基线都要完整历史：`git -C <仓库> rev-parse --is-shallow-repository` 为 `true` 时先 `git -C <仓库> fetch --unshallow`。
 - **要装的版本**：用户点名了版本就用它；否则先 `git -C <仓库> fetch --tags`（失败就停下问人），取 `git -C <仓库> tag --sort=-v:refname` 的第一个；没有 tag 才用 HEAD。用 `git -C <仓库> rev-parse <版本>^{commit}` 得到完整提交号。
 - **要装的文件**：`git -C <仓库> ls-tree -r --name-only <版本> template` 列出的文件，去掉 `template/` 前缀后就是目标项目里的相对路径。内容用 `git -C <仓库> show <版本>:<路径>` 取，在 bash 里重定向写入。不在该版本里的文件不装。
 - **目标项目**：从对话或当前工作区确定；有多个候选又判断不了时再问。
@@ -29,6 +29,6 @@ description: 给新项目或已有代码项目接入 ai-harness 跨 IDE 开发�
 ## 3. 收尾（新旧项目都做）
 1. 写 `.ai-harness/version`，只一行 `commit=<所装版本的完整提交号>`；升级时靠它取回接入时的模板。
 2. 运行 `bash scripts/harness-selftest.sh`、`bash scripts/ai-check-bloat.sh`、`bash scripts/ai-gate.sh status`，修好后提交。
-3. 报告：接入了哪些文件、冲突怎么处理的、实际跑过哪些验证、还剩哪些事要人决定；并告诉用户各项目通用的个人偏好放 `~/.ai-harness/PREFERENCES.md`。
+3. 报告：接入了哪些文件、冲突怎么处理的、实际跑过哪些验证、还剩哪些事要人决定；并告诉用户各项目通用的个人偏好放 `~/.ai-harness/PREFERENCES.md`。脚手架是为本次临时克隆的，结束前删除这份临时克隆。
 
 用户负责架构、权限和阈值这类必须由人取舍的事；AI 负责执行、写项目文档和验证。之后各个 AI 工具都靠项目里的 `AGENTS.md`、Spec、活文档和 Git 接力。

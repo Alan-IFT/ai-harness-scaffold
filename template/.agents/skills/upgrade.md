@@ -1,6 +1,7 @@
 # 脚手架升级与降级（由项目 AI 照做，没有命令）
 
 升级和降级是同一套步骤，只是目标版本不同。
+脚手架仓库：人给了本机路径就用它；否则把 `https://github.com/Alan-IFT/ai-harness-scaffold.git` 完整克隆到临时目录，不要浅克隆，结束前删除。
 1. 先提交项目当前改动；有在途 Spec 先归档，或确认本次变化不影响它。
 2. 选目标版本：人点名了版本就用它；否则先 `git -C <脚手架仓库> fetch --tags`（失败就停下问人），取 `git -C <脚手架仓库> tag --sort=-v:refname` 的第一个；没有 tag 才用 HEAD。用 `git -C <脚手架仓库> rev-parse <版本>^{commit}` 得到目标提交。再读目标版本的本说明（`git -C <脚手架仓库> show <目标提交>:template/.agents/skills/upgrade.md`），与这里不同时按它做；取不到就按这里继续。
 3. 防降级：人没点名版本，且 `git -C <脚手架仓库> merge-base --is-ancestor <.ai-harness/version 的 commit> <目标提交>` 不成立时，停下问人：可能是把升级做成了降级，也可能是旧提交已取不到。

@@ -9,18 +9,18 @@ A host-agnostic development process for AI coding tools. A task pool collects re
 ## Requirements
 
 - Windows with Git Bash. macOS and Linux are not supported.
-- Git.
+- Git and access to GitHub.
 - An AI tool that can read `AGENTS.md` and run bash. Tested with Claude Code and Codex.
 
 ## Getting started
 
-```bash
-git clone https://github.com/Alan-IFT/ai-harness-scaffold.git
+In your project, send this to your AI tool. The same sentence covers new projects, existing projects and upgrades:
+
+```
+Make a full clone of https://github.com/Alan-IFT/ai-harness-scaffold.git in a temporary directory and follow its skill/SKILL.md to install the ai-harness scaffold into the current project, or upgrade it to the latest version if it is already installed.
 ```
 
-Use `git clone`, because installing and upgrading rely on Git tags and history. A ZIP download will not work.
-
-There is no install command. Give your AI tool the path to the clone and ask it to follow `skill/SKILL.md`, for example: "Install the ai-harness scaffold into `D:\code\my-project` using `skill/SKILL.md`." It installs the latest tag and checks the result.
+There is no install command. The AI works out which case applies, installs the latest tag and checks the result. Projects installed from v2.1.3 onward can upgrade later with just "upgrade the scaffold to the latest version".
 
 ## Before you use it
 

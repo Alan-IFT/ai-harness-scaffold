@@ -6,23 +6,19 @@
 
 ## 开始使用
 
-前置条件：Windows 与 Git Bash（只支持 Windows，macOS 和 Linux 未适配）、Git，以及一个能读 `AGENTS.md`、能跑 bash 的 AI 工具。
+前置条件：Windows 与 Git Bash（只支持 Windows，macOS 和 Linux 未适配）、Git、能访问 GitHub，以及一个能读 `AGENTS.md`、能跑 bash 的 AI 工具。
 
-```bash
-git clone https://github.com/Alan-IFT/ai-harness-scaffold.git
-```
-
-必须用 `git clone`。下载 ZIP 不可用：接入和升级要靠 Git 的 tag 和历史选版本、取回基线。
-
-然后告诉 AI 这个克隆的路径，直接说：
+在你的项目里，把这句话发给 AI。新项目、老项目、升级都用这一句：
 
 ```
-用 ai-harness 脚手架初始化 D:\code\my-new-project
-把 D:\code\legacy-project 接入 ai-harness 脚手架
-把 D:\code\legacy-project 的脚手架升级到最新版
+把 https://github.com/Alan-IFT/ai-harness-scaffold.git 完整克隆到临时目录，按其中的 skill/SKILL.md 给当前项目接入 ai-harness 脚手架；已接入的就升级到最新版。
 ```
 
-没有安装命令。AI 读 `skill/SKILL.md` 完成摸底、合并、验证命令、一个模块试点和体检，只把架构、权限、阈值这类需要你决定的事交回来。升级与降级按 `template/.agents/skills/upgrade.md` 完成。想让宿主自动发现这个技能，可在宿主的用户技能目录（如 `~/.claude/skills/ai-harness-scaffold/`）放一个只写「先读 `<本仓库>/skill/SKILL.md`」的 `SKILL.md`。
+AI 会自己判断属于哪种情况，完成摸底、合并、验证命令、一个模块试点和体检，只把架构、权限、阈值这类需要你决定的事交回来。
+
+- **以后升级**：从 v2.1.3 起接入的项目，直接说「把脚手架升级到最新版」就行。更早接入的项目先用上面那句升级一次。
+- **降级或指定版本**：直接告诉 AI 版本号，如「把脚手架降级到 v2.1.1」。
+- **不能访问 GitHub**：自己克隆一份（要完整克隆，ZIP 不行），把上面那句的地址换成本机路径。
 
 装好后你只需要用自然语言说需求：AI 收录进任务池，写需求与方案过 g1，编码并正式验证过 g2，换一个没写过代码的上下文审查过 g3；涉及数据、权限、发布或架构取舍的需求，会把风险交给你当次决定。门只检查骗不过的信号，文字质量交给独立审查与人。换 AI 工具时，新工具运行 `bash scripts/ai-resume.sh owner` 接着做。你自己的习惯（回复语言、语气、详略等）写进用户目录的 `~/.ai-harness/PREFERENCES.md`，所有项目、所有 AI 工具共用；只对某个项目的写进该项目根的 `PREFERENCES.md`（不入库）。
 
