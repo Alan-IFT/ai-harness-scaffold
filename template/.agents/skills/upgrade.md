@@ -10,5 +10,5 @@
    - 目标版本新增的复制过来；目标版本已删除的删掉，项目改过的先问人。
    - 对照模板全部历史（`git -C <脚手架仓库> log --name-only --format= -- template`）列出项目里仍残留的已退役文件，交人决定。
 5. 不动项目状态：`process/` 下的 Spec 与任务，`MEMORY.md`，`PREFERENCES.md`，`docs/architecture/`，`harness/verify.conf`。`harness/redlines.conf` 只由人改；新版需要新键或新值时列给人。`.gitignore` 只补缺的行。
-6. 复议验证命令：核对 `harness/verify.conf` 的 `CUSTOM_CHECK` 能否证明行为（有测试却只跑 lint 或类型检查的不算），不能的连同建议的命令交人决定，不要自己改。
+6. 复议验证命令：核对 `harness/verify.conf` 的 `CUSTOM_CHECK`。有测试却只跑 lint 或类型检查的，不能证明行为，连同建议的命令交人决定，不要自己改。
 7. 把 `.ai-harness/version` 的 `commit=` 改为目标提交，运行 `bash scripts/harness-selftest.sh` 与 `bash scripts/ai-gate.sh status`，通过后提交。
