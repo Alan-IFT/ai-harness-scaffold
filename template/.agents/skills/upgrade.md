@@ -2,7 +2,7 @@
 
 升级和降级是同一套步骤，只是目标版本不同。
 1. 先提交项目当前改动；有在途 Spec 先归档，或确认本次变化不影响它。
-2. 目标版本是脚手架仓库的某个提交，默认 HEAD。机制文件是 `AGENTS.md`、`CLAUDE.md`、`scripts/*.sh`、`.agents/skills/*.md`、`process/specs/_templates/*.md`。逐个与目标版本 `template/` 下的同名文件比对：
+2. 目标版本是脚手架仓库的某个提交。人点名了版本就用它；否则先 `git -C <脚手架仓库> fetch --tags`（失败就停下问人），取 `git -C <脚手架仓库> tag --sort=-v:refname` 的第一个，用 `git -C <脚手架仓库> rev-parse <tag>^{commit}` 得到提交号；没有 tag 才用 HEAD。人没点名版本、`git -C <脚手架仓库> merge-base --is-ancestor <.ai-harness/version 的 commit> <目标提交>` 又不成立时，停下问人：可能是把升级做成了降级，也可能是旧提交已取不到。机制文件是 `AGENTS.md`、`CLAUDE.md`、`.ai-harness/LICENSE.md`、`scripts/*.sh`、`.agents/skills/*.md`、`process/specs/_templates/*.md`。逐个与目标版本 `template/` 下的同名文件比对：
    - 项目没改过的直接覆盖（基线是 `git -C <脚手架仓库> show <.ai-harness/version 的 commit>:template/<文件>`；取不到就当作改过）；
    - 项目改过的，把新版差异合并进去；
    - 目标版本新增的复制过来；目标版本已删除的删掉，项目改过的先问人。

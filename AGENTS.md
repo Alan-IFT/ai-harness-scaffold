@@ -12,5 +12,6 @@
 - 改 `template/AGENTS.md` 或 `template/.agents/skills/` 时，同步检查 README、`skill/SKILL.md` 与自检。
 - **少就是多**：不写 CLI、兼容或迁移代码，升级与降级写成说明；只支持 Windows（Git Bash）。会让脚手架变臃肿的功能、配置和文档直接删除，追溯交给 Git。
 - 正式验证 `bash scripts/ai-verify.sh --spec <feat> <file>`；状态指纹全仓计算，只排除 `process/`。
+- **仓库已公开**：文件、`process/` 里的原话和提交信息都不写非公开项目名、本机路径和私人邮箱；外部项目写「某接入项目」，原话先脱敏再收录。
 
 需要强制审批时用代码托管平台的权限机制。
