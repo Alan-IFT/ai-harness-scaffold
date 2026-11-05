@@ -18,23 +18,23 @@
 
 ## 2. 任务
 > 每次只做一个 `[ ]`；完成后先验证，再勾 `[x]` 并提交。
-- [ ] Task 1：许可证与模板声明
+- [x] Task 1：许可证与模板声明
   - 对应验收：AC-01、AC-02
   - 涉及文件：`LICENSE`、`template/.ai-harness/LICENSE.md`、`template/.agents/skills/upgrade.md`
   - 验证：运行 AC-02 的命令；AC-01 推送后核对
-- [ ] Task 2：版本选择规则
+- [x] Task 2：版本选择规则
   - 对应验收：AC-05
   - 涉及文件：`skill/SKILL.md`、`template/.agents/skills/upgrade.md`、`docs/architecture/modules/install-skill.md`
   - 验证：按 AC-05 在临时目录实际接入两次
-- [ ] Task 3：README 与英文版
+- [x] Task 3：README 与英文版
   - 对应验收：AC-03、AC-04
   - 涉及文件：`README.md`、`README.en.md`
   - 验证：逐条运行 AC-03、AC-04 的 `grep`
-- [ ] Task 4：隐私约束与失效提交号
+- [x] Task 4：隐私约束与失效提交号
   - 对应验收：AC-06、AC-07
   - 涉及文件：`AGENTS.md`、`.gitignore`、`docs/architecture/modules/install-skill.md`、`docs/architecture/modules/self-hosting.md`
   - 验证：运行隐私词表 `git grep` 与映射表核对
-- [ ] Task 5：自检 CI
+- [x] Task 5：自检 CI
   - 对应验收：AC-08、AC-09
   - 涉及文件：`.github/workflows/selftest.yml`
   - 验证：正式验证；推送后 `gh run list` 为 `success`
@@ -45,7 +45,7 @@
 
 ## 4. WIP 接力区
 > 换工具或换会话前更新；下一个 Agent 先读这里和 `git diff`，不要推倒重写已验证的代码。
-- 当前任务：Task 1
-- 已完成：需求、方案与方案审查
+- 当前任务：无
+- 已完成：Task 1~5。AC-05 实测（2026-11-05，临时克隆，提交 2113beb）：同时有 v1.9、v1.10 两个 annotated tag 时取 v1.10，`commit=` 为解析后的提交号；模板文件与该 tag 一致，自检 72 项 0 失败；删除 tag 后取 HEAD，自检 72 项 0 失败。
 - 已排除的方案：模板放根目录 `LICENSE`（会把接入项目误标成 MIT）；`SKILL.md` 用 `git checkout <tag>`（会动脚手架工作区）
-- 下一步：过 g1 后从 Task 1 开始
+- 下一步：正式验证、推送看 CI、独立审查、人工决定
