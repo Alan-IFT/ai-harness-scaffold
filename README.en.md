@@ -38,18 +38,24 @@ There is no install command. The AI works out which case applies, installs the l
 You state requests in plain language and the AI runs the process. Each request becomes a Spec that passes three gates before it is archived:
 
 ```mermaid
-flowchart LR
-    A["Request"] --> B["Task pool"]
-    B --> C["Spec"]
-    C --> G1{"g1 plan"}
-    G1 -- fail --> C
-    G1 -- pass --> D["Code and verify"]
-    D --> G2{"g2 verify"}
-    G2 -- fail --> D
-    G2 -- pass --> R["Separate review"]
-    R --> G3{"g3 review"}
-    G3 -- critical issues --> D
-    G3 -- pass --> E["Archive"]
+flowchart TB
+    subgraph P1["Plan"]
+        direction LR
+        A["Request"] --> B["Task pool"] --> C["Spec"] --> G1{"g1"}
+        G1 -- fail --> C
+    end
+    subgraph P2["Build"]
+        direction LR
+        D["Code"] --> V["Formal verification"] --> G2{"g2"}
+        G2 -- fail --> D
+    end
+    subgraph P3["Review"]
+        direction LR
+        R["Separate review"] --> G3{"g3"} --> E["Archive"]
+    end
+    P1 -- pass --> P2
+    P2 -- pass --> P3
+    P3 -- critical issues --> P2
 ```
 
 - **g1 plan**: the original request, acceptance criteria and plan are filled in, and no open questions remain.
