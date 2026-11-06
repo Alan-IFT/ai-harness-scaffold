@@ -132,11 +132,8 @@ flowchart TB
 脚手架本身不常驻运行。AI 按说明把模板装进项目，之后各个 AI 工具都读同一份规则、跑同一套脚本：
 
 ```mermaid
-flowchart LR
-    subgraph SC["脚手架仓库（本仓库）"]
-        SK["skill/SKILL.md<br/>接入说明"]
-        T["template/<br/>装进项目的全部内容"]
-    end
+flowchart TB
+    SC["脚手架仓库（本仓库）<br/>skill/SKILL.md、template/"]
 
     H["AI 工具<br/>Claude Code、Codex 等，可随时更换"]
 
@@ -147,8 +144,7 @@ flowchart LR
         L4["状态层<br/>process/、MEMORY.md、docs/architecture/、Git"]
     end
 
-    SK -- 指导接入和升级 --> H
-    T -- 按版本读取 --> H
+    SC -- 接入和升级时按版本读取 --> H
     H -- 读取 --> L1
     H -- 运行 --> L2
     H -- 读写 --> L4

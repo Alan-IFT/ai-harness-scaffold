@@ -69,11 +69,8 @@ To switch tools, have the new one run `bash scripts/ai-resume.sh owner`. It summ
 The scaffold does not keep running. The AI installs the template into your project, and every AI tool then reads the same rules and runs the same scripts:
 
 ```mermaid
-flowchart LR
-    subgraph SC["Scaffold repository"]
-        SK["skill/SKILL.md<br/>install instructions"]
-        T["template/<br/>everything that gets installed"]
-    end
+flowchart TB
+    SC["Scaffold repository<br/>skill/SKILL.md, template/"]
 
     H["AI tool<br/>Claude Code, Codex and others"]
 
@@ -84,8 +81,7 @@ flowchart LR
         L4["State<br/>process/, MEMORY.md, docs/architecture/, Git"]
     end
 
-    SK -- guides install and upgrade --> H
-    T -- read by version --> H
+    SC -- read by version on install and upgrade --> H
     H -- reads --> L1
     H -- runs --> L2
     H -- reads and writes --> L4
