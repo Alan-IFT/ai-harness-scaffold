@@ -41,17 +41,17 @@ You state requests in plain language and the AI runs the process. Each request b
 flowchart TB
     subgraph P1["Plan"]
         direction LR
-        A["Request"] --> B["Task pool"] --> C["Spec"] --> G1{"g1"}
+        A["Request"] --> B["Task pool"] --> C["Spec"] --> G1(["g1"])
         G1 -- fail --> C
     end
     subgraph P2["Build"]
         direction LR
-        D["Code"] --> V["Formal verification"] --> G2{"g2"}
+        D["Code"] --> V["Formal verification"] --> G2(["g2"])
         G2 -- fail --> D
     end
     subgraph P3["Review"]
         direction LR
-        R["Separate review"] --> G3{"g3"} --> E["Archive"]
+        R["Separate review"] --> G3(["g3"]) --> E["Archive"]
     end
     P1 -- pass --> P2
     P2 -- pass --> P3

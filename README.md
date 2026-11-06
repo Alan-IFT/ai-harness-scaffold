@@ -84,17 +84,17 @@ ai-harness 是一套装进项目里的 AI 开发规范，由规则文档、Bash 
 flowchart TB
     subgraph P1["计划"]
         direction LR
-        A["需求"] --> B["任务池"] --> C["Spec"] --> G1{"g1"}
+        A["需求"] --> B["任务池"] --> C["Spec"] --> G1(["g1"])
         G1 -- 未通过 --> C
     end
     subgraph P2["实现"]
         direction LR
-        D["编码"] --> V["正式验证"] --> G2{"g2"}
+        D["编码"] --> V["正式验证"] --> G2(["g2"])
         G2 -- 未通过 --> D
     end
     subgraph P3["审查"]
         direction LR
-        R["独立审查"] --> G3{"g3"} --> E["归档"]
+        R["独立审查"] --> G3(["g3"]) --> E["归档"]
     end
     P1 -- 通过 --> P2
     P2 -- 通过 --> P3
