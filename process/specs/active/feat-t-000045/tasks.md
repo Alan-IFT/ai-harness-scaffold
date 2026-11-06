@@ -8,15 +8,15 @@
 - 影响与风险：README 不装进目标项目，已接入项目和已发布版本都不受影响。`upgrade.md` 与 `skill/SKILL.md` 不引用 README 的具体章节（已搜索确认）。风险是脚本表和代码以后不同步，用同步检查规则兜住，不加自动检查。外部徽章依赖 shields.io，加载失败只影响图标显示。
 
 ## 2. 任务
-- [ ] Task 1：重写 `README.md`
+- [x] Task 1：重写 `README.md`
   - 对应验收：AC-01, AC-02, AC-03
   - 涉及文件：`README.md`
   - 验证：临时校验脚本
-- [ ] Task 2：`README.en.md` 按同样骨架补架构概览
+- [x] Task 2：`README.en.md` 按同样骨架补架构概览
   - 对应验收：AC-05
   - 涉及文件：`README.en.md`
   - 验证：临时校验脚本
-- [ ] Task 3：同步维护规则与活文档，提交推送后查看 GitHub 页面，正式验证
+- [x] Task 3：同步维护规则与活文档，提交推送后查看 GitHub 页面，正式验证
   - 对应验收：AC-04, AC-06
   - 涉及文件：`AGENTS.md`、`docs/architecture/modules/guidance.md`、`README.md`
   - 验证：浏览器查看两个 GitHub 页面的 Mermaid 图；`bash scripts/ai-verify.sh --spec feat-t-000045 README.md`
@@ -27,7 +27,7 @@
 
 ## 4. WIP 接力区
 > 换工具或换会话前更新；下一个 Agent 先读这里和 `git diff`，不要推倒重写已验证的代码。
-- 当前任务：Task 1
-- 已完成：需求与方案
+- 当前任务：无，等待独立审查
+- 已完成：Task 1~3；两个 GitHub 页面已截图查看（9fee93e），流程图三段式、架构图纵向分层，没有被 GitHub 缩放控件遮挡
 - 已排除的方案：提交架构图图片（要多维护二进制文件）；英文全量翻译（维护者定的是简短英文版）；用 npx 跑 mermaid-cli 本地渲染（运行外部代码被权限策略拦下，改为在 GitHub 页面验证）
-- 下一步：重写 `README.md`
+- 下一步：独立审查后过 g3 并归档
