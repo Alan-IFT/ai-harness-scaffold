@@ -38,19 +38,18 @@ There is no install command. The AI works out which case applies, installs the l
 You state requests in plain language and the AI runs the process. Each request becomes a Spec that passes three gates before it is archived:
 
 ```mermaid
-flowchart TD
-    A["Request in plain language"] --> B["Task pool: keeps the original wording"]
-    B --> C["Spec: requirements, acceptance criteria, plan"]
+flowchart LR
+    A["Request"] --> B["Task pool"]
+    B --> C["Spec"]
     C --> G1{"g1 plan"}
     G1 -- fail --> C
-    G1 -- pass --> D["Code one task at a time"]
-    D --> V["ai-verify.sh: formal verification"]
-    V --> G2{"g2 verify"}
+    G1 -- pass --> D["Code and verify"]
+    D --> G2{"g2 verify"}
     G2 -- fail --> D
-    G2 -- pass --> R["Review in a separate context"]
+    G2 -- pass --> R["Separate review"]
     R --> G3{"g3 review"}
     G3 -- critical issues --> D
-    G3 -- pass --> E["Archive and take the next task"]
+    G3 -- pass --> E["Archive"]
 ```
 
 - **g1 plan**: the original request, acceptance criteria and plan are filled in, and no open questions remain.
@@ -64,7 +63,7 @@ To switch tools, have the new one run `bash scripts/ai-resume.sh owner`. It summ
 The scaffold does not keep running. The AI installs the template into your project, and every AI tool then reads the same rules and runs the same scripts:
 
 ```mermaid
-flowchart TB
+flowchart LR
     subgraph SC["Scaffold repository"]
         SK["skill/SKILL.md<br/>install instructions"]
         T["template/<br/>everything that gets installed"]
