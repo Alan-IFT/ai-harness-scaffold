@@ -60,10 +60,12 @@
 - `template/harness/redlines.conf` 第 8 行 / 注释写「同一目标连续验证失败上限」，本条把 `template/AGENTS.md` 改成「同一 Spec」后两处说法不一样 / 红线样例只允许人改，由维护者把「同一目标」改成「同一 Spec」
 - 三个接入项目的 `.ai-harness/version` / 都指向历史重写前的提交，不是现在 main 的祖先，升级时基线取不到 / 各项目升级时按升级说明「取不到就当作改过」处理；对应关系只有一个项目有记录
 - `template/.agents/skills/upgrade.md` 第 4 步 / 「对照模板全部历史列出项目里仍残留的已退役文件」没说怎么判定已退役，演练里的 subagent 自己推成「历史里出现过、目标提交的 `template/` 里已经没有、项目里还在」（推对了）/ 演练中的观察，不是本条引入的；是否补半句由维护者决定
+- `template/harness/verify.conf` 第 2 行 / 只说按「涉及文件」挑检查，没说取法（tasks.md 里「涉及文件」行的反引号路径），这层只写在升级说明第 6 步；新接入的项目不走升级说明 / 审查的改进建议；是否补半句由维护者决定
+- `template/.agents/skills/upgrade.md` 第 6 步 / 一句话里有找残留、两条路、不可信三层意思，偏长 / 审查的改进建议，可读性问题；审查认为不必改
 
 ## 4. WIP 接力区
 > 换工具或换会话前更新；下一个 Agent 先读这里和 `git diff`，不要推倒重写已验证的代码。
-- 当前任务：无（四个任务都已完成，等独立审查和维护者的决定）
+- 当前任务：无（等维护者对 g3 的当次决定）
 - 已完成：需求与方案；方案审查通过，三条建议已写回方案
 - 已完成：Task 1（2026-11-10，Git Bash）。
   - AC-01：`bash scripts/harness-selftest.sh` 输出「76 项断言，失败 0 项」，用时 78 秒，新断言「检查命令能读到 Spec 名」通过。变异检查：临时把 `ai-verify.sh` 第 11 行的 `export SPEC_NAME="$2"` 改回 `SPEC_NAME="$2"` 重跑，76 项里只有「检查命令能读到 Spec 名」失败，恢复后文件的 SHA-256 与改之前相同。
@@ -83,4 +85,5 @@
     - 演练暴露的两处：`$SPEC_NAME` 是什么、「涉及文件」取什么格式，升级说明都没写，subagent 是去读 `ai-verify.sh` 和 Spec 指南才确定的（都猜对了）。已在第 6 步补一个括注：「按 `$SPEC_NAME`（`ai-verify.sh` 导出的当前 Spec 名）读该 Spec tasks.md 里「涉及文件」行的反引号路径来分派」。这比方案里的那句多了括注和「tasks.md 里…行的反引号路径」，意思不变；AC-03 的命令重跑，结果与 Task 2 相同。
   - AC-08：自检 76 项见 Task 1。补括注的提交 7d7a5a9 推送后的 CI 运行 42849798560：`gh run view 42849798560 --json jobs --jq '.jobs[].name, .jobs[].conclusion'` 输出 `selftest (windows-latest)`、`selftest (ubuntu-latest)`、`success`、`success`；`--log` 里两个任务各有一行「76 项断言，失败 0 项」，换行警告 0 行。（补括注之前的提交 a02969d 也跑过一次，运行 42849056842，同样两个 `success`、各 76 项。）7d7a5a9 之后的提交只动 `process/`。`bash scripts/ai-check-bloat.sh` 输出体积正常；`bash scripts/ai-verify.sh --spec feat-t-000052` 为 PASS，用时 76 秒。
 - 已排除的方案：恢复 `<file>` 与 `$TARGET_FILE`（维护者没选「撤回」；单个目标文件代表不了一次改动）；现在就照发 v2.2.0（维护者没选）；脚手架提供解析「涉及文件」的脚本（分派规则是项目自己的）；在 `ai-verify.sh` 里检测残留的 `TARGET_FILE`（迁移代码，见风险）
-- 下一步：过 g2，独立审查。g3 需要维护者的当次决定。归档、CI 通过后打 v2.2.0 标签并建 GitHub Release（维护者 2026-11-10 已授权）。
+- 已完成：独立审查一轮通过（关键问题 0，改进建议 3：两条记在上面，红线样例第 8 行那条本来就在「发现但不碰」里）。审查认定「需人决定：是」判得对；对「不在 `ai-verify.sh` 里检测残留的 `TARGET_FILE`」，方案审查和代码审查都倾向不加。审查者第一稿的 review.md 没按指南 Step 3 的字段格式写，g3 认不出，我请它自己改了格式，结论和证据没动。
+- 下一步：把风险和结果讲给维护者，记录他的决定；「通过」后过 g3、归档、推送，再打 v2.2.0 标签并建 GitHub Release，发布说明里点名升级第 6 步这件事。g3 需要维护者的当次决定。归档、CI 通过后打 v2.2.0 标签并建 GitHub Release（维护者 2026-11-10 已授权）。
