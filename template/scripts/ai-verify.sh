@@ -2,13 +2,13 @@
 # ==============================================================================
 # ai-verify.sh — 正式验证：运行 harness/verify.conf 的 CUSTOM_CHECK，把结果与代码状态写进 verification.md。
 # 未配置检查 = 未验证 ≠ 通过。
-# 用法：bash scripts/ai-verify.sh --spec <feature>
+# 用法：bash scripts/ai-verify.sh --spec <feature>（检查命令里可用 $SPEC_NAME）
 # ==============================================================================
 set -u
 . "$(dirname "${BASH_SOURCE[0]}")/ai-config.sh" || exit 1
 
 [ "${1:-}" = "--spec" ] && [ "$#" -eq 2 ] || { echo "👉 用法: bash scripts/ai-verify.sh --spec <feature>" >&2; exit 1; }
-SPEC_NAME="$2"
+export SPEC_NAME="$2"
 case "$SPEC_NAME" in ''|.|..|*[!A-Za-z0-9._-]*) echo "❌ 无效 Spec 名称: $SPEC_NAME" >&2; exit 1 ;; esac
 SPEC_DIR="process/specs/active/$SPEC_NAME"
 [ -d "$SPEC_DIR" ] || { echo "❌ 找不到活跃 Spec: $SPEC_NAME" >&2; exit 1; }

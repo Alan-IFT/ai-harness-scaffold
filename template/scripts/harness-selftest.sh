@@ -5,6 +5,8 @@
 # 改 scripts/ 或 harness/redlines.conf 后必跑；可接进 CI。
 # ==============================================================================
 set -u
+# 沙箱里的文件都是 LF：关掉换行转换，免得 Git Bash 下每个文件报一行 CRLF 警告。
+export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.autocrlf GIT_CONFIG_VALUE_0=false
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd) || exit 1
 TMP=$(mktemp -d "${TMPDIR:-/tmp}/harness-selftest-XXXXXX") || exit 1
@@ -238,6 +240,8 @@ expect_fail "拒绝旧用法多带的参数" "用法" bash scripts/ai-verify.sh 
 printf "CUSTOM_CHECK='test -f src/export/service.ts'\n" >harness/verify.conf
 expect_ok  "正式验证生成摘要" bash scripts/ai-verify.sh --spec t-verify
 expect_ok  "g2 接受真实生成的摘要" bash scripts/ai-gate.sh check t-verify g2
+printf "CUSTOM_CHECK='test \"\$SPEC_NAME\" = t-verify'\n" >harness/verify.conf
+expect_ok  "检查命令能读到 Spec 名" bash scripts/ai-verify.sh --spec t-verify
 printf "CUSTOM_CHECK='false'\n" >harness/verify.conf
 for i in 1 2; do bash scripts/ai-verify.sh --spec t-verify >/dev/null 2>&1; done
 expect_out "第 3 次连续失败亮黄卡" "黄卡" bash -c 'bash scripts/ai-verify.sh --spec t-verify; true'
