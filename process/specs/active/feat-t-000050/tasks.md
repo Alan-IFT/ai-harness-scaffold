@@ -49,7 +49,7 @@
   - 对应验收：AC-04、AC-06
   - 涉及文件：`README.md`、`AGENTS.md`、`docs/architecture/modules/template-mechanism.md`
   - 验证：AC-04、AC-06 的命令
-- [ ] Task 4：升级演练、CI 与正式验证
+- [x] Task 4：升级演练、CI 与正式验证
   - 对应验收：AC-08、AC-09
   - 涉及文件：`template/.agents/skills/upgrade.md`（演练里发现说明不清楚才改）
   - 验证：按 AC-08 在系统临时目录演练；推送后等 CI，跑 AC-09 的命令；正式验证后核对 AC-02 里 `verification.md` 的两条
@@ -57,10 +57,12 @@
 ## 3. 发现但不碰
 > 范围外的问题只记录：位置 / 现象 / 建议归属。
 - `template/harness/redlines.conf` 第 8 行与 `template/AGENTS.md` 第 33 行 / 都写「同一目标连续验证失败」，这里的「目标」指同一件要做成的事，失败次数本来就按 Spec 计；去掉目标文件后，这个词可能被读成文件 / 红线样例只允许人改，是否换个说法由维护者决定
+- `template/.agents/skills/upgrade.md` 第 4 步 / 没说与基线比对时换行符怎么处理，演练里的 subagent 自己把 CRLF 去掉再比 / 演练中的观察，不是本条引入的；是否补半句由维护者决定
+- `template/.agents/skills/upgrade.md` 第 6 步新加的那句 / 「文件注释」没点名是哪个文件，演练里的 subagent 按上下文理解成 `harness/verify.conf` 的注释，理解对了 / 演练中的观察；真有人理解错再改
 
 ## 4. WIP 接力区
 > 换工具或换会话前更新；下一个 Agent 先读这里和 `git diff`，不要推倒重写已验证的代码。
-- 当前任务：Task 4
+- 当前任务：无（四个任务都已完成，等独立审查和维护者的决定）
 - 已完成：需求与方案（规划时写在 `T-000050.md`，开工时搬进 Spec 并按 `feat-t-000049` 归档后的代码核对了行号）
 - 已完成：Task 1（2026-11-10，Git Bash）。
   - AC-01、AC-03：`bash scripts/harness-selftest.sh` 输出「75 项断言，失败 0 项」，用时 58 秒。第 3 节剩「拒绝未完成任务」「拒绝失败摘要」「拒绝代码变化后的过期摘要」三条；第 7 节「正式验证生成摘要」的命令是 `bash scripts/ai-verify.sh --spec t-verify`，新断言「拒绝旧用法多带的参数」通过。变异检查：临时去掉 `ai-verify.sh` 第 10 行的 `&& [ "$#" -eq 2 ]` 重跑，75 项里只有「拒绝旧用法多带的参数」失败（多带的参数被静默接受，走到了「未配置检查」），恢复后文件的 SHA-256 与去掉前相同。在本仓库直接运行 `bash scripts/ai-verify.sh --spec feat-t-000050 README.md` 与不带参数的 `bash scripts/ai-verify.sh`，都只打印「👉 用法: bash scripts/ai-verify.sh --spec <feature>」并以 1 退出，没有跑检查命令。
@@ -69,5 +71,13 @@
 - 已完成：Task 3。
   - AC-04：`grep -rl 'TARGET_FILE' template skill README.md README.en.md AGENTS.md docs/architecture` 只输出 `template/.agents/skills/upgrade.md` 与 `docs/architecture/modules/template-mechanism.md`；`grep -c '<file>' README.md template/AGENTS.md template/.agents/skills/code-review.md AGENTS.md` 四个都输出 0；`grep -c '验证目标' README.md` 输出 0。另外 grep 过 `目标文件`、`目标选`、`file_path`、`待验证文件`，只剩活文档新增的那一条标题。
   - AC-06：`grep -c '为什么 g2 要求验证目标' docs/architecture/modules/template-mechanism.md` 输出 0；`grep -c '为什么正式验证不带目标文件' docs/architecture/modules/template-mechanism.md` 输出 1。
+- 已完成：Task 4（2026-11-10）。升级说明没有再改。
+  - AC-08 升级演练（系统临时目录，Git Bash）：
+    - 装旧版：按 v2.1.4 的 `skill/SKILL.md` 第 1、3 节装一个新项目（`git init -b main`，用 `git show v2.1.4:template/<文件>` 写出全部模板文件，`.ai-harness/version` 写 `commit=d0149b4e…`），加 `src/app.sh` 和 `tests/run.sh`，`harness/verify.conf` 末尾写 `CUSTOM_CHECK='bash -n "$TARGET_FILE" && bash tests/run.sh'`。旧版自检「76 项断言，失败 0 项」，旧用法 `bash scripts/ai-verify.sh --spec drill-old src/app.sh` 通过。
+    - 升级：交给一个没有上下文的 subagent 充当项目里的 AI，只告诉它「把脚手架升级到提交 4da97f8…，脚手架仓库在本机某路径」，没有提 `$TARGET_FILE`。它按项目里的升级说明第 2 步读了目标版本的说明并照新版做：覆盖 8 个有变化的机制文件，`.ai-harness/version` 改成目标提交，自检「75 项断言，失败 0 项」，提交。第 6 步它原样列出 `verify.conf` 第 1 行的注释和第 7 行的 `CUSTOM_CHECK`，建议换成 `bash -n src/app.sh && bash tests/run.sh`，没有自己改。
+    - 我的复核：演练项目里的机制文件与 `git show 4da97f8:template/<文件>` 逐个 `cmp` 一致；本机脚手架仓库没有被改动。换命令之前先用新用法跑了一次 `bash scripts/ai-verify.sh --spec drill`，失败，输出 `bash: : No such file or directory`（变量为空）；把 `CUSTOM_CHECK` 换成建议的整项目命令后同一条命令通过，`verification.md` 只有 `result`、`state`、`command`、`verified_at_utc` 四行，没有 `- target:`；旧用法 `bash scripts/ai-verify.sh --spec drill src/app.sh` 打印用法并以 1 退出。
+    - subagent 说没有需要靠猜的地方，提了两点措辞，记在「发现但不碰」。
+  - AC-09：自检 75 项见 Task 1。提交 4da97f8 推送后的 CI 运行 42827693413：`gh run view 42827693413 --json jobs --jq '.jobs[].name, .jobs[].conclusion'` 输出 `selftest (ubuntu-latest)`、`selftest (windows-latest)`、`success`、`success`；`--log` 里两个任务各有一行「75 项断言，失败 0 项」，也各有「✅ 拒绝旧用法多带的参数」。4da97f8 之后的提交只动 `process/`。`bash scripts/ai-check-bloat.sh` 输出体积正常；`bash scripts/ai-verify.sh --spec feat-t-000050` 为 PASS，用时 81 秒。
+  - AC-02（`verification.md` 部分）：本 Spec 的 `verification.md` 上 `grep -c '^- target:'` 输出 0，`grep -c '^- command: bash scripts/ai-verify.sh --spec feat-t-000050$'` 输出 1。
 - 已排除的方案：兼容旧用法、静默忽略多余的文件参数（会让人以为目标还在起作用）；保留 `$TARGET_FILE` 作可选变量（口子和补丁规则都得留着）
-- 下一步：做 Task 4：先在系统临时目录做升级演练（用本机仓库作脚手架仓库），再推送等 CI，然后正式验证。g3 需要维护者的当次决定：审查通过后把风险和结果讲给维护者，由他说「通过」或「不通过」。
+- 下一步：过 g2，独立审查。g3 需要维护者的当次决定：审查通过后把风险和结果讲给维护者，由他说「通过」或「不通过」。
