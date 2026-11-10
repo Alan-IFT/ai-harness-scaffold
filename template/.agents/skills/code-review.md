@@ -4,7 +4,7 @@
 **核心原则**：写代码的上下文不审查自己的代码；审查者只看产物、需求和验收标准，不看实现者的自述。
 
 ## Step 1: 正式验证（g2）
-1. `bash scripts/ai-verify.sh --spec <feat>`：运行 `harness/verify.conf` 的检查命令，对整个项目生效。
+1. `bash scripts/ai-verify.sh --spec <feat>`：运行 `harness/verify.conf` 的检查命令。
 2. 摘要写进 `verification.md`，失败时终端打印输出末尾。验证后代码再变，就重跑。
 3. `bash scripts/ai-gate.sh pass <feat> g2`。
 
