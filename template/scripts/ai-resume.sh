@@ -38,9 +38,8 @@ case "$ROLE" in
     git merge-base --is-ancestor "$BASE" HEAD >/dev/null 2>&1 || fail "基准提交不是当前 HEAD 的祖先；请提供本需求开始前的提交"
     spec_dir="process/specs/active/$FEATURE"
     grep -qE '^- result: PASS$' "$spec_dir/verification.md" 2>/dev/null || fail "verification.md 尚无 PASS；先完成正式验证"
-    target=$(sed -n 's/^- target: //p' "$spec_dir/verification.md" | head -n 1)
     saved=$(sed -n 's/^- state: //p' "$spec_dir/verification.md" | head -n 1)
-    [ "$(bash scripts/ai-state-id.sh "$target" 2>/dev/null)" = "$saved" ] || fail "verification.md 已过期；先重新正式验证"
+    [ "$(bash scripts/ai-state-id.sh 2>/dev/null)" = "$saved" ] || fail "verification.md 已过期；先重新正式验证"
     changed=$({ git diff --name-only "$BASE"...HEAD; git diff --name-only; git diff --cached --name-only; git ls-files --others --exclude-standard; } | sort -u)
     [ -n "$changed" ] || fail "从 $BASE 到当前没有可审查的变更；请提供正确基准"
     echo "== review 接手：$FEATURE =="
@@ -79,11 +78,10 @@ for spec in process/specs/active/*/; do
   fi
   if [ -f "$spec/verification.md" ]; then
     echo "  --- 可交接验证摘要 ---"
-    grep -E '^- (target|result|state|verified_at_utc):' "$spec/verification.md" | sed 's/^/  /' || true
-    target=$(sed -n 's/^- target: //p' "$spec/verification.md" | head -n 1)
+    grep -E '^- (result|state|verified_at_utc):' "$spec/verification.md" | sed 's/^/  /' || true
     saved=$(sed -n 's/^- state: //p' "$spec/verification.md" | head -n 1)
-    if [ -f "$target" ] && [ -n "$saved" ]; then
-      current=$(bash scripts/ai-state-id.sh "$target" 2>/dev/null || true)
+    if [ -n "$saved" ]; then
+      current=$(bash scripts/ai-state-id.sh 2>/dev/null || true)
       [ "$current" = "$saved" ] || echo "  ⚠️  验证摘要已过期：代码或提交在验证后变化"
     fi
   fi

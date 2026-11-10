@@ -60,9 +60,8 @@ git_q()      { git -c user.name=selftest -c user.email=selftest@example.invalid 
 # ---------------------------------------------------------------- 样例生成器 --
 make_summary() {  # $1=spec 目录：模拟 ai-verify.sh 的正式摘要
   cat >"$1/verification.md" <<MD
-- target: src/export/service.ts
 - result: PASS
-- state: $(bash scripts/ai-state-id.sh src/export/service.ts)
+- state: $(bash scripts/ai-state-id.sh)
 MD
 }
 mk_spec() {       # $1=feat：能通过三道门的完整样例（需人决定）
@@ -171,13 +170,6 @@ expect_fail "拒绝未完成任务" "未完成" bash scripts/ai-gate.sh check t-
 mk_spec t-fail
 sed -i 's/^- result: PASS/- result: FAIL/' "$(S t-fail)"
 expect_fail "拒绝失败摘要" "未通过" bash scripts/ai-gate.sh check t-fail g2
-mk_spec t-offtask
-sed -i 's#^- target: .*#- target: harness/redlines.conf#' "$(S t-offtask)"
-expect_fail "拒绝验证目标不在涉及文件里" "不在 tasks.md" bash scripts/ai-gate.sh check t-offtask g2
-mk_spec t-wiponly
-printf '%s\n' '- 下一步：改 `harness/redlines.conf`' >>"$(T t-wiponly)"
-sed -i 's#^- target: .*#- target: harness/redlines.conf#' "$(S t-wiponly)"
-expect_fail "验证目标只在 WIP 区出现时拒绝" "不在 tasks.md" bash scripts/ai-gate.sh check t-wiponly g2
 mk_spec t-stale
 printf '// changed after verify\n' >>src/export/service.ts
 expect_fail "拒绝代码变化后的过期摘要" "过期" bash scripts/ai-gate.sh check t-stale g2
@@ -240,22 +232,22 @@ rm AGENTS.md; cp "$TMP/redlines.fixture" harness/redlines.conf
 
 section "7. ai-verify"
 mk_spec t-verify
-expect_fail "未配置检查时视为未验证" "未验证" bash scripts/ai-verify.sh --spec t-verify src/export/service.ts
-expect_fail "必须指定 Spec" "用法" bash scripts/ai-verify.sh src/export/service.ts
-expect_fail "拒绝流程文件作正式目标" "流程文件" bash scripts/ai-verify.sh --spec t-verify ./process/specs/active/t-verify/tasks.md
-printf "CUSTOM_CHECK='test -f \"\$TARGET_FILE\"'\n" >harness/verify.conf
-expect_ok  "正式验证生成摘要" bash scripts/ai-verify.sh --spec t-verify src/export/service.ts
+expect_fail "未配置检查时视为未验证" "未验证" bash scripts/ai-verify.sh --spec t-verify
+expect_fail "必须指定 Spec" "用法" bash scripts/ai-verify.sh
+expect_fail "拒绝旧用法多带的参数" "用法" bash scripts/ai-verify.sh --spec t-verify src/export/service.ts
+printf "CUSTOM_CHECK='test -f src/export/service.ts'\n" >harness/verify.conf
+expect_ok  "正式验证生成摘要" bash scripts/ai-verify.sh --spec t-verify
 expect_ok  "g2 接受真实生成的摘要" bash scripts/ai-gate.sh check t-verify g2
 printf "CUSTOM_CHECK='false'\n" >harness/verify.conf
-for i in 1 2; do bash scripts/ai-verify.sh --spec t-verify src/export/service.ts >/dev/null 2>&1; done
-expect_out "第 3 次连续失败亮黄卡" "黄卡" bash -c 'bash scripts/ai-verify.sh --spec t-verify src/export/service.ts; true'
+for i in 1 2; do bash scripts/ai-verify.sh --spec t-verify >/dev/null 2>&1; done
+expect_out "第 3 次连续失败亮黄卡" "黄卡" bash -c 'bash scripts/ai-verify.sh --spec t-verify; true'
 mk_spec t-redact
 # 私钥头拆开写，自检文件本身才不会被 detect-private-key 拦下
 cat >harness/verify.conf <<'CONF'
 CUSTOM_CHECK='echo "-----BEG""IN RSA PRIVATE"" KEY----- abc"; false'
 CONF
-expect_fail "失败输出脱敏私钥头" "PRIVATE KEY REDACTED" bash scripts/ai-verify.sh --spec t-redact src/export/service.ts
-redacted=$(bash scripts/ai-verify.sh --spec t-redact src/export/service.ts 2>&1)
+expect_fail "失败输出脱敏私钥头" "PRIVATE KEY REDACTED" bash scripts/ai-verify.sh --spec t-redact
+redacted=$(bash scripts/ai-verify.sh --spec t-redact 2>&1)
 case "$redacted" in *BEGIN*) ng_msg "失败输出残留私钥头" "$redacted" ;; *) ok_msg "失败输出不残留私钥头" ;; esac
 rm -f harness/verify.conf
 
@@ -269,10 +261,10 @@ mkdir -p "$G/scripts" "$G/process/specs/active/demo"
 cp scripts/ai-state-id.sh scripts/ai-resume.sh scripts/ai-config.sh scripts/ai-task-pool.sh scripts/ai-check-bloat.sh "$G/scripts/"
 printf 'one\n' >"$G/source.txt"; printf 'two\n' >"$G/other.txt"
 (cd "$G" && git init -q && git add . && git_q commit -qm initial)
-fp() { (cd "$G" && bash scripts/ai-state-id.sh source.txt); }
+fp() { (cd "$G" && bash scripts/ai-state-id.sh); }
 base=$(fp)
 printf 'changed\n' >>"$G/other.txt"
-differ "非目标文件变化计入指纹" "$base" "$(fp)"
+differ "任一文件变化计入指纹" "$base" "$(fp)"
 (cd "$G" && git add other.txt); staged=$(fp)
 (cd "$G" && git_q commit -qm changed)
 same "暂存到提交后指纹稳定" "$staged" "$(fp)"
@@ -283,13 +275,13 @@ same "process/ 下的改动不计入指纹" "$base" "$(fp)"
 mkdir -p "$G/process-x"; printf 'near\n' >"$G/process-x/a.md"
 differ "前缀相近的目录照常计入" "$base" "$(fp)"
 rm -rf "$G/process-x" "$G/process/note.md"
-nogit() { (cd "$TMP" && bash "$SB/scripts/ai-state-id.sh" redlines.fixture); }
+nogit() { (cd "$TMP" && bash "$SB/scripts/ai-state-id.sh"); }
 expect_fail "非 Git 目录拒绝计算指纹" "需要 Git 仓库" nogit
 review_base=$(cd "$G" && git rev-parse HEAD)
 printf 'reviewed\n' >>"$G/source.txt"
 printf '原话与 AC\n' >"$G/process/specs/active/demo/requirements.md"
 printf '## 2. Task 1\n' >"$G/process/specs/active/demo/tasks.md"
-printf -- '- target: source.txt\n- result: PASS\n- state: %s\n' "$(fp)" >"$G/process/specs/active/demo/verification.md"
+printf -- '- result: PASS\n- state: %s\n' "$(fp)">"$G/process/specs/active/demo/verification.md"
 rv() { (cd "$G" && bash scripts/ai-resume.sh review demo "$1"); }
 expect_out  "review 给出完整 diff 命令" "git diff $review_base...HEAD" rv "$review_base"
 expect_fail "review 拒绝无效基准" "无法解析基准" rv missing-ref

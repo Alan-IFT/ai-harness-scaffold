@@ -77,18 +77,15 @@ ck_g1() { # 计划：原话、是否需人决定、验收标准、待确认清�
 }
 
 ck_g2() { # 验证：任务全部完成，验证摘要通过、有真实检查且对应当前代码
-  local f="$DIR/tasks.md" s="$DIR/verification.md" open target result saved current
+  local f="$DIR/tasks.md" s="$DIR/verification.md" open result saved current
   [ -f "$f" ] || { say "缺少 $f"; return 1; }
   open=$(grep -cE '^[[:space:]]*[-*][[:space:]]*\[ \]' "$f" | tr -d ' ')
   [ "$open" -eq 0 ] || { say "还有 $open 个任务未完成"; return 1; }
-  [ -f "$s" ] || { say "没有验证摘要：先跑 bash scripts/ai-verify.sh --spec $FEAT <file>"; return 1; }
-  target=$(sed -n 's/^- target: //p' "$s" | head -n 1)
+  [ -f "$s" ] || { say "没有验证摘要：先跑 bash scripts/ai-verify.sh --spec $FEAT"; return 1; }
   result=$(sed -n 's/^- result: //p' "$s" | head -n 1)
   saved=$(sed -n 's/^- state: //p' "$s" | head -n 1)
   [ "$result" = PASS ] || { say "最近一次验证未通过：$s"; return 1; }
-  [ -n "$target" ] && [ -f "$target" ] || { say "验证摘要缺少有效目标文件：$target"; return 1; }
-  grep '涉及文件' "$f" | grep -qF "\`$target\`" || { say "验证目标 $target 不在 tasks.md 的涉及文件里：选本次改动的文件"; return 1; }
-  current=$(bash scripts/ai-state-id.sh "$target") || return 1
+  current=$(bash scripts/ai-state-id.sh) || return 1
   [ "$saved" = "$current" ] || { say "验证摘要已过期：代码在验证后变化，请重新运行 ai-verify.sh"; return 1; }
   return 0
 }
