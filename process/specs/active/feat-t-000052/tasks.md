@@ -42,11 +42,11 @@
   - 对应验收：AC-01、AC-06
   - 涉及文件：`template/scripts/ai-verify.sh`、`template/scripts/harness-selftest.sh`
   - 验证：`bash scripts/harness-selftest.sh` 为 76 项、失败 0 项；AC-01 的变异检查；AC-06 的命令
-- [ ] Task 2：配置样例、升级说明与规则
+- [x] Task 2：配置样例、升级说明与规则
   - 对应验收：AC-02、AC-03、AC-04
   - 涉及文件：`template/harness/verify.conf`、`template/.agents/skills/upgrade.md`、`template/AGENTS.md`、`template/.agents/skills/code-review.md`
   - 验证：AC-02、AC-03、AC-04 的命令（AC-03 里「同一行」的三条用 `grep 'TARGET_FILE' template/.agents/skills/upgrade.md` 的输出再 grep）
-- [ ] Task 3：README 与活文档
+- [x] Task 3：README 与活文档
   - 对应验收：AC-05
   - 涉及文件：`README.md`、`docs/architecture/modules/template-mechanism.md`
   - 验证：AC-05 的命令
@@ -62,10 +62,15 @@
 
 ## 4. WIP 接力区
 > 换工具或换会话前更新；下一个 Agent 先读这里和 `git diff`，不要推倒重写已验证的代码。
-- 当前任务：Task 2
+- 当前任务：Task 4
 - 已完成：需求与方案；方案审查通过，三条建议已写回方案
 - 已完成：Task 1（2026-11-10，Git Bash）。
   - AC-01：`bash scripts/harness-selftest.sh` 输出「76 项断言，失败 0 项」，用时 78 秒，新断言「检查命令能读到 Spec 名」通过。变异检查：临时把 `ai-verify.sh` 第 11 行的 `export SPEC_NAME="$2"` 改回 `SPEC_NAME="$2"` 重跑，76 项里只有「检查命令能读到 Spec 名」失败，恢复后文件的 SHA-256 与改之前相同。
   - AC-06：同一次正常运行的输出（标准输出和错误输出合在一起）里，`grep -c 'LF will be replaced by CRLF'` 输出 0，以 `warning` 开头的行也是 0（改动前一次运行有 25 行）。
+- 已完成：Task 2。写法与方案一致。
+  - AC-02：`grep -c 'SPEC_NAME' template/harness/verify.conf` 输出 1；`grep -c '必须失败' template/harness/verify.conf` 输出 2。
+  - AC-03：`grep -c 'TARGET_FILE' template/.agents/skills/upgrade.md` 输出 1；把这一行再 grep，`SPEC_NAME`、`默认分支`、`它调用的项目脚本` 各输出 1；`grep -c '文件注释' template/.agents/skills/upgrade.md` 输出 0。
+  - AC-04：`grep -c '对整个项目生效' template/AGENTS.md template/.agents/skills/code-review.md` 输出 `template/AGENTS.md:0` 和 `template/.agents/skills/code-review.md:0`；`grep -c '同一目标' template/AGENTS.md` 输出 0；`grep -c '同一 Spec 连续验证失败' template/AGENTS.md` 输出 1；`wc -l < template/AGENTS.md` 输出 39。
+- 已完成：Task 3。AC-05：`grep -c 'SPEC_NAME' README.md` 输出 1；`grep -c '选哪个文件都不影响查什么' docs/architecture/modules/template-mechanism.md` 输出 0；`grep -c '为什么正式验证不带目标文件、却导出' docs/architecture/modules/template-mechanism.md` 输出 1。全仓再搜「对整个项目生效」「同一目标」，只剩 `verify.conf` 样例里的「默认写一条对整个项目生效的命令」和红线样例第 8 行（只允许人改，见「发现但不碰」）。
 - 已排除的方案：恢复 `<file>` 与 `$TARGET_FILE`（维护者没选「撤回」；单个目标文件代表不了一次改动）；现在就照发 v2.2.0（维护者没选）；脚手架提供解析「涉及文件」的脚本（分派规则是项目自己的）；在 `ai-verify.sh` 里检测残留的 `TARGET_FILE`（迁移代码，见风险）
-- 下一步：做 Task 2、Task 3，再做 Task 4 的升级演练，然后推送等 CI。g3 需要维护者的当次决定。归档、CI 通过后打 v2.2.0 标签并建 GitHub Release（维护者 2026-11-10 已授权）。
+- 下一步：做 Task 4：先在系统临时目录做升级演练，再推送等 CI，然后正式验证。g3 需要维护者的当次决定。归档、CI 通过后打 v2.2.0 标签并建 GitHub Release（维护者 2026-11-10 已授权）。
