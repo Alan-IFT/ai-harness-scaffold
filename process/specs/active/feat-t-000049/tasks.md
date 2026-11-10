@@ -35,7 +35,7 @@
   - 对应验收：AC-01、AC-02、AC-03
   - 涉及文件：`template/scripts/ai-state-id.sh`、`template/scripts/harness-selftest.sh`
   - 验证：AC-01、AC-02、AC-03 的命令
-- [ ] Task 2：活文档，推送后核对 CI，正式验证
+- [x] Task 2：活文档，推送后核对 CI，正式验证
   - 对应验收：AC-04、AC-05、AC-06
   - 涉及文件：`docs/architecture/modules/template-mechanism.md`
   - 验证：AC-04 的命令；提交并推送后等 CI，跑 AC-05 的命令；再跑体积检查和正式验证
@@ -47,11 +47,15 @@
 
 ## 4. WIP 接力区
 > 换工具或换会话前更新；下一个 Agent 先读这里和 `git diff`，不要推倒重写已验证的代码。
-- 当前任务：Task 2
+- 当前任务：无（两个任务都已完成，等独立审查）
 - 已完成：三个 Spec 的整体规划；本条的需求与方案；后两条的完整规划写在各自的任务文件里（`process/task-pool/T-000050.md`、`process/task-pool/T-000051.md` 的「规划」一节）
 - 已完成：Task 1（2026-11-10，Git Bash）。守卫放在取目标参数之前，所以非 Git 目录里带不带参数都报同一句。
   - AC-01：在系统临时目录的一个空目录里（只有一个 `a.txt`）运行 `bash <仓库>/template/scripts/ai-state-id.sh a.txt >out.txt 2>err.txt`，退出码 1，`out.txt` 0 字节，`err.txt` 两行：`fatal: not a git repository (or any of the parent directories): .git` 和「状态指纹需要 Git 仓库：当前目录不在 Git 工作区，或 Git 读不了它（原因见上一行）；新项目先运行 git init」。不带参数运行结果相同。自检断言「非 Git 目录拒绝计算指纹」通过；先只加这条断言、不改脚本跑过一遍，它是失败的（旧脚本以 0 退出并输出指纹 `25a8abf468e5…`），其余 76 项通过。
   - AC-02：临时 Git 仓库里提交 `tracked.txt`、`other.txt`，再给 `other.txt` 追加一行（未暂存）、新建 `untracked.txt`（未跟踪）。`git show d0149b4:template/scripts/ai-state-id.sh` 存成的旧脚本与改动后的脚本，对 `tracked.txt` 都输出 `f683ae2101b38f73ecf901015d80ecb4572803410c331325678a85cba994a7f1`。
   - AC-03：`bash scripts/harness-selftest.sh` 输出「77 项断言，失败 0 项」，总耗时 89 秒（同一会话里改动前是 60 秒）。反向检查：去掉自检里 `git init -q . && git add -A && git_q commit -qm fixture || exit 1` 这一行重跑，77 项里失败 17 项，都是算不出指纹引起的：第 3 节「拒绝代码变化后的过期摘要」，第 4 节 6 项，第 5 节「g2 通过」「g3 通过」等 8 项，第 7 节「正式验证生成摘要」「g2 接受真实生成的摘要」2 项；失败输出里就是上面那两行报错。恢复后文件的 SHA-256 与去掉前相同。
+- 已完成：Task 2（2026-11-10）。
+  - AC-04：`grep -c '为什么状态指纹只在 Git 仓库里算' docs/architecture/modules/template-mechanism.md` 输出 1。
+  - AC-05：提交 c72cf60 推送后的 CI 运行 42825259969：`gh run view 42825259969 --json jobs --jq '.jobs[].name, .jobs[].conclusion'` 输出 `selftest (ubuntu-latest)`、`selftest (windows-latest)`、`success`、`success`；`--log` 里两个任务各有一行「77 项断言，失败 0 项」，也各有「✅ 非 Git 目录拒绝计算指纹」。Windows 任务从开始到结束 61 秒，Linux 任务 6 秒。
+  - AC-06：`bash scripts/ai-check-bloat.sh` 输出体积正常；`bash scripts/ai-verify.sh --spec feat-t-000049 template/scripts/ai-state-id.sh` 为 PASS，用时 73 秒。自检在 Git Bash 下的总耗时：改动前 60 秒，改动后单独跑一次 89 秒，正式验证里那一次 73 秒。
 - 已排除的方案：三件事合成一个 Spec（维护者要求拆开，也便于只做前两个）；把本条并进第二个 Spec 当任务（沙箱改动会波及前 8 节，单独验证更容易看清有没有改坏）
-- 下一步：做 Task 2（活文档、推送后核对 CI、正式验证）。本条归档后用 `bash scripts/ai-task-pool.sh start-next` 领 `T-000050`，把它「规划」一节的内容写进新 Spec 的 requirements.md 和 tasks.md；方案已随本次规划审过，开工时只需核对行号有没有因本条的改动而变。`T-000051` 是暂缓状态，`start-next` 不会领它。
+- 下一步：过 g2，独立审查，过 g3，归档。本条归档后用 `bash scripts/ai-task-pool.sh start-next` 领 `T-000050`，把它「规划」一节的内容写进新 Spec 的 requirements.md 和 tasks.md；方案已随本次规划审过，开工时只需核对行号有没有因本条的改动而变。`T-000051` 是暂缓状态，`start-next` 不会领它。
