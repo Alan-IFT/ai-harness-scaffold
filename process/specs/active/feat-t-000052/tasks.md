@@ -50,7 +50,7 @@
   - 对应验收：AC-05
   - 涉及文件：`README.md`、`docs/architecture/modules/template-mechanism.md`
   - 验证：AC-05 的命令
-- [ ] Task 4：升级演练、CI 与正式验证
+- [x] Task 4：升级演练、CI 与正式验证
   - 对应验收：AC-07、AC-08
   - 涉及文件：`template/.agents/skills/upgrade.md`、`template/harness/verify.conf`（演练里发现说明不清楚才改）
   - 验证：按 AC-07 在系统临时目录演练；推送后等 CI，跑 AC-08 的命令
@@ -59,10 +59,11 @@
 > 范围外的问题只记录：位置 / 现象 / 建议归属。
 - `template/harness/redlines.conf` 第 8 行 / 注释写「同一目标连续验证失败上限」，本条把 `template/AGENTS.md` 改成「同一 Spec」后两处说法不一样 / 红线样例只允许人改，由维护者把「同一目标」改成「同一 Spec」
 - 三个接入项目的 `.ai-harness/version` / 都指向历史重写前的提交，不是现在 main 的祖先，升级时基线取不到 / 各项目升级时按升级说明「取不到就当作改过」处理；对应关系只有一个项目有记录
+- `template/.agents/skills/upgrade.md` 第 4 步 / 「对照模板全部历史列出项目里仍残留的已退役文件」没说怎么判定已退役，演练里的 subagent 自己推成「历史里出现过、目标提交的 `template/` 里已经没有、项目里还在」（推对了）/ 演练中的观察，不是本条引入的；是否补半句由维护者决定
 
 ## 4. WIP 接力区
 > 换工具或换会话前更新；下一个 Agent 先读这里和 `git diff`，不要推倒重写已验证的代码。
-- 当前任务：Task 4
+- 当前任务：无（四个任务都已完成，等独立审查和维护者的决定）
 - 已完成：需求与方案；方案审查通过，三条建议已写回方案
 - 已完成：Task 1（2026-11-10，Git Bash）。
   - AC-01：`bash scripts/harness-selftest.sh` 输出「76 项断言，失败 0 项」，用时 78 秒，新断言「检查命令能读到 Spec 名」通过。变异检查：临时把 `ai-verify.sh` 第 11 行的 `export SPEC_NAME="$2"` 改回 `SPEC_NAME="$2"` 重跑，76 项里只有「检查命令能读到 Spec 名」失败，恢复后文件的 SHA-256 与改之前相同。
@@ -72,5 +73,14 @@
   - AC-03：`grep -c 'TARGET_FILE' template/.agents/skills/upgrade.md` 输出 1；把这一行再 grep，`SPEC_NAME`、`默认分支`、`它调用的项目脚本` 各输出 1；`grep -c '文件注释' template/.agents/skills/upgrade.md` 输出 0。
   - AC-04：`grep -c '对整个项目生效' template/AGENTS.md template/.agents/skills/code-review.md` 输出 `template/AGENTS.md:0` 和 `template/.agents/skills/code-review.md:0`；`grep -c '同一目标' template/AGENTS.md` 输出 0；`grep -c '同一 Spec 连续验证失败' template/AGENTS.md` 输出 1；`wc -l < template/AGENTS.md` 输出 39。
 - 已完成：Task 3。AC-05：`grep -c 'SPEC_NAME' README.md` 输出 1；`grep -c '选哪个文件都不影响查什么' docs/architecture/modules/template-mechanism.md` 输出 0；`grep -c '为什么正式验证不带目标文件、却导出' docs/architecture/modules/template-mechanism.md` 输出 1。全仓再搜「对整个项目生效」「同一目标」，只剩 `verify.conf` 样例里的「默认写一条对整个项目生效的命令」和红线样例第 8 行（只允许人改，见「发现但不碰」）。
+- 已完成：Task 4（2026-11-10）。
+  - AC-07 升级演练（系统临时目录，Git Bash）：
+    - 装旧版：按 v2.1.4 的接入说明装一个新项目，加 `src/app.sh`、`src/util.sh`、各自的测试脚本和 `docs/notes.md`。`CUSTOM_CHECK` 写成 `case "$TARGET_FILE" in` 两个模块分支加默认分支 `*) bash -n scripts/ai-gate.sh ;;`。旧版自检「76 项断言，失败 0 项」；旧用法下目标选 `src/app.sh` 和选 `docs/notes.md` 都通过（后者走的就是默认分支）。
+    - 升级：交给一个没有上下文的 subagent 充当项目里的 AI，只说「把脚手架升级到提交 a02969d…，脚手架仓库在本机某路径」。它照目标版本的升级说明做完七步并提交，自检「76 项断言，失败 0 项」。第 6 步它原样引用了升级说明那句话和 `verify.conf` 的第 1、7 行，写的后果是：变量为空，`case` 落到 `*)` 分支，只对脚手架脚本做语法检查，`src/`、`tests/` 都没跑，之后任何 Spec 的正式验证都会通过却什么也没测。它建议整项目命令，没有自己改。
+    - 我的复核：机制文件与 `git show a02969d:template/<文件>` 逐个 `cmp` 一致；本机脚手架仓库没有被改动。改之前用新版跑 `bash scripts/ai-verify.sh --spec hazard`，输出「✅ 验证通过」、退出码 0，悄悄通过的情形属实。
+    - 迁移：以维护者的身份告诉它「不用整项目命令，按第 6 步的另一条路改」，不给实现细节。它把 `CUSTOM_CHECK` 改成 `bash scripts/project-check.sh`，新加的项目脚本用 `$SPEC_NAME` 找到该 Spec 的 tasks.md，取「涉及文件」行里的反引号路径逐个分派，没有对应检查的输出「没有对应检查的文件」并失败。
+    - 我自己建临时 Spec 复测四种情形：涉及文件是 `src/util.sh`、`tests/test_app.sh` 时通过；是 `src/app.sh`、`docs/notes.md` 时失败，输出「没有对应检查的文件: docs/notes.md」；涉及文件还是模板占位 `path/to/file` 时失败；涉及 `src/util.sh` 且把它改坏时失败，输出「upper failed」。
+    - 演练暴露的两处：`$SPEC_NAME` 是什么、「涉及文件」取什么格式，升级说明都没写，subagent 是去读 `ai-verify.sh` 和 Spec 指南才确定的（都猜对了）。已在第 6 步补一个括注：「按 `$SPEC_NAME`（`ai-verify.sh` 导出的当前 Spec 名）读该 Spec tasks.md 里「涉及文件」行的反引号路径来分派」。这比方案里的那句多了括注和「tasks.md 里…行的反引号路径」，意思不变；AC-03 的命令重跑，结果与 Task 2 相同。
+  - AC-08：自检 76 项见 Task 1。补括注的提交 7d7a5a9 推送后的 CI 运行 42849798560：`gh run view 42849798560 --json jobs --jq '.jobs[].name, .jobs[].conclusion'` 输出 `selftest (windows-latest)`、`selftest (ubuntu-latest)`、`success`、`success`；`--log` 里两个任务各有一行「76 项断言，失败 0 项」，换行警告 0 行。（补括注之前的提交 a02969d 也跑过一次，运行 42849056842，同样两个 `success`、各 76 项。）7d7a5a9 之后的提交只动 `process/`。`bash scripts/ai-check-bloat.sh` 输出体积正常；`bash scripts/ai-verify.sh --spec feat-t-000052` 为 PASS，用时 76 秒。
 - 已排除的方案：恢复 `<file>` 与 `$TARGET_FILE`（维护者没选「撤回」；单个目标文件代表不了一次改动）；现在就照发 v2.2.0（维护者没选）；脚手架提供解析「涉及文件」的脚本（分派规则是项目自己的）；在 `ai-verify.sh` 里检测残留的 `TARGET_FILE`（迁移代码，见风险）
-- 下一步：做 Task 4：先在系统临时目录做升级演练，再推送等 CI，然后正式验证。g3 需要维护者的当次决定。归档、CI 通过后打 v2.2.0 标签并建 GitHub Release（维护者 2026-11-10 已授权）。
+- 下一步：过 g2，独立审查。g3 需要维护者的当次决定。归档、CI 通过后打 v2.2.0 标签并建 GitHub Release（维护者 2026-11-10 已授权）。
