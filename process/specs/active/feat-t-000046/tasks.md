@@ -17,7 +17,7 @@
   - 对应验收：AC-01、AC-02、AC-03、AC-04、AC-05、AC-08
   - 涉及文件：`template/scripts/ai-task-pool.sh`、`template/scripts/harness-selftest.sh`
   - 验证：`bash scripts/harness-selftest.sh`；AC-03、AC-04 的 grep；临时目录造 300 个已归档任务测 `next`、`list`、`add` 耗时
-- [ ] Task 2：指南、README 与活文档
+- [x] Task 2：指南、README 与活文档
   - 对应验收：AC-06
   - 涉及文件：`template/.agents/skills/archive-spec.md`、`template/.agents/skills/upgrade.md`、`README.md`、`docs/architecture/modules/template-mechanism.md`
   - 验证：AC-06 的 grep
@@ -32,8 +32,8 @@
 
 ## 4. WIP 接力区
 > 换工具或换会话前更新；下一个 Agent 先读这里和 `git diff`，不要推倒重写已验证的代码。
-- 当前任务：Task 2
+- 当前任务：Task 3
 - 已完成：需求与方案。改动前实测（2026-11-09，本机 Git Bash，临时目录）：300 个已归档任务留在池里时 `next` 38 秒、`list` 93 秒、`add` 21 秒；只把 `basename` 换成参数展开，`add` 降到 0.16 秒，`next` 仍要 28 秒。
 - 已完成：Task 1。自检 76 项断言、失败 0 项（新增 2 项，改 1 项）。AC-05 实测（同一环境，用改后的脚本）：300 个任务文件已随 Spec 归档、池里 4 个待办时，`next` 0.87 秒、`list` 0.88 秒、`add` 0.17 秒，新编号接在 300 之后。AC-03 的 grep 输出 1，AC-04 的 grep 输出 0。
 - 已排除的方案：任务文件留在池里、用一次 awk 读完（见方案）；任务一开始就移进 Spec 目录并删掉 `关联 Spec` 字段（升级后遗留的已归档任务会被当成待办，要靠人工迁移兜底）。
-- 下一步：改 `archive-spec.md`、`upgrade.md`、README 目录树和活文档
+- 下一步：把本仓库池里已归档的 16 个任务文件移进各自的归档目录

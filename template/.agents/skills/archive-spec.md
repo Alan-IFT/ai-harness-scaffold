@@ -10,7 +10,7 @@
 ```bash
 bash scripts/ai-task-pool.sh archive <feat>
 ```
-与 `start-next` 共用任务池锁；锁冲突时归档失败、active 不移动，稍后重试。
+关联的任务文件随 Spec 一起移进归档目录，任务池只留没做完的。与 `start-next` 共用任务池锁；锁冲突时归档失败、active 不移动，稍后重试。
 
 ## Step 3: 提交与交接
 1. `bash scripts/ai-check-bloat.sh` 确认体积在预算内，然后提交。

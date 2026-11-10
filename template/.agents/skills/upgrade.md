@@ -10,6 +10,6 @@
    - 项目改过的，把新版差异合并进去；
    - 目标版本新增的复制过来；目标版本已删除的删掉，项目改过的先问人。
    - 对照模板全部历史（`git -C <脚手架仓库> log --name-only --format= -- template`）列出项目里仍残留的已退役文件，交人决定。
-5. 不动项目状态：`process/` 下的 Spec 与任务，`MEMORY.md`，`PREFERENCES.md`，`docs/architecture/`，`harness/verify.conf`。`harness/redlines.conf` 只由人改；用 `git -C <脚手架仓库> diff <.ai-harness/version 的 commit> <目标提交> -- template/harness/redlines.conf` 查新版的新键或新值，有差异就列给人。`.gitignore` 和 `.gitattributes` 只补缺的行。
+5. 不动项目状态：`process/` 下的 Spec 与任务，`MEMORY.md`，`PREFERENCES.md`，`docs/architecture/`，`harness/verify.conf`。例外：`bash scripts/ai-task-pool.sh list` 显示「关联异常」的任务，关联的 Spec 已在 `process/specs/archive/` 下的，把任务文件移进那个归档目录（归档时任务文件随 Spec 走）；找不到 Spec 的交人决定。`harness/redlines.conf` 只由人改；用 `git -C <脚手架仓库> diff <.ai-harness/version 的 commit> <目标提交> -- template/harness/redlines.conf` 查新版的新键或新值，有差异就列给人。`.gitignore` 和 `.gitattributes` 只补缺的行。
 6. 复议验证命令：核对 `harness/verify.conf` 的 `CUSTOM_CHECK`。有测试却只跑 lint 或类型检查的，不能证明行为，连同建议的命令交人决定，不要自己改。
 7. 把 `.ai-harness/version` 的 `commit=` 改为目标提交，运行 `bash scripts/harness-selftest.sh` 与 `bash scripts/ai-gate.sh status`，通过后提交。

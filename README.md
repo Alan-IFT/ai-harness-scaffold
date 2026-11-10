@@ -178,11 +178,11 @@ your-project/
 │   ├── redlines.conf        # 阈值，只由人改
 │   └── verify.conf          # 项目的验证命令
 ├── process/
-│   ├── task-pool/           # 需求原话，每个需求一个文件
+│   ├── task-pool/           # 没做完的需求原话，每个需求一个文件
 │   └── specs/
 │       ├── _templates/      # Spec 模板
 │       ├── active/<feat>/   # 进行中：requirements、tasks、verification、review
-│       └── archive/YYYY-MM/ # 已归档的 Spec
+│       └── archive/YYYY-MM/ # 已归档的 Spec，任务文件随 Spec 移到这里
 └── scripts/                 # 门禁与流程脚本
 ```
 
