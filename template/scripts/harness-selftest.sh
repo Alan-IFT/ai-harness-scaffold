@@ -122,6 +122,9 @@ T() { printf 'process/specs/active/%s/tasks.md' "$1"; }
 V() { printf 'process/specs/active/%s/review.md' "$1"; }
 S() { printf 'process/specs/active/%s/verification.md' "$1"; }
 
+# 状态指纹只在 Git 仓库里算：沙箱先建成仓库，下面的断言才跑在全仓指纹上。
+git init -q . && git add -A && git_q commit -qm fixture || exit 1
+
 # ==============================================================================
 section "1. 新建 Spec"
 expect_ok   "生成新 Spec" bash scripts/ai-new-spec.sh t-empty
@@ -280,6 +283,8 @@ same "process/ 下的改动不计入指纹" "$base" "$(fp)"
 mkdir -p "$G/process-x"; printf 'near\n' >"$G/process-x/a.md"
 differ "前缀相近的目录照常计入" "$base" "$(fp)"
 rm -rf "$G/process-x" "$G/process/note.md"
+nogit() { (cd "$TMP" && bash "$SB/scripts/ai-state-id.sh" redlines.fixture); }
+expect_fail "非 Git 目录拒绝计算指纹" "需要 Git 仓库" nogit
 review_base=$(cd "$G" && git rev-parse HEAD)
 printf 'reviewed\n' >>"$G/source.txt"
 printf '原话与 AC\n' >"$G/process/specs/active/demo/requirements.md"
