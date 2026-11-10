@@ -219,7 +219,12 @@ for g in g1 g2 g3; do bash scripts/ai-gate.sh pass t-arch "$g" >/dev/null; done
 printf '// changed after review\n' >>src/export/service.ts
 expect_fail "审查失效时拒绝归档" "已失效" bash scripts/ai-task-pool.sh archive t-arch
 sed -i '$d' src/export/service.ts
+bash scripts/ai-task-pool.sh add "随 Spec 归档的任务" >/dev/null
+sed -i 's/^- 关联 Spec: 无$/- 关联 Spec: t-arch/' process/task-pool/T-000001.md
 expect_out  "三道门通过后归档" "已归档 t-arch" bash scripts/ai-task-pool.sh archive t-arch
+ls process/specs/archive/*/t-arch/T-000001.md >/dev/null 2>&1 && [ ! -e process/task-pool/T-000001.md ] \
+  && ok_msg "任务文件随 Spec 归档" || ng_msg "任务文件没有随 Spec 归档"
+expect_out  "归档带走的任务编号不重用" "T-000002" bash scripts/ai-task-pool.sh add "归档后的新需求"
 
 section "6. 红线配置"
 sed -i '/^CR_MAX_ROUNDS=/d' harness/redlines.conf
@@ -305,7 +310,7 @@ rmdir process/task-pool/.lock
 expect_fail "任务池里未过门的 Spec 不能归档" "未通过" bash scripts/ai-task-pool.sh archive feat-t-000001
 mkdir -p process/specs/archive/2026-10 && mv process/specs/active/feat-t-000001 process/specs/archive/2026-10/
 expect_out  "按优先选下一项" "下一项：T-000003（维护者指定优先）" bash scripts/ai-task-pool.sh next
-expect_out  "归档状态由 Spec 派生" "已归档" bash scripts/ai-task-pool.sh list
+expect_out  "Spec 不在 active 的任务标为关联异常" "关联异常" bash scripts/ai-task-pool.sh list
 mv process/specs/_templates/tasks.md "$TMP/tasks.tpl"
 expect_fail "缺模板时启动失败" "模板缺失" bash scripts/ai-task-pool.sh start-next
 [ ! -e process/specs/active/feat-t-000003 ] && ok_msg "失败后无孤儿 Spec" || ng_msg "失败后留下孤儿 Spec"

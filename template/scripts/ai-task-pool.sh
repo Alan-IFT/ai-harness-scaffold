@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 项目任务池：任务原文保存在 process/task-pool；进度由关联 Spec 的位置派生。
+# 项目任务池：process/task-pool 只放没做完的任务原文；归档时任务文件随 Spec 移进归档目录。
 set -euo pipefail
 
 POOL=process/task-pool
@@ -34,29 +34,22 @@ lock_pool() {
   trap cleanup_lock EXIT
 }
 cleanup_lock() { rmdir "$POOL/.lock"; }
-spec_location() {
-  local spec=$1
-  [ -d "process/specs/active/$spec" ] && { printf '进行中'; return; }
-  if find process/specs/archive -mindepth 2 -maxdepth 2 -type d -name "$spec" -print -quit 2>/dev/null | grep -q .; then
-    printf '已归档'
-  else
-    printf '关联异常'
-  fi
-}
 status_for() {
   local f=$1 spec
   spec=$(field "$f" '关联 Spec')
   if [ -z "$spec" ] || [ "$spec" = 无 ]; then
     field "$f" '队列状态'
+  elif [ -d "process/specs/active/$spec" ]; then
+    printf '进行中'
   else
-    spec_location "$spec"
+    printf '关联异常'
   fi
 }
 pending_rows() { # 输出「优先序|ID|文件」：写了「- 优先: 是」的排前面，其余按 ID
   local f id state spec rank
   for f in "$POOL"/T-*.md; do
     [ -f "$f" ] || continue
-    id=$(basename "$f" .md)
+    id=${f##*/}; id=${id%.md}
     valid_id "$id" || continue
     state=$(field "$f" '队列状态')
     spec=$(field "$f" '关联 Spec')
@@ -86,11 +79,11 @@ case "${1:-}" in
     nonblank "$title" || die "原始需求不能为空"
     [[ "$title" != *$'\n'* && "$title" != *$'\r'* ]] || die "原始需求须为单行；长内容可在创建后编辑任务文件"
     lock_pool
-    # 编号同时避开已有任务文件与 feat-t-* Spec 目录：任务文件删了，Spec 目录仍可能占着号
+    # 编号避开池里和已随 Spec 归档的任务文件，以及 feat-t-* Spec 目录：任务文件删了，Spec 目录仍可能占着号
     max=0
-    for f in "$POOL"/T-*.md process/specs/active/feat-t-* process/specs/archive/*/feat-t-*; do
+    for f in "$POOL"/T-*.md process/specs/archive/*/*/T-*.md process/specs/active/feat-t-* process/specs/archive/*/feat-t-*; do
       [ -e "$f" ] || continue
-      id=$(basename "$f" .md); id=${id#feat-}; id=${id^^}
+      id=${f##*/}; id=${id%.md}; id=${id#feat-}; id=${id^^}
       valid_id "$id" || continue
       n=$((10#${id#T-}))
       [ "$n" -le "$max" ] || max=$n
@@ -109,7 +102,7 @@ case "${1:-}" in
     found=0
     for f in "$POOL"/T-*.md; do
       [ -f "$f" ] || continue
-      id=$(basename "$f" .md)
+      id=${f##*/}; id=${id%.md}
       valid_id "$id" || continue
       found=1
       printf '%s  %s  %s  %s\n' "$id" "$(status_for "$f")" "$(field "$f" '关联 Spec')" "$(summary_for "$f")"
@@ -153,6 +146,10 @@ case "${1:-}" in
     target_parent="process/specs/archive/$(date +%Y-%m)"
     mkdir -p "$target_parent"
     [ ! -e "$target_parent/$feat" ] || die "归档目标已存在：$target_parent/$feat"
+    for f in "$POOL"/T-*.md; do # 任务文件先进 Spec 目录再一起移走：目录移动失败时重跑即可
+      [ -f "$f" ] && [ "$(field "$f" '关联 Spec')" = "$feat" ] || continue
+      mv -- "$f" "$source_dir/" || die "任务文件移动失败：$f"
+    done
     mv -- "$source_dir" "$target_parent/$feat" || die "归档移动失败：$feat"
     printf '✅ 已归档 %s：%s/%s\n' "$feat" "$target_parent" "$feat"
     ;;
