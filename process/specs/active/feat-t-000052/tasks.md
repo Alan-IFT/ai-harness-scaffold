@@ -38,7 +38,7 @@
 
 ## 2. 任务
 > 每次只做一个 `[ ]`；完成后先验证，再勾 `[x]` 并提交。
-- [ ] Task 1：导出 `SPEC_NAME`，自检加断言并关掉换行警告
+- [x] Task 1：导出 `SPEC_NAME`，自检加断言并关掉换行警告
   - 对应验收：AC-01、AC-06
   - 涉及文件：`template/scripts/ai-verify.sh`、`template/scripts/harness-selftest.sh`
   - 验证：`bash scripts/harness-selftest.sh` 为 76 项、失败 0 项；AC-01 的变异检查；AC-06 的命令
@@ -62,7 +62,10 @@
 
 ## 4. WIP 接力区
 > 换工具或换会话前更新；下一个 Agent 先读这里和 `git diff`，不要推倒重写已验证的代码。
-- 当前任务：Task 1
+- 当前任务：Task 2
 - 已完成：需求与方案；方案审查通过，三条建议已写回方案
+- 已完成：Task 1（2026-11-10，Git Bash）。
+  - AC-01：`bash scripts/harness-selftest.sh` 输出「76 项断言，失败 0 项」，用时 78 秒，新断言「检查命令能读到 Spec 名」通过。变异检查：临时把 `ai-verify.sh` 第 11 行的 `export SPEC_NAME="$2"` 改回 `SPEC_NAME="$2"` 重跑，76 项里只有「检查命令能读到 Spec 名」失败，恢复后文件的 SHA-256 与改之前相同。
+  - AC-06：同一次正常运行的输出（标准输出和错误输出合在一起）里，`grep -c 'LF will be replaced by CRLF'` 输出 0，以 `warning` 开头的行也是 0（改动前一次运行有 25 行）。
 - 已排除的方案：恢复 `<file>` 与 `$TARGET_FILE`（维护者没选「撤回」；单个目标文件代表不了一次改动）；现在就照发 v2.2.0（维护者没选）；脚手架提供解析「涉及文件」的脚本（分派规则是项目自己的）；在 `ai-verify.sh` 里检测残留的 `TARGET_FILE`（迁移代码，见风险）
-- 下一步：做 Task 1。g3 需要维护者的当次决定。归档、CI 通过后打 v2.2.0 标签并建 GitHub Release（维护者 2026-11-10 已授权）。
+- 下一步：做 Task 2、Task 3，再做 Task 4 的升级演练，然后推送等 CI。g3 需要维护者的当次决定。归档、CI 通过后打 v2.2.0 标签并建 GitHub Release（维护者 2026-11-10 已授权）。
