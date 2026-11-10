@@ -41,7 +41,7 @@
   - 对应验收：AC-01、AC-02、AC-03
   - 涉及文件：`template/scripts/ai-verify.sh`、`template/scripts/ai-state-id.sh`、`template/scripts/ai-gate.sh`、`template/scripts/ai-resume.sh`、`template/scripts/harness-selftest.sh`
   - 验证：`bash scripts/harness-selftest.sh` 为 75 项、失败 0 项；AC-02 的 grep（`verification.md` 那两条留到 Task 4 正式验证后核对）
-- [ ] Task 2：规则、指南、配置样例与升级说明
+- [x] Task 2：规则、指南、配置样例与升级说明
   - 对应验收：AC-04、AC-05、AC-07
   - 涉及文件：`template/AGENTS.md`、`template/.agents/skills/code-review.md`、`template/harness/verify.conf`、`template/.agents/skills/upgrade.md`
   - 验证：AC-05、AC-07 的命令；AC-04 的命令在 Task 3 做完后一起跑
@@ -60,10 +60,11 @@
 
 ## 4. WIP 接力区
 > 换工具或换会话前更新；下一个 Agent 先读这里和 `git diff`，不要推倒重写已验证的代码。
-- 当前任务：Task 2
+- 当前任务：Task 3
 - 已完成：需求与方案（规划时写在 `T-000050.md`，开工时搬进 Spec 并按 `feat-t-000049` 归档后的代码核对了行号）
 - 已完成：Task 1（2026-11-10，Git Bash）。
   - AC-01、AC-03：`bash scripts/harness-selftest.sh` 输出「75 项断言，失败 0 项」，用时 58 秒。第 3 节剩「拒绝未完成任务」「拒绝失败摘要」「拒绝代码变化后的过期摘要」三条；第 7 节「正式验证生成摘要」的命令是 `bash scripts/ai-verify.sh --spec t-verify`，新断言「拒绝旧用法多带的参数」通过。变异检查：临时去掉 `ai-verify.sh` 第 10 行的 `&& [ "$#" -eq 2 ]` 重跑，75 项里只有「拒绝旧用法多带的参数」失败（多带的参数被静默接受，走到了「未配置检查」），恢复后文件的 SHA-256 与去掉前相同。在本仓库直接运行 `bash scripts/ai-verify.sh --spec feat-t-000050 README.md` 与不带参数的 `bash scripts/ai-verify.sh`，都只打印「👉 用法: bash scripts/ai-verify.sh --spec <feature>」并以 1 退出，没有跑检查命令。
   - AC-02（脚本部分）：`grep -ci 'target' template/scripts/ai-verify.sh template/scripts/ai-state-id.sh template/scripts/ai-gate.sh template/scripts/ai-resume.sh` 四个都输出 0。`verification.md` 的两条留到 Task 4。
+- 已完成：Task 2。四个文件各改一行，写法与方案一致。AC-05：`wc -l < template/AGENTS.md` 输出 39。AC-07：`grep -c 'TARGET_FILE' template/.agents/skills/upgrade.md` 输出 1。`skill/SKILL.md` 提到 `harness/verify.conf` 的两处（第 19、25 行）没说目标文件，不用改。AC-04 的命令等 Task 3 做完一起跑。
 - 已排除的方案：兼容旧用法、静默忽略多余的文件参数（会让人以为目标还在起作用）；保留 `$TARGET_FILE` 作可选变量（口子和补丁规则都得留着）
 - 下一步：做 Task 2、Task 3，三个任务的提交一起推送，再做 Task 4。g3 需要维护者的当次决定：审查通过后把风险和结果讲给维护者，由他说「通过」或「不通过」。
