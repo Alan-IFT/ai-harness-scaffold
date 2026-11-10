@@ -46,7 +46,7 @@ ai-harness 是一套装进项目里的 AI 开发规范，由规则文档、Bash 
 
 ### 前置条件
 
-- Windows 与 Git Bash（只支持 Windows，macOS 和 Linux 未适配）
+- Windows 与 Git Bash（只支持 Windows，macOS 和 Linux 未适配）；AI 工具调到的 `bash` 是 WSL 时，见下文「安全与局限」
 - Git，能访问 GitHub
 - 一个能读 `AGENTS.md`、能跑 bash 的 AI 工具
 
@@ -223,6 +223,7 @@ your-project/
 
 - **门禁不是安全边界**：门禁脚本在本地运行，防的是疏漏，防不住有意绕过。比如 `review.md` 里的「未参与实现」是声明，脚本无法核实。需要强制审批时，用代码托管平台的权限机制。
 - **配置里的命令会被执行**：`ai-verify.sh` 用 `bash -c` 执行 `harness/verify.conf` 的 `CUSTOM_CHECK`。在别人的项目上运行前，先看这个文件。
+- **同一台 Windows 上的 `bash` 不一定是同一个**：装了 WSL 的机器上，PowerShell 里的 `bash` 通常是 WSL，而有的 AI 工具用 Git Bash。门禁脚本和状态指纹在两边结果一致，前提是项目保留 `.gitattributes` 里统一换行的那一行；`CUSTOM_CHECK` 在调用它的那个环境里运行，依赖要两边都能用。WSL 里的 `~` 不是 Windows 用户目录，通用偏好以 `%USERPROFILE%\.ai-harness\PREFERENCES.md` 为准。WSL 下只是实测一致，CI 只在 Git Bash 上跑。
 - **门不判断质量**：验证只说明你配置的那条命令通过了，所以它得是真能证明行为的检查；方案和代码好不好，靠独立审查和人。
 - **只有中文**：规范、模板和门禁提示都是中文，脚本也按中文字段名校验文档。
 

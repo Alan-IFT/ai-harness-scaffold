@@ -1,2 +1,2 @@
-# 统一 LF 换行，避免 CRLF 破坏 shell 脚本
+# 统一 LF 换行：CRLF 会破坏 shell 脚本；Git Bash 与 WSL 的默认换行设置不同，统一后两边算出的状态指纹才一致
 * text=auto eol=lf

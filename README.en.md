@@ -21,7 +21,7 @@ ai-harness is a development process you install into a project: rule documents, 
 
 Requirements:
 
-- Windows with Git Bash. macOS and Linux are not supported.
+- Windows with Git Bash. macOS and Linux are not supported. If your AI tool's `bash` is WSL, the gate scripts give the same results there, but your check command runs inside WSL.
 - Git and access to GitHub.
 - An AI tool that can read `AGENTS.md` and run bash. Tested with Claude Code and Codex.
 

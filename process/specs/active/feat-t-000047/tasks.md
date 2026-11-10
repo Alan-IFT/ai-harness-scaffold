@@ -29,7 +29,7 @@
   - 对应验收：AC-01、AC-02、AC-03、AC-04、AC-07
   - 涉及文件：`template/AGENTS.md`、`template/PREFERENCES.md`、`docs/architecture/modules/guidance.md`
   - 验证：AC-01～AC-04、AC-07 的命令
-- [ ] Task 2：换行注释与 README 说明
+- [x] Task 2：换行注释与 README 说明
   - 对应验收：AC-05、AC-06
   - 涉及文件：`template/.gitattributes`、`.gitattributes`、`README.md`、`README.en.md`
   - 验证：AC-05、AC-06 的命令
@@ -45,8 +45,9 @@
 
 ## 4. WIP 接力区
 > 换工具或换会话前更新；下一个 Agent 先读这里和 `git diff`，不要推倒重写已验证的代码。
-- 当前任务：Task 2
+- 当前任务：Task 3
 - 已完成：需求与方案；方案已由独立上下文审过并按结论改完
 - 已完成：Task 1。AC-01～AC-04、AC-07 的命令都按预期输出；`template/AGENTS.md` 仍是 39 行，从 6369 字节增加到 6790 字节。
+- 已完成：Task 2。AC-05、AC-06 的命令都按预期输出；两个 `.gitattributes` 内容相同，只改了注释行。
 - 已排除的方案：为不宜入库的项目事实新开一个文件（维护者定过不加文件）；小改动出口用「除外」清单（列不全，见方案审查）
-- 下一步：改两个 `.gitattributes` 的注释和 README 的说明
+- 下一步：把两条记忆搬回项目，然后正式验证
