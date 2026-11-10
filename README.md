@@ -212,7 +212,7 @@ your-project/
 | `redlines.conf` | `MEMORY_MAX_LINES` | `MEMORY.md` 行数上限 | 150 |
 | `redlines.conf` | `VERIFY_MAX_ATTEMPTS` | 同一 Spec 连续验证失败上限 | 3 |
 | `redlines.conf` | `CR_MAX_ROUNDS` | 审查修复轮次上限 | 4 |
-| `verify.conf` | `CUSTOM_CHECK` | 正式验证运行的命令，如 `npm test`；不配置时 g2 过不去 | 空 |
+| `verify.conf` | `CUSTOM_CHECK` | 正式验证运行的命令，如 `npm test`；命令里可用 `$SPEC_NAME`（当前 Spec 名）；不配置时 g2 过不去 | 空 |
 
 ## 支持的 AI 工具
 
