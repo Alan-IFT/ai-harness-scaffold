@@ -17,11 +17,11 @@
 
 ## 2. 任务
 > 每次只做一个 `[ ]`；完成后先验证，再勾 `[x]` 并提交。
-- [ ] Task 1：CI 加 `ubuntu-latest`，同步三句说明
+- [x] Task 1：CI 加 `ubuntu-latest`，同步三句说明
   - 对应验收：AC-01、AC-02、AC-03、AC-04
   - 涉及文件：`.github/workflows/selftest.yml`、`README.md`、`docs/architecture/modules/self-hosting.md`
   - 验证：AC-01、AC-03、AC-04 的命令；提交并推送后等 CI，跑 AC-02 的命令
-- [ ] Task 2：把「为什么保留 `CLAUDE.md` 的导入」写进活文档，去掉一次性计数
+- [x] Task 2：把「为什么保留 `CLAUDE.md` 的导入」写进活文档，去掉一次性计数
   - 对应验收：AC-05、AC-06
   - 涉及文件：`docs/architecture/modules/guidance.md`
   - 验证：AC-05 的命令；全部任务完成后跑自检、体积检查和正式验证
@@ -32,7 +32,9 @@
 
 ## 4. WIP 接力区
 > 换工具或换会话前更新；下一个 Agent 先读这里和 `git diff`，不要推倒重写已验证的代码。
-- 当前任务：Task 1
+- 当前任务：无
 - 已完成：需求与方案
+- 已完成：Task 1。AC-01、AC-03、AC-04 的命令都按预期输出。提交 d5ba3f8 推送后的 CI 运行 42800588786：`selftest (windows-latest)` 与 `selftest (ubuntu-latest)` 都是 `success`，两边日志都是「76 项断言，失败 0 项」（AC-02）。运行日志里有一条 GitHub 的提示：`ubuntu-latest` 标签将改指 Ubuntu 26，不影响结果。
+- 已完成：Task 2。AC-05 的命令都按预期输出；`guidance.md` 新增一条（现 16 行），官方文档当天的说法见方案里的「官方文档复核」。
 - 已排除的方案：正式支持 Linux（对外承诺，见方案 ①）；为不宜入库的事实或记忆另开文件或文件夹（维护者问过，结论是现有四处够用，见 `guidance.md`）
-- 下一步：过 g1，做 Task 1
+- 下一步：独立审查（基准提交 7964c11）；通过后过 g3、归档、推送。之后做两件本需求之外的事：清 Claude Code 那边的记忆目录；发 v2.1.4。
