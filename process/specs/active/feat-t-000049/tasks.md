@@ -44,10 +44,12 @@
 > 范围外的问题只记录：位置 / 现象 / 建议归属。
 - `template/scripts/harness-selftest.sh` 的总耗时 / 沙箱改成 Git 仓库后 Git Bash 下多二十多秒 / 是否值得优化由维护者决定；缓存夹具指纹这条路试过，没有测出收益
 - `template/scripts/harness-selftest.sh` 给沙箱 `git add -A` 的那一行 / Git Bash 下系统级 `core.autocrlf=true`，自检开头多 13 行「LF will be replaced by CRLF」警告，第 4、7 节各多 1 行（第 9 节原来就有 10 行同样的警告）；只是错误输出里的噪声，不影响断言 / 要不要在沙箱里关掉换行转换由维护者决定
+- `template/scripts/ai-state-id.sh` 第 6 行的守卫 / 只看 `git rev-parse --is-inside-work-tree` 的退出码；在 `.git` 目录内部或裸仓库里它输出 `false` 却以 0 退出，守卫放行，后面的 `git ls-files` 报错，脚本仍以 0 退出并给出只含目标文件的指纹（已复现，改动前的脚本结果相同，不是本条引入的）；项目根目录不会是这两种位置 / 审查的改进建议；要堵就改成比较输出是不是 `true`
+- `template/scripts/harness-selftest.sh` 第 287 行的断言「非 Git 目录拒绝计算指纹」/ 在系统临时目录里跑，如果某个环境的临时目录恰好在一个 Git 工作区里，会误报失败；CI 两个平台都通过 / 审查的改进建议；真遇到再处理
 
 ## 4. WIP 接力区
 > 换工具或换会话前更新；下一个 Agent 先读这里和 `git diff`，不要推倒重写已验证的代码。
-- 当前任务：无（两个任务都已完成，等独立审查）
+- 当前任务：无
 - 已完成：三个 Spec 的整体规划；本条的需求与方案；后两条的完整规划写在各自的任务文件里（`process/task-pool/T-000050.md`、`process/task-pool/T-000051.md` 的「规划」一节）
 - 已完成：Task 1（2026-11-10，Git Bash）。守卫放在取目标参数之前，所以非 Git 目录里带不带参数都报同一句。
   - AC-01：在系统临时目录的一个空目录里（只有一个 `a.txt`）运行 `bash <仓库>/template/scripts/ai-state-id.sh a.txt >out.txt 2>err.txt`，退出码 1，`out.txt` 0 字节，`err.txt` 两行：`fatal: not a git repository (or any of the parent directories): .git` 和「状态指纹需要 Git 仓库：当前目录不在 Git 工作区，或 Git 读不了它（原因见上一行）；新项目先运行 git init」。不带参数运行结果相同。自检断言「非 Git 目录拒绝计算指纹」通过；先只加这条断言、不改脚本跑过一遍，它是失败的（旧脚本以 0 退出并输出指纹 `25a8abf468e5…`），其余 76 项通过。
@@ -58,4 +60,5 @@
   - AC-05：提交 c72cf60 推送后的 CI 运行 42825259969：`gh run view 42825259969 --json jobs --jq '.jobs[].name, .jobs[].conclusion'` 输出 `selftest (ubuntu-latest)`、`selftest (windows-latest)`、`success`、`success`；`--log` 里两个任务各有一行「77 项断言，失败 0 项」，也各有「✅ 非 Git 目录拒绝计算指纹」。Windows 任务从开始到结束 61 秒，Linux 任务 6 秒。
   - AC-06：`bash scripts/ai-check-bloat.sh` 输出体积正常；`bash scripts/ai-verify.sh --spec feat-t-000049 template/scripts/ai-state-id.sh` 为 PASS，用时 73 秒。自检在 Git Bash 下的总耗时：改动前 60 秒，改动后单独跑一次 89 秒，正式验证里那一次 73 秒。
 - 已排除的方案：三件事合成一个 Spec（维护者要求拆开，也便于只做前两个）；把本条并进第二个 Spec 当任务（沙箱改动会波及前 8 节，单独验证更容易看清有没有改坏）
-- 下一步：过 g2，独立审查，过 g3，归档。本条归档后用 `bash scripts/ai-task-pool.sh start-next` 领 `T-000050`，把它「规划」一节的内容写进新 Spec 的 requirements.md 和 tasks.md；方案已随本次规划审过，开工时只需核对行号有没有因本条的改动而变。`T-000051` 是暂缓状态，`start-next` 不会领它。
+- 已完成：独立审查一轮通过（关键问题 0，改进建议 2，已记入「发现但不碰」）。
+- 下一步：归档、推送。本条归档后用 `bash scripts/ai-task-pool.sh start-next` 领 `T-000050`，把它「规划」一节的内容写进新 Spec 的 requirements.md 和 tasks.md；方案已随本次规划审过，开工时只需核对行号有没有因本条的改动而变。`T-000051` 是暂缓状态，`start-next` 不会领它。
