@@ -223,7 +223,7 @@ your-project/
 
 - **门禁不是安全边界**：门禁脚本在本地运行，防的是疏漏，防不住有意绕过。比如 `review.md` 里的「未参与实现」是声明，脚本无法核实。需要强制审批时，用代码托管平台的权限机制。
 - **配置里的命令会被执行**：`ai-verify.sh` 用 `bash -c` 执行 `harness/verify.conf` 的 `CUSTOM_CHECK`。在别人的项目上运行前，先看这个文件。
-- **同一台 Windows 上的 `bash` 不一定是同一个**：有的 AI 工具用 Git Bash，有的调到 WSL 里的 bash，取决于 PATH 里哪个在前。门禁脚本两边都能跑，但两边的 Git 配置各是各的，同一份代码算出的状态指纹可能不同，换工具接手后验证会显示过期，重跑即可。已知的两个原因：换行设置不同，所以别删 `.gitattributes` 里统一换行的那一行；只被 Windows 这边的全局忽略文件忽略的未跟踪文件，WSL 那边会计入指纹，要两边一致就把它们写进项目的 `.gitignore`。`CUSTOM_CHECK` 在调用它的那个环境里运行，依赖要两边都能用。WSL 里的 `~` 不是 Windows 用户目录，通用偏好以 `%USERPROFILE%\.ai-harness\PREFERENCES.md` 为准。CI 只在 Git Bash 上跑。
+- **同一台 Windows 上的 `bash` 不一定是同一个**：有的 AI 工具用 Git Bash，有的调到 WSL 里的 bash，取决于 PATH 里哪个在前。门禁脚本两边都能跑，但两边的 Git 配置各是各的，同一份代码算出的状态指纹可能不同，换工具接手后验证会显示过期，重跑即可。已知的两个原因：换行设置不同，所以别删 `.gitattributes` 里统一换行的那一行；只被 Windows 这边的全局忽略文件忽略的未跟踪文件，WSL 那边会计入指纹，要两边一致就把它们写进项目的 `.gitignore`。`CUSTOM_CHECK` 在调用它的那个环境里运行，依赖要两边都能用。WSL 里的 `~` 不是 Windows 用户目录，通用偏好以 `%USERPROFILE%\.ai-harness\PREFERENCES.md` 为准。本仓库的 CI 在 Git Bash 和 Linux 上各跑一遍自检，后者替 WSL 把关，不代表支持 Linux。
 - **门不判断质量**：验证只说明你配置的那条命令通过了，所以它得是真能证明行为的检查；方案和代码好不好，靠独立审查和人。
 - **只有中文**：规范、模板和门禁提示都是中文，脚本也按中文字段名校验文档。
 
@@ -249,7 +249,7 @@ process/           # 本仓库自用的任务和 Spec 记录，不会装进你�
 ```
 
 - **开发约定**：读 [AGENTS.md](AGENTS.md)。各模块的设计依据从 [架构索引](docs/architecture/00-INDEX.md) 进入。
-- **自检**：改脚本后运行 `bash scripts/harness-selftest.sh`，CI 在 `windows-latest` 上跑同一份自检。
+- **自检**：改脚本后运行 `bash scripts/harness-selftest.sh`，CI 在 `windows-latest` 和 `ubuntu-latest` 上跑同一份自检。
 - **问题和建议**：提 [Issue](https://github.com/Alan-IFT/ai-harness-scaffold/issues)。目前只收 Issue，Pull Request 个案处理，提交前请先开 Issue 讨论。
 - **安全问题**：通过 [私密漏洞报告](https://github.com/Alan-IFT/ai-harness-scaffold/security/advisories/new) 提交，不要公开发 Issue。
 
