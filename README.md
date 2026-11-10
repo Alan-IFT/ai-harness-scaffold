@@ -110,7 +110,7 @@ flowchart TB
 | 门 | 校验内容 |
 | :-- | :-- |
 | **g1 计划** | 原话、「需人决定」、「做什么」已填；验收标准无空单元格，每条都有任务对应；待确认问题清零；方案「思路」已填 |
-| **g2 验证** | 任务全部勾选；`verification.md` 结果为 PASS；验证目标在本次「涉及文件」里；状态指纹与当前代码一致 |
+| **g2 验证** | 任务全部勾选；`verification.md` 结果为 PASS；状态指纹与当前代码一致 |
 | **g3 审查** | 验证仍有效；`review.md` 声明未参与实现、关键问题为 0、轮次不超上限、审查的是当前验证状态；「需人决定：是」时记录了人的通过决定和来源 |
 
 **状态指纹**是对全仓 Git 索引、未暂存改动和未跟踪文件计算的 SHA-256，只排除流程记录目录 `process/`。验证后任何代码变化都会让 g2 和 g3 失效。
@@ -195,8 +195,8 @@ your-project/
 | `ai-task-pool.sh` | 收录需求、排队、领取、归档 | `intake`、`add`、`list`、`next`、`start-next`、`archive` |
 | `ai-new-spec.sh` | 从模板新建 Spec | `<feat>` |
 | `ai-gate.sh` | 校验和推进三道门 | `status`、`check`、`pass`、`reset` |
-| `ai-verify.sh` | 跑验证命令，写入结果和状态指纹 | `--spec <feat> <file>` |
-| `ai-state-id.sh` | 计算状态指纹 | `<file>` |
+| `ai-verify.sh` | 跑验证命令，写入结果和状态指纹 | `--spec <feat>` |
+| `ai-state-id.sh` | 计算状态指纹 | 无参数 |
 | `ai-resume.sh` | 生成接手或审查快照 | `owner [feat]`、`review <feat> <base-ref>` |
 | `ai-check-bloat.sh` | 检查 `AGENTS.md` 和 `MEMORY.md` 的行数 | 无参数 |
 | `ai-config.sh` | 读取和校验红线配置，供其他脚本加载 | 不直接运行 |
