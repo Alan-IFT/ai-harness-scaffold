@@ -8,7 +8,7 @@
 
 ## 开发
 - 维护者直接说需求，AI 用 `bash scripts/ai-task-pool.sh intake "原话"` 收录与路由；非平凡变更走三道门。
-- 改脚手架脚本时编辑 `template/scripts/`，跑 `bash scripts/harness-selftest.sh`；改 `skill/SKILL.md` 时按它在临时目录实际接入一次新项目，确认自检通过。
+- 改脚手架脚本时编辑 `template/scripts/`，跑 `bash scripts/harness-selftest.sh`；改 `skill/SKILL.md` 或 `template/.agents/skills/upgrade.md` 时，让没参与改动的上下文按它在临时目录实际接入或升级一次，确认自检通过。
 - 改 `template/AGENTS.md` 或 `template/.agents/skills/` 时，同步检查 README、`skill/SKILL.md` 与自检；改 `template/scripts/` 或 `template/harness/` 时，同步检查 README 的流程、脚本表与配置表。
 - **少就是多**：不写 CLI、兼容或迁移代码，升级与降级写成说明；只支持 Windows（Git Bash）。会让脚手架变臃肿的功能、配置和文档直接删除，追溯交给 Git。
 - 正式验证 `bash scripts/ai-verify.sh --spec <feat>`；状态指纹全仓计算，只排除 `process/`。
