@@ -2,9 +2,9 @@
 
 - 审查者：独立审查上下文 / Claude Sonnet 5.5 / 新会话（只读）
 - 未参与实现：是
-- CR 轮次：1 / 4
-- 审查状态：74e74554e344e3c70a212d25fb3ea44102dd02342eacdbde6f51da805eaf5db5
-- 审查范围：7445381...HEAD + 工作区（工作区干净，无未跟踪文件）
+- CR 轮次：2 / 4
+- 审查状态：54b13f06626b54cd159cb15fd46b2361bbcf661c9e2ab57a3b17de653d59eae9
+- 审查范围：7445381...HEAD + 工作区（工作区干净，无未跟踪文件）；按需求变更后的 requirements.md 完整重审，不只核对上轮
 
 ## 结论
 - 关键问题：0
@@ -12,28 +12,24 @@
 - 人工决定：<待维护者当次决定>
 - 决策来源：<待维护者当次决定>
 
-需求里「需人决定：是」，我同意这个判断（改的是随版本进所有接入项目的规则入口）。请维护者重点看两件事：
-1. AC-02 的对照结论是「无增量证据」：旧文字下这个模型也自己写了 `MEMORY.md`。模板那 10 个字没有被证明起了作用，只证明它没有害处（审查者没越界）。tasks.md 里起草者自己也倾向撤掉这一处。留或撤由人定。
-2. 演练约定变重：以后改 `upgrade.md` 或 `skill/SKILL.md` 一字之改也要换上下文演练，成本是否接受由人定。
+需人决定的风险（供维护者决定前看清）：这条约定让以后每次改 `skill/SKILL.md` 或 `upgrade.md`（一字之改也算）都要多起一个换上下文的演练，方案估约 10~20 分钟，且没有「纯错别字除外」；成本是每次实付的，收益靠 5 处含糊的归档证据支撑，而这 5 处是 feat-t-000050/52 自发演练发现的，不是这条约定的效果，约定本身还没有被执行过。另外它只落在文字规则上，没有脚本或门禁强制，实际是否照做取决于下一位 AI 与维护者。维护者同日那句「按推荐处理，撤掉第 1 处」定的是撤第 1 处，不能当作对最终结果的「通过」。
 
 ## 关键问题
 无。
 
 ## 改进建议
-1. `docs/architecture/modules/install-skill.md` 新增条目写「feat-t-000050、feat-t-000052 的升级演练暴露的 5 处含糊，都是没参与的 subagent 照着做时才显出来的」。我只在 feat-t-000052 的 tasks.md 第 85 行核到演练暴露的 2 处；feat-t-000050 的 tasks.md 第 33 行是审查指出的一处，不是演练暴露的。「5」与「都是 subagent 演练」我没能从归档里凑齐，建议核对或把数字写成可查的说法（活文档是给后人看的，写错来源会误导）。
-2. `docs/architecture/modules/guidance.md` 新条目写「实现者的盲区只能等下次审查再撞上」，并把 feat-t-000047 一例作依据；而本次演练对照显示旧文字下模型也会自己记。这条「为什么」没提这一反证。若保留这一处，建议补半句「演练中旧文字下也写了，增量未证实」，免得活文档把推断写成定论。
-3. 模板新增的 10 个字没有写明由谁写（实现者在修复时记）。演练中审查者没越界，但只有一次、一个模型。若后续出现审查者自己改 `MEMORY.md` 的情况，按 tasks.md 方案里留的第一条路（句子里写明由实现者修复时记）处理。不阻塞。
+1. `AGENTS.md:11` 与 `docs/architecture/modules/install-skill.md:14`：「接入或升级一次」没说改哪份说明演练哪一种（改 `skill/SKILL.md` 接入，改 `upgrade.md` 升级，改 `skill/SKILL.md` 里老项目接入部分如何选）。读者可能理解成两种都要跑。可补半句，不阻塞。
+2. `install-skill.md:13`：「都是没参与的 subagent 照着做时才显出来的」比归档略强。归档里该 subagent 对「文件注释」是「理解对了」（feat-t-000050 tasks.md 第 61 行），`$SPEC_NAME` 等两处是「都猜对了」（feat-t-000052 tasks.md 第 85 行），属于暴露含糊而非做错。结论成立，措辞可改成「暴露」。
+3. `tasks.md` 第 3 节已记的四条「发现但不碰」仍待维护者定，本轮无新增；另外 `process/task-pool/T-000053.md:3` 队列状态仍是「待办」，按任务池流程在归档时处理即可。
 
 ## 证据
-- 验证：verification.md 的 result PASS / state 74e74554...（与上方一致）；`ai-gate.sh status` 显示 g1、g2 已过，g3 待审。我没重跑 `ai-verify.sh`（按约束不得运行），状态指纹未重算。
-- AC-01：`diff <(git show 7445381:template/AGENTS.md) <(sed 's/审查判出的关键问题、//' template/AGENTS.md)` 无输出；目标句 grep 为 1；`wc -l` 为 39。通过。
-- AC-04：新句在 `AGENTS.md:11` 与 `install-skill.md` 各 1 处，旧句各 0 处。通过。
-- AC-05：两条「为什么」标题各存在（见 diff：`guidance.md` 第 10 行、`install-skill.md` 倒数第二行）。通过。
-- AC-06：`git diff --name-status 7445381 -- . ':(exclude)process'` 只有 4 行 M（`AGENTS.md`、`guidance.md`、`install-skill.md`、`template/AGENTS.md`）；未跟踪文件无；`template/scripts`、`scripts` 无改动。自检与体积检查我没重跑（会写文件的风险未评估，按约束不跑），采信 tasks.md 记录。
-- 范围：完整 diff 只含上述 4 个文件和 process 记录，没有超出需求的行为。`README.md`、`archive-spec.md` 不改的理由成立（摘要性文字，没有与新句矛盾）。`MEMORY.md` 与 `code-review.md` 第 53 行「审查者只读」与新句不矛盾。
-- AC-02（系统临时目录里的演练项目，只读核对）：
-  - 新旧两个实现者项目的 `AGENTS.md` 只差这 10 个字；新文字项目的 `AGENTS.md` 与当前 `template/AGENTS.md` 完全一致。
-  - 新文字项目：`git diff --stat <初始提交> -- MEMORY.md` 为 1 行新增，条目原文与 tasks.md 记录一致，在修复提交之后有 g2 重跑提交。
-  - 旧文字项目：同命令为 1 增 1 删，确有一条 BOM 条目。「无增量证据」的结论与实物一致，没有被写成「有增量」。
-  - 局限：各一次、同一模型；两个项目的初始提交哈希各异，我是用各自第一个提交作基准核对的。我无法核实 subagent 是否真的读了 `AGENTS.md`，只能采信其自述；条目措辞「按 AGENTS.md 要求」与读过一致。
-- AC-03（系统临时目录里的审查项目）：`review.md` 的「关键问题」为 1（BOM 缺陷，`bin/count.sh:6` 输出 4，期望 3），改进建议 2；`git status` 只多出 `review.md` 一个未跟踪文件，`MEMORY.md` 相对初始提交无差异，没有新提交。通过。这条的区分度有限（审查者本来就该只读），方案已承认。
+- 验证：verification.md 的 result: PASS；state 为 54b13f06…（见上），门禁状态 `ai-gate.sh status` 显示 g1、g2 已过，g3 阻断原因是 review.md 状态不符（本轮覆盖后即对上）。
+- AC-01：我重跑 `git diff --stat 7445381 -- template docs/architecture/modules/guidance.md` 无输出；`git grep -c '审查判出的关键问题' -- . ':(exclude)process'` 无输出。
+- AC-02：`grep -c` 新句，`AGENTS.md:1`、`install-skill.md:1`；旧句两文件各 0。diff 与 `AGENTS.md:11`、`install-skill.md:14` 一致。
+- AC-03：`grep -c '为什么改升级说明也要演练'` 输出 1（`install-skill.md:13`）。
+- AC-04：`git diff --name-status 7445381 -- . ':(exclude)process'` 只有 `M AGENTS.md`、`M docs/architecture/modules/install-skill.md`；未跟踪文件无输出；`template/scripts scripts` 无 diff；`bash scripts/harness-selftest.sh` 末尾「76 项断言，失败 0 项」；`bash scripts/ai-check-bloat.sh` 输出 Context Budget OK。`ai-verify.sh` 按纪律未重跑，只核对了 verification.md 的 PASS 与状态值。
+- 超出需求的改动：未发现；脚本、模板、配置零改动，`MEMORY.md` 与 README、`skill/SKILL.md` 未被本次改动，其中无「演练」约定的矛盾句（grep 核对）。
+- 活文档与规则：`MEMORY.md` 各条（评估外部文章、审查建议不当场修、改公开接口前看接入项目）与本改动不冲突；`install-skill.md` 第 3 行范围、第 11、12 行与新条目不矛盾。
+- tasks.md 事实核对：归档里 feat-t-000050 tasks.md 第 60、61 行、feat-t-000052 tasks.md 第 62 行、第 85 行（含两处）共 5 处，与方案「依据」一致；feat-t-000043 的归档在 archive/2026-11/feat-t-000043（含 tasks.md，第 6 行写明「只给 upgrade.md 加三句」）；grep 该 tasks.md 没有「演练」「临时目录」字样，只有 Task 1 一项，「归档里没有演练记录」核实属实（上一版说找不到是我看错了目录）。
+- 演练记录核对（系统临时目录里的演练项目，只读）：两个实现者项目的 `AGENTS.md` 只差「审查判出的关键问题、」这 10 个字；新文字项目 `MEMORY.md` 新增条目与 WIP 区引文一致；旧文字项目的 `MEMORY.md` 也有 BOM 条目，与记录一致；审查者项目只多出 `process/specs/feat-t-000001/review.md`。记录属实。
+- 公开性：对本次改动文件和 Spec 文件 grep 本机路径、盘符、用户名与邮箱，无命中。
