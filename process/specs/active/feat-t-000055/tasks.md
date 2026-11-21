@@ -62,7 +62,7 @@
   - 对应验收：AC-07
   - 涉及文件：`README.md`、`docs/architecture/modules/guidance.md`、`MEMORY.md`
   - 验证：AC-07 的 grep 命令
-- [ ] Task 5：整体验收
+- [x] Task 5：整体验收
   - 对应验收：AC-07
   - 涉及文件：无新增
   - 验证：AC-07 的其余命令
@@ -76,7 +76,7 @@
 
 ## 4. WIP 接力区
 > 换工具或换会话前更新；下一个 Agent 先读这里和 `git diff`，不要推倒重写已验证的代码。
-- 当前任务：Task 5。方案已由没参与的上下文审过（结论在方案末尾），g1 已过。
+- 当前任务：正式验证与独立审查。方案已由没参与的上下文审过（结论在方案末尾），g1 已过，Task 1~5 都已完成。
 - 已完成：需求收录、根因排查、基线实验、候选规则的沙箱对照（只为判断根因，仓库里的模板没动）。维护者 2026-11-21 答复 Q1~Q3：「1A2A3A,先这样用用看吧，有问题我再反馈」，原话已记进任务文件；需求、验收和方案按它定稿。
 - 已排除的方案：
   - 维护者没选的：每个需求都先复述、等确认（Q1-B）；只加规则不动审查（Q2-B）；g1 机械校验答复来源（Q2-C）；任务池加「等答复」状态（Q3-B）。
@@ -122,7 +122,8 @@
     - 同一份成果，两个审查者对同样两点的轻重判断不同（一个判关键问题，一个判改进建议），与本次改动无关。
   - 局限：每格 1 次；宿主指令是写在任务说明里模拟的，不是真的系统提示；只有 Claude 的三个模型；只测了需求入口；「都按推荐」只测了 1 次。
 - 已完成：Task 4（2026-11-21）。`README.md`「做决定」和停下清单两处的 `grep -c` 各输出 1；`docs/architecture/modules/guidance.md` 加了「为什么「待确认问题」按后果划线」一条（`grep -c` 输出 1），按方案审查的建议写明 README 只写使用者会被问、可以怎么回；`MEMORY.md` 加了复现方法一条（`grep -c` 输出 1，文件 24 行）。体积检查通过。
-- 下一步：Task 5 整体验收，然后正式验证、独立审查。g3 要维护者的当次决定，到时把对照结果和审查结论一起交给他。
+- 已完成：Task 5（2026-11-21）。AC-07 的其余命令：`git diff --stat 6d5b7df -- template/scripts scripts template/harness harness` 无输出；`git ls-files --others --exclude-standard -- . ':(exclude)process'` 无输出；相对基准改动的文件 7 个，都是 `M`（`MEMORY.md`、`README.md`、`docs/architecture/modules/guidance.md`、`template/.agents/skills/code-review.md`、`template/.agents/skills/new-spec.md`、`template/AGENTS.md`、`template/process/specs/_templates/requirements.md`）；自检「76 项断言，失败 0 项」；体积检查通过。正式验证的结果见 `verification.md`。
+- 下一步：正式验证、过 g2；让没参与的上下文按 `code-review.md` 审查；g3 要维护者的当次决定，把对照结果和审查结论一起交给他。归档后要不要推送、要不要发版，也由他定。
 
 ### 根因（2026-11-21；写「实测」的看到了落盘记录，其余是读代码的结论）
 1. 规则按「AI 觉得不确定」触发。`template/AGENTS.md:24` 的「不确定就问、有不清楚的就停下」在「3. 编码」里，`:22` 还留着「琐碎任务自行判断」；需求入口（`:7`）和「停下等人」（`:33`）都没提原话没定的点。AI 自己拍板偏偏发生在它觉得「有常规默认、挺确定」的时候：实测三次，它写下的理由是「取常规默认」「按最小假设」。
