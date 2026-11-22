@@ -88,7 +88,7 @@
   - 对应验收：AC-05、AC-06
   - 涉及文件：`README.md`、`docs/architecture/modules/guidance.md`
   - 验证：AC-05、AC-06 的 grep 与 diff 命令；`bash scripts/ai-check-bloat.sh`
-- [ ] Task 5：整体验收
+- [x] Task 5：整体验收
   - 对应验收：AC-01、AC-07
   - 涉及文件：无新增
   - 验证：AC-01、AC-07 的命令
@@ -99,7 +99,7 @@
 
 ## 4. WIP 接力区
 > 换工具或换会话前更新；下一个 Agent 先读这里和 `git diff`，不要推倒重写已验证的代码。
-- 当前任务：Task 5。
+- 当前任务：正式验证与独立审查。
 - 已完成：需求收录（T-000058）；需求和方案起草；方案审查三轮，结论「可以过 g1」（见方案末尾）；g1 已过。判定规则以过 g1 的这个提交为准，之后不改。
 - 动笔前核对的事实：
   - 此前 43 次沙箱流程都读了项目的 `PREFERENCES.md`，没有一次读到通用偏好文件（任务说明限定只读写项目目录），所以旧数据没有受通用偏好影响。
@@ -150,4 +150,7 @@
     - 「写到哪」没被列出来的，这次是 5 次里 1 次（另有 1 次只在回复里问），此前没有授权句时也是 5 次里 1 次。看不出授权句让它更容易漏；但漏的那一次，授权句已经把别的问题定掉了两个，只剩一个问题挡着。
 - 已完成：Task 3 按方案不执行。AC-02 不通过，AC-04 记「未执行」，没有取样，也没有起审查者。
 - 已完成：Task 4（2026-11-22），按「不通过」处理。`README.md` 没动：`git diff --stat 1551149 -- README.md` 无输出。`docs/architecture/modules/guidance.md` 在「为什么「待确认问题」按后果划线」一条后面加了「为什么没有把「个人偏好里的事先授权」写进 README」一条，写了试的是哪一句、次数、没通过在哪三处、丙的结果、没测的范围，以及两个口子的触发条件和改法；AC-06 的三条 `grep -c` 都输出 1，体积检查通过。`MEMORY.md` 不加条目：这次没有新的可复用陷阱。
-- 下一步：Task 5、正式验证、独立审查，然后把数据和选项交给维护者定。
+- 已完成：Task 5（2026-11-22）。
+  - AC-01：判定规则定稿的提交是 `aec6cb5`（2026-11-22T04:44:15-08:00，即 12:44:15Z），第一次沙箱运行的开始时间是 12:45:52Z。`git diff aec6cb5 -- process/specs/active/feat-t-000058/requirements.md` 无输出；同一命令对 tasks.md 只改了第 2 节的任务勾选和第 4 节 WIP 区（`git diff -U0` 的改动段是第 75、79、83、87 行和第 102 行以后），第 1 节方案（第 5~72 行）没有改动。没有格子需要重跑。
+  - AC-07：`git ls-files --others --exclude-standard -- . ':(exclude)process'` 无输出；`git diff --stat 1551149 -- template scripts harness skill` 无输出；`git diff --name-status 1551149 -- . ':(exclude)process'` 只有一行 `M docs/architecture/modules/guidance.md`；自检「77 项断言，失败 0 项」；体积检查通过。正式验证的结果见 `verification.md`。
+- 下一步：正式验证、过 g2、独立审查；g3 要维护者的当次决定，把数据和选项交给他。
