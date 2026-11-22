@@ -39,7 +39,7 @@
   - 对应验收：AC-01、AC-03
   - 涉及文件：`template/AGENTS.md`、`template/.agents/skills/code-review.md`
   - 验证：AC-01、AC-03 的命令；`bash scripts/ai-check-bloat.sh`
-- [ ] Task 2：指纹脚本关掉换行提示，自检加断言
+- [x] Task 2：指纹脚本关掉换行提示，自检加断言
   - 对应验收：AC-05
   - 涉及文件：`template/scripts/harness-selftest.sh`、`template/scripts/ai-state-id.sh`
   - 验证：先只加断言跑自检（应失败 1 项），再改脚本跑自检（Git Bash 与 WSL 都失败 0 项）；指纹值前后对比
@@ -62,11 +62,16 @@
 
 ## 4. WIP 接力区
 > 换工具或换会话前更新；下一个 Agent 先读这里和 `git diff`，不要推倒重写已验证的代码。
-- 当前任务：Task 2。g1 已过。
+- 当前任务：Task 3。g1 已过。
 - 已完成：需求收录；五条发现各自的成因查清并复现（见下）；维护者 2026-11-21 对 Q1~Q3 答「都按推荐」，原话记进了任务文件，需求、验收和方案按它定稿。
 - 已排除的方案：维护者没选的见 requirements.md 的 Q1~Q3；在 `ai-gate.sh` 里丢掉错误输出，见方案第 4 条。
 - 已完成：Task 1（2026-11-21）。AC-01：`grep -c` 输出 1，`git diff --numstat fc25ae4 -- template/AGENTS.md` 为 `1 1`，文件 40 行。AC-03：`grep -c` 输出 1，`git diff --numstat` 为 `1 1`。体积检查通过。两处留不留看 Task 3。
-- 下一步：按 Task 2~5 做。归档后要不要推送，问维护者（上次的「推送」说的是 feat-t-000055）。
+- 已完成：Task 2（2026-11-21）。
+  - 先只加断言、不改脚本：自检「77 项断言，失败 1 项」，失败的就是新断言，带出的输出是 `warning: in the working copy of 'source.txt', CRLF will be replaced by LF the next time Git touches it`。
+  - 改脚本后：Git Bash（git 2.56）与 WSL（Ubuntu，git 2.53）下自检都是「77 项断言，失败 0 项」。`grep -c 'git -c core.safecrlf=false diff --binary' template/scripts/ai-state-id.sh` 输出 1。
+  - 指纹值不变：系统临时目录的沙箱里，同一个带 CRLF 文件的工作区，基准提交 `fc25ae4` 的脚本和改后的脚本算出同一个值（`37da611a…f1a2`），错误输出从 1 行变 0 行；没有 CRLF 文件的干净工作区，两个脚本的值也相同。
+  - Linux 那边不改也有这条警告：在 WSL 的临时仓库里，`git diff --binary` 的错误输出 1 行，加 `-c core.safecrlf=false` 后 0 行，所以这条断言在 CI 的 Linux 任务上也是真的在检查。
+- 下一步：按 Task 3~5 做。归档后要不要推送，问维护者（上次的「推送」说的是 feat-t-000055）。
 
 ### 成因与依据（2026-11-21；写「实测」的在系统临时目录的沙箱里跑过，其余是读代码的结论）
 1. 先验证后提交。实测：同一个工作区，没暂存时、`git add` 之后、提交之后的指纹分别是甲、乙、乙。验证后再 `git add` 会过期；先暂存或提交再验证，之后提交仍有效。`template/scripts/ai-state-id.sh` 把索引条目、没暂存的 diff、没跟踪的文件分开算，所以暂存这个动作本身就改变指纹。`template/AGENTS.md:31` 写的「完成后先验证再勾选并提交」说的是任务自己的验证，只有一个任务的 Spec 里，AI 把它当成了正式验证的顺序。出现次数：feat-t-000055 的沙箱里走到正式验证的 7 次流程中 4 次。`T-000051` 的规划里写着暂缓期间的替代办法是「在指南里加一句先提交再验证」。

@@ -11,7 +11,7 @@ hash_file() { hash_stream < "$1"; }
 {
   printf 'global\\0'
   git ls-files --stage -z -- . ':(exclude)process/**'
-  git diff --binary -- . ':(exclude)process/**'
+  git -c core.safecrlf=false diff --binary -- . ':(exclude)process/**'
   while IFS= read -r -d '' path; do
     case "$path" in process/*) continue ;; esac
     [ -f "$path" ] || continue

@@ -291,6 +291,11 @@ expect_out  "review 给出完整 diff 命令" "git diff $review_base...HEAD" rv 
 expect_fail "review 拒绝无效基准" "无法解析基准" rv missing-ref
 printf 'stale\n' >>"$G/source.txt"
 expect_fail "review 拒绝过期验证摘要" "过期" rv "$review_base"
+printf '* text=auto eol=lf\n' >"$G/.gitattributes"
+(cd "$G" && git add .gitattributes && git_q commit -qm attributes)
+printf 'one\r\ncrlf\r\n' >"$G/source.txt"
+warn=$(cd "$G" && bash scripts/ai-state-id.sh 2>&1 >/dev/null)
+[ -z "$warn" ] && ok_msg "CRLF 文件不让指纹脚本输出警告" || ng_msg "CRLF 文件不让指纹脚本输出警告" "$warn"
 
 section "10. 任务池"
 P="$TMP/pool"
