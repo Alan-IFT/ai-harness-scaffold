@@ -51,7 +51,7 @@
   - 对应验收：AC-06、AC-07
   - 涉及文件：`README.md`、`MEMORY.md`、`docs/architecture/modules/template-mechanism.md`、`docs/architecture/modules/guidance.md`
   - 验证：AC-06 的命令，AC-07 里活文档那条
-- [ ] Task 5：整体验收
+- [x] Task 5：整体验收
   - 对应验收：AC-07
   - 涉及文件：无新增
   - 验证：AC-07 的其余命令
@@ -64,7 +64,7 @@
 
 ## 4. WIP 接力区
 > 换工具或换会话前更新；下一个 Agent 先读这里和 `git diff`，不要推倒重写已验证的代码。
-- 当前任务：Task 5。g1 已过。
+- 当前任务：正式验证与独立审查。g1 已过，Task 1~5 都已完成。
 - 已完成：需求收录；五条发现各自的成因查清并复现（见下）；维护者 2026-11-21 对 Q1~Q3 答「都按推荐」，原话记进了任务文件，需求、验收和方案按它定稿。
 - 已排除的方案：维护者没选的见 requirements.md 的 Q1~Q3；在 `ai-gate.sh` 里丢掉错误输出，见方案第 4 条。
 - 已完成：Task 1（2026-11-21）。AC-01：`grep -c` 输出 1，`git diff --numstat fc25ae4 -- template/AGENTS.md` 为 `1 1`，文件 40 行。AC-03：`grep -c` 输出 1，`git diff --numstat` 为 `1 1`。体积检查通过。两处留不留看 Task 3。
@@ -84,7 +84,8 @@
     - 验证失败到上限：这批又有 3 次流程连续失败到上限，都是测试里的换行转义写错，2 次停下来等同意，1 次直接跑了第 4 次。连同 feat-t-000055 的 1 次，是 4 次里 2 次停、2 次没停。
   - 局限：每边 3 次，同一个模型，同一句需求或同一份样本；AC-02 里有 3 次流程中途收到过「维护者」的一句答复（2 次「按推荐」、2 次「同意」，其中 1 次流程两句都收到），两边都有。
 - 已完成：Task 4（2026-11-21）。AC-06：README 那一行 `grep -c` 输出 1；`MEMORY.md` 里「起初都记成了」0 次、「复现「AI 自己拍板」」1 次；`git diff --stat fc25ae4 -- template/scripts/ai-verify.sh template/scripts/ai-gate.sh` 无输出；任务池里 `T-000051` 仍是「暂缓」，它的任务文件里有 1 处提到 `feat-t-000056`。AC-07 的活文档一条：`grep -c 'core.safecrlf' docs/architecture/modules/template-mechanism.md` 输出 1。两处文字改动都撤回了，所以 `docs/architecture/modules/guidance.md` 没有改。README 的脚本表、流程和配置表核对过，不用改。体积检查通过。
-- 下一步：Task 5 整体验收，正式验证，独立审查，归档。归档后要不要推送，问维护者（上次的「推送」说的是 feat-t-000055）。
+- 已完成：Task 5（2026-11-21）。AC-07 的其余命令：`git ls-files --others --exclude-standard -- . ':(exclude)process'` 无输出；`git diff --name-status fc25ae4 -- . ':(exclude)process'` 共 5 行，都以 `M` 开头（`MEMORY.md`、`README.md`、`docs/architecture/modules/template-mechanism.md`、`template/scripts/ai-state-id.sh`、`template/scripts/harness-selftest.sh`）；自检「77 项断言，失败 0 项」；体积检查通过。正式验证的结果见 `verification.md`。
+- 下一步：正式验证、过 g2；让没参与的上下文按 `code-review.md` 审查并复核「需人决定：否」；关键问题为 0 就过 g3、归档。归档后要不要推送，问维护者（上次的「推送」说的是 feat-t-000055）。
 
 ### 成因与依据（2026-11-21；写「实测」的在系统临时目录的沙箱里跑过，其余是读代码的结论）
 1. 先验证后提交。实测：同一个工作区，没暂存时、`git add` 之后、提交之后的指纹分别是甲、乙、乙。验证后再 `git add` 会过期；先暂存或提交再验证，之后提交仍有效。`template/scripts/ai-state-id.sh` 把索引条目、没暂存的 diff、没跟踪的文件分开算，所以暂存这个动作本身就改变指纹。`template/AGENTS.md:31` 写的「完成后先验证再勾选并提交」说的是任务自己的验证，只有一个任务的 Spec 里，AI 把它当成了正式验证的顺序。出现次数：feat-t-000055 的沙箱里走到正式验证的 7 次流程中 4 次。`T-000051` 的规划里写着暂缓期间的替代办法是「在指南里加一句先提交再验证」。
