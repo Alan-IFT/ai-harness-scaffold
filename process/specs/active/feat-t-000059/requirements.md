@@ -21,18 +21,18 @@
 
 | 编号 | 通过条件 | 证据 |
 | :-- | :-- | :-- |
-| AC-01 | 默认行为不变：只有一个工作区时，改动前已有的 77 项自检断言全部通过；同一串 28 条单线程命令（收录、排队、启动、三道门、归档和几种报错）在改前、改后的脚本下输出逐字相同 | `bash scripts/harness-selftest.sh` 退出码 0；对照用的命令串和 `diff` 为空的结果记在 tasks.md，改前的脚本取自本分支的分叉点提交 |
+| AC-01 | 默认行为不变：只有一个工作区时，改动前自检打印的全部断言（动手前先跑一次，把总数记进 tasks.md）仍然通过；一串固定的单线程命令在改前、改后的脚本下输出逐字相同。这串命令的清单记在 tasks.md，里面没有「三道门都有记录而状态已变」之后的 `status`（那种情形的输出是 AC-08 有意改的） | `bash scripts/harness-selftest.sh` 退出码 0，打印的断言总数不少于改前；对照的 `diff` 为空，改前的脚本取自本分支的分叉点提交 |
 | AC-02 | 任务池全仓库一份：在别的工作区里运行 `add`、`intake`、`start-next`，任务文件写进主工作区的任务池、不写本工作区的副本，编号不与已有的重复；主工作区的任务池锁着时，别的工作区的 `add` 被拒；各工作区的 `list` 输出相同，且不出现「关联异常」 | 自检新增用例通过 |
-| AC-03 | Spec 归启动它的工作区：从主线分出时带着主线活跃 Spec 目录副本的工作区，`start-next` 不被那份副本挡住，`next` 和接手快照的「活跃 Spec 与断点」只列它自己的；主线那个 Spec 归档之后、这个工作区还没同步时仍然如此 | 自检新增用例通过 |
-| AC-04 | 挪出去做的 Spec 归同名分支的工作区：Spec 在主工作区启动并提交后，另开一个分支名等于 Spec 名的工作区，那个工作区的 `next` 和接手快照把它当成自己的，主工作区的 `next` 不再被它挡住；分支名不同的工作区不把它当成自己的，主工作区也不因此丢掉它 | 自检新增用例通过 |
-| AC-05 | `status` 看得到别的工作区：不带参数的 `ai-gate.sh status` 先列本工作区自己的 Spec，再列别的工作区各自的 Spec 并写出它所在的目录；同一个 Spec 只出现一次 | 自检新增用例通过 |
-| AC-06 | 归档只在主工作区做：别的工作区里 `archive` 被拒，提示里有主工作区的目录；合入后在主工作区 `archive` 通过，任务文件随 Spec 进归档目录；两条线各自能过检查、合在一起过不了时，后合入的那条在主工作区 `archive` 被拒 | 自检新增用例通过 |
-| AC-07 | 正式验证全仓库同一时间只跑一个：有多个工作区时，两个工作区同时运行 `ai-verify.sh`，后发起的等前一个结束再跑，两边都不记失败次数；锁里记的进程已经不存在时不等待；只有一个工作区时不加锁 | 自检新增用例通过 |
+| AC-03 | Spec 归启动它的工作区：从主线分出时带着主线活跃 Spec 目录副本的工作区，`start-next` 不被那份副本挡住，`next` 和接手快照的「活跃 Spec 与断点」只列它自己的；主线那个 Spec 归档之后、这个工作区还没同步时仍然如此。分支名不同于 Spec 名的工作区合入主线之后，这个 Spec 归主工作区：主工作区把它列为自己的，原来那个工作区不再列它 | 自检新增用例通过 |
+| AC-04 | 挪出去做的 Spec 归同名分支的工作区：Spec 在主工作区启动并提交后，另开一个分支名等于 Spec 名的工作区，那个工作区的 `next` 和接手快照把它当成自己的，主工作区的 `next` 不再被它挡住；分支名不同的工作区不把它当成自己的。同名分支的工作区里没有这个 Spec 目录（主工作区还没提交就开了工作区），或那个工作区的目录已经不存在时，它仍归主工作区 | 自检新增用例通过 |
+| AC-05 | `status` 看得到别的工作区：不带参数的 `ai-gate.sh status` 先列本工作区自己的 Spec，再列别的工作区各自的 Spec 并写出它所在的目录；同一个 Spec 只出现一次；`git worktree list` 里目录已经不存在的工作区不让它报错 | 自检新增用例通过 |
+| AC-06 | 归档只在主工作区做：别的工作区里 `archive` 被拒，提示里有主工作区的目录；合入后在主工作区 `archive` 通过，任务文件随 Spec 进归档目录；别的线先合入了代码、后合入的那条没有重新验证时，它在主工作区 `archive` 被拒 | 自检新增用例通过 |
+| AC-07 | 正式验证全仓库同一时间只跑一个：两个工作区同时运行 `ai-verify.sh`，后发起的等前一个结束再跑，两边都不记失败次数；锁里记的进程已经不存在时不等待；没有别的验证在跑时不等待，也不多输出任何内容；等待提示里有持锁的进程号和锁文件的位置；验证结束后不留锁 | 自检新增用例通过 |
 | AC-08 | `status` 不说假话：三道门都有记录、但 g3 对当前状态已经失效时，显示失效原因，不显示「可归档」；已归档的 Spec 单独查看时显示与改前相同 | 自检新增用例通过 |
-| AC-09 | 指南：新增 `template/.agents/skills/parallel.md`，不超过 25 行；`template/AGENTS.md` 的「需求入口」和文末的指南清单各有一处指向它；体积检查通过 | `wc -l` 的输出；`grep -c 'parallel.md' template/AGENTS.md` 输出 2；`bash scripts/ai-check-bloat.sh` 的输出 |
-| AC-10 | AI 照着指南做得对：用本 Spec 最终的 `template/` 生成沙箱，四种情形各跑一次真的 AI 会话（Sonnet 5.5），tasks.md 方案里事先写定的落盘判据全部满足 | 四次的落盘核对结果记在 tasks.md；模型名按宿主的运行记录核对 |
-| AC-11 | 说明同步：`README.md` 的「日常使用」「接力与经验积累」和脚本表、`docs/architecture/modules/template-mechanism.md`、`docs/architecture/modules/guidance.md`、`template/.agents/skills/upgrade.md` 都写到这次变化；升级说明由没参与改动的上下文在临时目录里照它实际升级一次，升级后自检通过 | `grep` 命中各处新增的内容；升级演练的过程和结果记在 tasks.md |
-| AC-12 | 体积和范围：`template/scripts/` 下除 `harness-selftest.sh` 外的脚本净增不超过 60 行；没有新增脚本、子命令、配置键、Spec 模板字段；`harness/redlines.conf`、`template/harness/` 没有改动 | `git diff --numstat <分叉点> -- template/scripts` 去掉自检后的增减合计；`git diff --stat <分叉点> -- harness template/harness template/process` 无输出；`ls template/scripts` 与分叉点相同 |
+| AC-09 | 指南：新增 `template/.agents/skills/parallel.md`，不超过 25 行；`template/AGENTS.md` 的「需求入口」和文末的指南清单各有一处指向它；`template/.agents/skills/archive-spec.md` 的归档一步写明 Spec 在别的工作区里时先按它合回主线；体积检查通过 | `wc -l` 的输出；`grep -c 'parallel.md' template/AGENTS.md` 输出 2；`grep -c 'parallel.md' template/.agents/skills/archive-spec.md` 输出 1；`bash scripts/ai-check-bloat.sh` 的输出 |
+| AC-10 | AI 照着指南做得对：用本 Spec 最终的 `template/` 生成沙箱，四种情形各跑一次真的 AI 会话（Sonnet 5.5），按 tasks.md 方案里的判据判定；判据和不通过时怎么办都在跑之前定稿，定稿的提交早于第一次运行 | 四次的落盘核对结果、定稿提交和第一次运行的时间记在 tasks.md；模型名按宿主的运行记录核对 |
+| AC-11 | 说明同步：`README.md` 的「日常使用」「接力与经验积累」和脚本表、`README.en.md` 的对应处、`docs/architecture/modules/template-mechanism.md`、`docs/architecture/modules/guidance.md`、`template/.agents/skills/upgrade.md` 都写到这次变化；`skill/SKILL.md` 核对过，要改的已改；升级说明由没参与改动的上下文在临时目录里照它实际升级一次，升级后自检通过 | `grep` 命中各处新增的内容；`skill/SKILL.md` 的核对结论和升级演练的过程、结果记在 tasks.md |
+| AC-12 | 体积和范围：`template/scripts/` 下除 `harness-selftest.sh` 外的脚本净增不超过 60 行；没有新增脚本、子命令、配置键、Spec 模板字段；`harness/redlines.conf`、`template/harness/`、`template/process/` 没有改动 | `git diff --numstat <分叉点> -- template/scripts` 去掉自检后的增减合计；`git diff --stat <分叉点> -- harness template/harness template/process` 无输出；`ls template/scripts` 与分叉点相同 |
 
 ## 3. 待确认问题
 > 要交人定的点（判据见 `AGENTS.md`「待确认问题」）列出选项、后果和推荐让人选，不替人拍板；人回答后改成 `- [x] 问题 → 结论（日期：答复原话）`。没有就删掉下面这行。
