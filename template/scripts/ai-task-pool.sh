@@ -32,7 +32,8 @@ task_file() {
 }
 lock_pool() {
   mkdir -p "$POOL"
-  mkdir "$POOL/.lock" 2>/dev/null || { [ -d "$POOL/.lock" ] || die "任务池目录写不进去：$POOL"; die "任务池正被另一进程修改；稍后重试（若异常中断，核实后移除 $POOL/.lock）"; }
+  # 建不出锁时另建一个本进程专用的目录试一下：也建不出才是写不进去；不看锁在不在，持锁的可能刚好放掉
+  mkdir "$POOL/.lock" 2>/dev/null || { mkdir "$POOL/.w$$" 2>/dev/null && rmdir "$POOL/.w$$" || die "任务池目录写不进去：$POOL"; die "任务池正被另一进程修改；稍后重试（若异常中断，核实后移除 $POOL/.lock）"; }
   trap cleanup_lock EXIT
 }
 cleanup_lock() { rmdir "$POOL/.lock"; }

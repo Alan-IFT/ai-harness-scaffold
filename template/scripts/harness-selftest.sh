@@ -363,10 +363,14 @@ case "$(bash scripts/ai-task-pool.sh list)" in *关联异常*) ng_msg "别的工
 mkdir process/task-pool/.lock
 expect_fail "任务池的锁全仓库只有一把" "另一进程修改" at "$W/w1" bash scripts/ai-task-pool.sh add "锁着的时候"
 rmdir process/task-pool/.lock
-# 任务池目录写不进去（用一个建不出锁的 mkdir 模拟宿主限制了写入范围）：报真实原因，不说有别的进程
-mkdir -p "$TMP/fakebin2"; printf '%s\n' '#!/usr/bin/env bash' 'case "$*" in */.lock) exit 1 ;; esac' 'exec /usr/bin/mkdir "$@"' >"$TMP/fakebin2/mkdir"; chmod +x "$TMP/fakebin2/mkdir"
-out=$(cd "$W/w1" && PATH="$TMP/fakebin2:$PATH" bash scripts/ai-task-pool.sh add "任务池写不进去的时候" 2>&1); rc=$?
+# 任务池目录写不进去（用一个按 $FAKE_FAIL 失败的 mkdir 模拟宿主限制了写入范围）：报真实原因，不说有别的进程
+mkdir -p "$TMP/fakebin2"; printf '%s\n' '#!/usr/bin/env bash' 'case "$*" in $FAKE_FAIL) exit 1 ;; esac' 'exec /usr/bin/mkdir "$@"' >"$TMP/fakebin2/mkdir"; chmod +x "$TMP/fakebin2/mkdir"
+out=$(cd "$W/w1" && FAKE_FAIL='*/task-pool/.*' PATH="$TMP/fakebin2:$PATH" bash scripts/ai-task-pool.sh add "任务池写不进去的时候" 2>&1); rc=$?
 case "$rc:$out" in 0:*|*另一进程*) ng_msg "任务池写不进去时的提示不对" "$out" ;; *写不进去*) ok_msg "任务池写不进去时报真实原因" ;; *) ng_msg "任务池写不进去时的提示不对" "$out" ;; esac
+# 只有锁建不出来、事后又看不到锁（持锁的刚好放掉）：任务池是可写的，仍报另一进程
+out=$(cd "$W/w1" && FAKE_FAIL='*/.lock' PATH="$TMP/fakebin2:$PATH" bash scripts/ai-task-pool.sh add "撞锁之后锁刚好被放掉的时候" 2>&1); rc=$?
+case "$rc:$out" in 0:*|*写不进去*) ng_msg "撞锁被误报成任务池写不进去" "$out" ;; *另一进程*) ok_msg "撞锁之后锁刚好被放掉，仍报另一进程" ;; *) ng_msg "撞锁时的提示不对" "$out" ;; esac
+[ -z "$(ls -A process/task-pool | grep '^\.w')" ] && ok_msg "试探用的目录没有留在任务池里" || ng_msg "试探用的目录留在了任务池里"
 st=$(bash scripts/ai-gate.sh status)
 [ "$(printf '%s\n' "$st" | grep -c 'feat-t-000002 ')" = 1 ] && printf '%s\n' "$st" | grep -q "别的工作区.*w1" \
   && ok_msg "status 列出别的工作区在途的 Spec" || ng_msg "status 没有列出别的工作区在途的 Spec" "$st"
