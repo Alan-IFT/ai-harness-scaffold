@@ -404,6 +404,13 @@ rmdir .git/port; rm -f "$W/w1/process/specs/active/feat-t-000002/.attempts"
 [ ! -e .git/ai-verify.lock ] && ok_msg "验证失败后也不留锁" || ng_msg "验证失败后锁还在"
 vout=$(at "$SB" bash scripts/ai-verify.sh --spec t-verify 2>&1)
 case "$vout" in *等它结束*) ng_msg "没有别的验证在跑时也打印了等待提示" "$vout" ;; *) ok_msg "没有别的验证在跑时不等待、不多输出" ;; esac
+mkdir "$SB/.git/ai-verify.lock"   # 锁的位置上是个目录：建不出锁
+vout=$(at "$SB" timeout 30 bash scripts/ai-verify.sh --spec t-verify 2>&1); vrc=$?
+rmdir "$SB/.git/ai-verify.lock"
+case "$vrc:$vout" in 124:*|*等它结束*) ng_msg "验证锁建不出来时卡住了" "$vout" ;; *) ok_msg "验证锁建不出来时不等待，照常验证" ;; esac
+: >"$SB/.git/ai-verify.lock"      # 空的残留锁
+vout=$(at "$SB" timeout 30 bash scripts/ai-verify.sh --spec t-verify 2>&1); vrc=$?
+[ "$vrc" != 124 ] && [ ! -e "$SB/.git/ai-verify.lock" ] && ok_msg "空的残留锁会被清掉" || ng_msg "空的残留锁挡住了验证" "$vout"
 
 # 合回主线：归档只在主工作区做，按主线当时的状态复核
 done_spec "$W/w1" feat-t-000002 b.txt; done_spec "$W/w3" feat-t-000003 c.txt

@@ -15,17 +15,20 @@ SPEC_DIR="process/specs/active/$SPEC_NAME"
 ai_config_load harness/redlines.conf VERIFY_MAX_ATTEMPTS || exit 1
 
 # 正式验证全仓库同一时间只跑一个：几个工作区共用本机的端口、数据库和内存。锁里记着持锁的进程，进程不在了锁就作废。
-LOCK=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || LOCK=""
-if [ -n "$LOCK" ]; then
-  LOCK="$LOCK/ai-verify.lock"
-  until (set -o noclobber; echo $$ >"$LOCK") 2>/dev/null; do
-    pid=$(cat "$LOCK" 2>/dev/null)
-    if [ -n "$pid" ] && ! kill -0 "$pid" 2>/dev/null; then [ "$(cat "$LOCK" 2>/dev/null)" != "$pid" ] || rm -f "$LOCK"; continue; fi
-    [ -n "${WAITED:-}" ] || echo "⏳ 别的会话正在跑正式验证（进程 ${pid:-未知}），等它结束……确认它已经不在跑时可以删除 $LOCK" >&2
-    WAITED=1; sleep 3
-  done
-  trap 'rm -f "$LOCK"' EXIT
-fi
+LOCK=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) && LOCK="$LOCK/ai-verify.lock" || LOCK=""
+while [ -n "$LOCK" ] && ! (set -o noclobber; echo $$ >"$LOCK") 2>/dev/null; do
+  pid=$(cat "$LOCK" 2>/dev/null)
+  if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then # 别的验证在跑：等它结束
+    [ -n "${WAITED:-}" ] || echo "⏳ 别的会话正在跑正式验证（进程 $pid），等它结束……确认它已经不在跑时可以删除 $LOCK" >&2
+    WAITED=1; AGAIN=""; sleep 3
+  elif [ -n "$pid" ]; then # 持锁的进程已经不在了：确认锁里还是它，删掉重拿
+    [ "$(cat "$LOCK" 2>/dev/null)" != "$pid" ] || rm -f "$LOCK"
+  elif [ -z "${AGAIN:-}" ]; then AGAIN=1; sleep 1 # 锁里没有进程号：也许对方刚建好还没写完，再看一次
+  elif [ -f "$LOCK" ] && rm -f "$LOCK" 2>/dev/null; then AGAIN="" # 空的残留锁：删掉重拿
+  else LOCK="" # 锁建不出来（公共 Git 目录不可写，或那个位置不是普通文件）：不加锁，照常验证
+  fi
+done
+[ -z "$LOCK" ] || trap 'rm -f "$LOCK"' EXIT
 
 # 输出进终端前脱敏：token / secret / password / key 等一律 [REDACTED]
 redact() {
