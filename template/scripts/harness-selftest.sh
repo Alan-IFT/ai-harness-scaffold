@@ -411,6 +411,17 @@ case "$vrc:$vout" in 124:*|*等它结束*) ng_msg "验证锁建不出来时卡�
 : >"$SB/.git/ai-verify.lock"      # 空的残留锁
 vout=$(at "$SB" timeout 30 bash scripts/ai-verify.sh --spec t-verify 2>&1); vrc=$?
 [ "$vrc" != 124 ] && [ ! -e "$SB/.git/ai-verify.lock" ] && ok_msg "空的残留锁会被清掉" || ng_msg "空的残留锁挡住了验证" "$vout"
+# 残留锁删不掉（用一个对锁文件总是失败的 rm 模拟只读目录或文件被占用）：不加锁，照常验证
+mkdir -p "$TMP/fakebin"; printf '%s\n' '#!/usr/bin/env bash' 'case "$*" in *ai-verify.lock*) exit 1 ;; esac' 'exec /usr/bin/rm "$@"' >"$TMP/fakebin/rm"; chmod +x "$TMP/fakebin/rm"
+echo 999999 >"$SB/.git/ai-verify.lock"
+vout=$(cd "$SB" && PATH="$TMP/fakebin:$PATH" timeout 30 bash scripts/ai-verify.sh --spec t-verify 2>&1); vrc=$?
+rm -f "$SB/.git/ai-verify.lock"
+[ "$vrc" != 124 ] && ok_msg "残留锁删不掉时不空转，照常验证" || ng_msg "残留锁删不掉时卡住了" "$(printf '%s\n' "$vout" | head -n 3)"
+# 项目的 verify.conf 里有同名变量：退出时删的仍是验证锁，不碰项目的文件
+printf 'keep\n' >"$TMP/keep.me"; printf "LOCK='%s'\nCUSTOM_CHECK='true'\n" "$TMP/keep.me" >"$SB/harness/verify.conf"
+at "$SB" bash scripts/ai-verify.sh --spec t-verify >/dev/null 2>&1
+[ -f "$TMP/keep.me" ] && [ ! -e "$SB/.git/ai-verify.lock" ] && ok_msg "verify.conf 里的同名变量不影响删锁" || ng_msg "verify.conf 里的同名变量让验证删错了文件"
+rm -f "$SB/harness/verify.conf"
 
 # 合回主线：归档只在主工作区做，按主线当时的状态复核
 done_spec "$W/w1" feat-t-000002 b.txt; done_spec "$W/w3" feat-t-000003 c.txt

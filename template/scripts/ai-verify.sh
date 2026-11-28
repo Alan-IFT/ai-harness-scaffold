@@ -21,14 +21,14 @@ while [ -n "$LOCK" ] && ! (set -o noclobber; echo $$ >"$LOCK") 2>/dev/null; do
   if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then # 别的验证在跑：等它结束
     [ -n "${WAITED:-}" ] || echo "⏳ 别的会话正在跑正式验证（进程 $pid），等它结束……确认它已经不在跑时可以删除 $LOCK" >&2
     WAITED=1; AGAIN=""; sleep 3
-  elif [ -n "$pid" ]; then # 持锁的进程已经不在了：确认锁里还是它，删掉重拿
-    [ "$(cat "$LOCK" 2>/dev/null)" != "$pid" ] || rm -f "$LOCK"
+  elif [ -n "$pid" ]; then # 持锁的进程已经不在了：确认锁里还是它，删掉重拿；删不掉就不加锁
+    [ "$(cat "$LOCK" 2>/dev/null)" != "$pid" ] || rm -f "$LOCK" 2>/dev/null || LOCK=""
   elif [ -z "${AGAIN:-}" ]; then AGAIN=1; sleep 1 # 锁里没有进程号：也许对方刚建好还没写完，再看一次
   elif [ -f "$LOCK" ] && rm -f "$LOCK" 2>/dev/null; then AGAIN="" # 空的残留锁：删掉重拿
   else LOCK="" # 锁建不出来（公共 Git 目录不可写，或那个位置不是普通文件）：不加锁，照常验证
   fi
 done
-[ -z "$LOCK" ] || trap 'rm -f "$LOCK"' EXIT
+[ -z "$LOCK" ] || trap "rm -f $(printf '%q' "$LOCK")" EXIT # 路径现在就写死：后面加载的 verify.conf 里可能有同名变量
 
 # 输出进终端前脱敏：token / secret / password / key 等一律 [REDACTED]
 redact() {
