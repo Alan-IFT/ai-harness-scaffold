@@ -52,19 +52,19 @@
 
 ## 2. 任务
 > 每次只做一个 `[ ]`；完成后先验证，再勾 `[x]` 并提交。
-- [ ] Task 1：脚本两处（清单那一层不认特殊布局；任务池的报错和 `elsewhere`）
+- [x] Task 1：脚本两处（清单那一层不认特殊布局；任务池的报错和 `elsewhere`）
   - 对应验收：AC-01、AC-02、AC-07
   - 涉及文件：`template/scripts/ai-config.sh`、`template/scripts/ai-task-pool.sh`
   - 验证：`bash -n`；四种特殊布局加普通布局的对照；28 次调用的对照；现有自检全过；净增行数
-- [ ] Task 2：自检补用例
+- [x] Task 2：自检补用例
   - 对应验收：AC-03
   - 涉及文件：`template/scripts/harness-selftest.sh`
   - 验证：`bash scripts/harness-selftest.sh` 和 `LC_ALL=C` 复跑都是 0 失败；同一份自检配 `fa47d72` 的脚本跑，记下失败的断言
-- [ ] Task 3：指南、活文档、README
+- [x] Task 3：指南、活文档、README
   - 对应验收：AC-04、AC-05
   - 涉及文件：`template/.agents/skills/parallel.md`、`docs/architecture/modules/template-mechanism.md`、`README.md`、`README.en.md`
   - 验证：两张验收表里的 `wc -l` 和 `grep`；`skill/SKILL.md` 核对有没有要跟着改的句子；自检仍全过
-- [ ] Task 4：记忆和整体验收
+- [x] Task 4：记忆和整体验收
   - 对应验收：AC-06、AC-07
   - 涉及文件：`MEMORY.md`
   - 验证：`grep`、`bash scripts/ai-check-bloat.sh`、AC-07 的三条命令
@@ -75,8 +75,16 @@
 
 ## 4. WIP 接力区
 > 换工具或换会话前更新；下一个 Agent 先读这里和 `git diff`，不要推倒重写已验证的代码。
-- 当前任务：过 g1，然后从 Task 1 开始。
-- 已完成：收录（T-000060，2026-11-28）；requirements.md 和本方案。
+- 当前任务：四个任务都做完并提交了；还没做正式验证和独立审查（2026-11-28 会话的用量额度用完，停在这里）。
+- 已完成：收录（T-000060，2026-11-28）；requirements.md 和本方案；g1。
+- 已完成：Task 1 到 Task 4（2026-11-28，代码和说明已提交，起点是 `fa47d72`）。
+  - AC-01：四种特殊布局下，实现后的脚本与 `c35b34c` 的输出逐字相同（各 109 行）；任务文件只在各工作区自己的 `process/task-pool/` 里。改动前的脚本（`fa47d72`）在这四种布局下差 61 到 62 行。
+  - AC-02：普通布局、有多个工作区，实现后与 `fa47d72` 逐字相同（154 行）；只有一个工作区的 28 次调用与 `c35b34c` 逐字相同。此前的并行场景 54 项、归属边角 23 项、锁与状态 19 项、边角 14 项实验都仍然通过。
+  - AC-03：自检打印「125 项断言，失败 0 项」，`LC_ALL=C` 相同（改动前 116 项）。新自检配 `fa47d72` 的 `ai-config.sh` 和 `ai-task-pool.sh` 跑，失败 8 项：任务池写不进去 1 项、裸仓库布局 5 项、`--separate-git-dir` 2 项。另把「带过来的副本不算自己的」那条判据在副本里关掉再跑，改写过的「合入主线后归主工作区」那条会失败（共失败 17 项）。
+  - AC-04：`parallel.md` 仍是 23 行，四处 `grep` 各命中 1 处；`template/AGENTS.md` 没动。新加的几句没有用真的 AI 会话对照过，效果是推断。
+  - AC-05：活文档和两份 README 的 `grep` 都命中。活文档里四种判错状态与上面「原型和实测」一致；「分支名改回去后恢复」另外实测过。验证锁在 Git Bash 和 WSL 之间只有审查测过的那个方向（Git Bash 持锁、WSL 发起），反方向没测，活文档里照实写了。
+  - AC-06：`MEMORY.md` 加了一条，体积检查通过。
+  - AC-07：脚本除自检外新增 8 行、删改 4 行，净增 4 行（相对 `c35b34c` 累计 58 行）；`harness/`、`template/harness/`、`template/process/`、`upgrade.md`、`skill/` 没有改动；脚本清单没变。`skill/SKILL.md` 核对过，没有要跟着改的句子。
 - 原型和实测（2026-11-28，都在系统临时目录里，重启可能被清掉；逻辑以上面的方案为准）：
   - 六种布局下 Git 的工作区清单长什么样：见方案里的表。
   - 四种特殊布局各跑一遍上面那串命令，三套脚本对照。原型的输出与 `c35b34c` 的逐字相同（各 109 行）。现在的脚本（`fa47d72`）与 `c35b34c` 差 61 到 62 行，任务文件的位置分别是：裸仓库目录下的 `process/task-pool/`；裸仓库叫 `.git` 时是它的上层目录；`--separate-git-dir` 时是那个 Git 目录；子模块时是上层仓库的 `.git/modules/<名字>/`。
@@ -87,4 +95,4 @@
     - 压缩合并进主线：主工作区和原工作区都认这个 Spec，主工作区的 `status` 里它出现 2 次；删掉原工作区后恢复成 1 次。
     - 挪到同名分支的工作区后，那个分支改了名或变成游离 HEAD：Spec 回到主工作区，那个工作区自己的变成空的；分支名改回去就恢复。
 - 已排除的方案：只在 `main_wt` 里判特殊布局（另两处判据和跨工作区显示还开着，会重复列出）；只看有没有 `bare` 一行（漏掉 `--separate-git-dir` 和子模块）；只看第一项里有没有 `.git`（裸仓库目录叫 `.git` 时会误判成有）；退出时核对锁的主人、`status` 跳过已归档的 Spec（理由在 requirements.md「不做」）。
-- 下一步：`bash scripts/ai-gate.sh pass feat-t-000060 g1`，提交，做 Task 1。
+- 下一步：`bash scripts/ai-verify.sh --spec feat-t-000060` 过 g2 并提交；起独立审查（按 `MEMORY.md` 新加的那条，指定当前最强的模型，只读，基准提交 `fa47d72`）；「需人决定：否」，关键问题清零后过 g3、归档。交付时告诉维护者三件事：`MEMORY.md` 那条经验是 AI 自己补记的，不认可就删；058 留下的两条候选建议（见「发现但不碰」）；本地主线没有推送，推送要他点头，不打 tag。
