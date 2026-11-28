@@ -4,6 +4,7 @@
 # 用法：owner [feat] | review <feat> <base-ref>
 # ==============================================================================
 set -u
+. "$(dirname "${BASH_SOURCE[0]}")/ai-config.sh"
 
 usage() {
   cat <<'EOF'
@@ -56,6 +57,7 @@ esac
 echo "=="
 echo "🔄 AI HARNESS: CROSS-TOOL HANDOFF & RESUME SNAPSHOT (跨工具接力快照)"
 echo "=="
+m=$(main_wt); [ -z "$m" ] || echo "这里不是主工作区。主工作区在 $m：任务池和被 Git 忽略的本地文件（如 PREFERENCES.md）在那里。"
 
 # 1. 阶段门（下一门 + 阻断原因）
 echo -e "\n[1] 阶段门状态"
@@ -64,7 +66,7 @@ bash scripts/ai-gate.sh status "$FEATURE" || true
 # 2. 活跃 spec 与断点
 echo -e "\n[2] 活跃 Spec 与断点"
 found=0
-for spec in process/specs/active/*/; do
+for spec in $(own_specs); do
   [ -d "$spec" ] || continue
   [ -z "$FEATURE" ] || [ "$(basename "$spec")" = "$FEATURE" ] || continue
   found=1

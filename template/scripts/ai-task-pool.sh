@@ -2,7 +2,9 @@
 # 项目任务池：process/task-pool 只放没做完的任务原文；归档时任务文件随 Spec 移进归档目录。
 set -euo pipefail
 
-POOL=process/task-pool
+. "$(dirname "${BASH_SOURCE[0]}")/ai-config.sh"
+MAIN=$(main_wt) # 任务池全仓库只有一份：在别的工作区里运行时，读写的也是主工作区的
+POOL="${MAIN:+$MAIN/}process/task-pool"
 usage() {
   cat <<'EOF'
 用法：
@@ -34,12 +36,13 @@ lock_pool() {
   trap cleanup_lock EXIT
 }
 cleanup_lock() { rmdir "$POOL/.lock"; }
+elsewhere() { worktrees | { while IFS= read -r w; do [ ! -d "$w/process/specs/active/$1" ] || exit 0; done; exit 1; }; } # 这个 Spec 在本仓库的某个工作区里
 status_for() {
   local f=$1 spec
   spec=$(field "$f" '关联 Spec')
   if [ -z "$spec" ] || [ "$spec" = 无 ]; then
     field "$f" '队列状态'
-  elif [ -d "process/specs/active/$spec" ]; then
+  elif [ -d "process/specs/active/$spec" ] || elsewhere "$spec"; then
     printf '进行中'
   else
     printf '关联异常'
@@ -81,7 +84,7 @@ case "${1:-}" in
     lock_pool
     # 编号避开池里和已随 Spec 归档的任务文件，以及 feat-t-* Spec 目录：任务文件删了，Spec 目录仍可能占着号
     max=0
-    for f in "$POOL"/T-*.md process/specs/archive/*/*/T-*.md process/specs/active/feat-t-* process/specs/archive/*/feat-t-*; do
+    for f in "$POOL"/T-*.md "${MAIN:-.}"/process/specs/archive/*/*/T-*.md "${MAIN:-.}"/process/specs/active/feat-t-* "${MAIN:-.}"/process/specs/archive/*/feat-t-*; do
       [ -e "$f" ] || continue
       id=${f##*/}; id=${id%.md}; id=${id#feat-}; id=${id^^}
       valid_id "$id" || continue
@@ -111,7 +114,7 @@ case "${1:-}" in
     ;;
   next)
     [ "$#" -eq 1 ] || die "next 不接受参数"
-    for specdir in process/specs/active/*/; do
+    for specdir in $(own_specs); do
       [ -d "$specdir" ] || continue
       spec=${specdir%/}; spec=${spec##*/}
       printf '续做活跃 Spec：%s；运行 bash scripts/ai-resume.sh owner %s\n' "$spec" "$spec"
@@ -135,8 +138,10 @@ case "${1:-}" in
     [ "$#" -eq 2 ] || die "用法：archive <feat-id>"
     feat=$2
     valid_feat "$feat" || die "Spec ID 无效：$feat"
+    [ -z "$MAIN" ] || die "归档在主工作区做（$MAIN）：先把这个工作区的分支合进那里，再到那里运行本命令"
     lock_pool
     source_dir="process/specs/active/$feat"
+    [ -d "$source_dir" ] || ! elsewhere "$feat" || die "$feat 在别的工作区里：先把它的分支合进来，再归档"
     [ -d "$source_dir" ] || die "活跃 Spec 不存在：$feat"
     for g in g1 g2 g3; do
       grep -qE "^$g[[:space:]]" "$source_dir/.gates" 2>/dev/null || die "$feat 的 $g 未通过，拒绝归档"
@@ -156,7 +161,7 @@ case "${1:-}" in
   start-next)
     [ "$#" -eq 1 ] || die "start-next 不接受参数"
     lock_pool
-    for specdir in process/specs/active/*/; do
+    for specdir in $(own_specs); do
       [ -d "$specdir" ] || continue
       spec=${specdir%/}; spec=${spec##*/}
       printf '续做活跃 Spec：%s；运行 bash scripts/ai-resume.sh owner %s\n' "$spec" "$spec"
@@ -167,7 +172,7 @@ case "${1:-}" in
     task_id=${row%%|*}
     f=$(task_file "$task_id")
     feat="feat-${task_id,,}"
-    AI_HARNESS_SOURCE_TASK="$f" bash scripts/ai-new-spec.sh "$feat" >/dev/null || die "创建 Spec 失败；任务仍未关联"
+    AI_HARNESS_SOURCE_TASK="process/task-pool/$task_id.md" bash scripts/ai-new-spec.sh "$feat" >/dev/null || die "创建 Spec 失败；任务仍未关联"
     sed -i "s/^- 关联 Spec: 无$/- 关联 Spec: $feat/" "$f"
     printf '✅ %s 已关联 %s。先读任务原件，写完需求与方案后过 g1（计划）。\n' "$task_id" "$feat"
     ;;

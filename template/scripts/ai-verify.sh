@@ -14,6 +14,19 @@ SPEC_DIR="process/specs/active/$SPEC_NAME"
 [ -d "$SPEC_DIR" ] || { echo "❌ 找不到活跃 Spec: $SPEC_NAME" >&2; exit 1; }
 ai_config_load harness/redlines.conf VERIFY_MAX_ATTEMPTS || exit 1
 
+# 正式验证全仓库同一时间只跑一个：几个工作区共用本机的端口、数据库和内存。锁里记着持锁的进程，进程不在了锁就作废。
+LOCK=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || LOCK=""
+if [ -n "$LOCK" ]; then
+  LOCK="$LOCK/ai-verify.lock"
+  until (set -o noclobber; echo $$ >"$LOCK") 2>/dev/null; do
+    pid=$(cat "$LOCK" 2>/dev/null)
+    if [ -n "$pid" ] && ! kill -0 "$pid" 2>/dev/null; then [ "$(cat "$LOCK" 2>/dev/null)" != "$pid" ] || rm -f "$LOCK"; continue; fi
+    [ -n "${WAITED:-}" ] || echo "⏳ 别的会话正在跑正式验证（进程 ${pid:-未知}），等它结束……确认它已经不在跑时可以删除 $LOCK" >&2
+    WAITED=1; sleep 3
+  done
+  trap 'rm -f "$LOCK"' EXIT
+fi
+
 # 输出进终端前脱敏：token / secret / password / key 等一律 [REDACTED]
 redact() {
   sed -E \

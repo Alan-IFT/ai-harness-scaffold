@@ -177,24 +177,31 @@ render_spec() {
       [ -z "$next" ] && next="$g"
     fi
   done
-  [ -z "$next" ] && { say "   🎉 三道门已通过，可归档。"; return 0; }
+  if [ -z "$next" ]; then # 三道门都有记录；还没归档的再核对一次，别的工作区合入后记录可能已经过期
+    case "$DIR" in */active/*) out=$(check_gate g3 2>&1) || { say "   ⚠️ 三道门有记录，但已不对应当前状态：$out"; return 0; } ;; esac
+    say "   🎉 三道门已通过，可归档。"; return 0
+  fi
   say "   下一门：$next（$(gate_name "$next")）"
   if out=$(check_gate "$next" 2>&1); then say "   可推进：bash scripts/ai-gate.sh pass $FEAT $next"
   else say "   阻断原因：$out"; fi
 }
 
 cmd_status() {
-  local feat="${1:-}" d any=0
+  local feat="${1:-}" d any=0 here w
   say "== 阶段门状态 (ai-gate.sh) =="
   if [ -n "$feat" ]; then
     d=$(feat_dir "$feat") || die "找不到 spec: $feat"
     render_spec "$d"; return 0
   fi
-  for d in "$SPEC_ROOT"/active/*/; do
-    [ -d "$d" ] || continue
-    render_spec "${d%/}"; any=1
+  for d in $(own_specs); do
+    render_spec "$d"; any=1
   done
   [ "$any" -eq 1 ] || { say ""; say "  当前无活跃 Spec。新建：bash scripts/ai-new-spec.sh <feat-name>"; }
+  here=$(git rev-parse --show-toplevel 2>/dev/null)
+  worktrees | while IFS= read -r w; do # 别的工作区里在途的 Spec
+    [ "$w" != "$here" ] && cd "$w" 2>/dev/null || continue
+    for d in $(own_specs); do say ""; say "🌿 别的工作区：$w"; render_spec "$d"; done
+  done
 }
 
 main() {
