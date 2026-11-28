@@ -363,15 +363,33 @@ case "$(bash scripts/ai-task-pool.sh list)" in *关联异常*) ng_msg "别的工
 mkdir process/task-pool/.lock
 expect_fail "任务池的锁全仓库只有一把" "另一进程修改" at "$W/w1" bash scripts/ai-task-pool.sh add "锁着的时候"
 rmdir process/task-pool/.lock
+# 任务池目录写不进去（用一个建不出锁的 mkdir 模拟宿主限制了写入范围）：报真实原因，不说有别的进程
+mkdir -p "$TMP/fakebin2"; printf '%s\n' '#!/usr/bin/env bash' 'case "$*" in */.lock) exit 1 ;; esac' 'exec /usr/bin/mkdir "$@"' >"$TMP/fakebin2/mkdir"; chmod +x "$TMP/fakebin2/mkdir"
+out=$(cd "$W/w1" && PATH="$TMP/fakebin2:$PATH" bash scripts/ai-task-pool.sh add "任务池写不进去的时候" 2>&1); rc=$?
+case "$rc:$out" in 0:*|*另一进程*) ng_msg "任务池写不进去时的提示不对" "$out" ;; *写不进去*) ok_msg "任务池写不进去时报真实原因" ;; *) ng_msg "任务池写不进去时的提示不对" "$out" ;; esac
 st=$(bash scripts/ai-gate.sh status)
 [ "$(printf '%s\n' "$st" | grep -c 'feat-t-000002 ')" = 1 ] && printf '%s\n' "$st" | grep -q "别的工作区.*w1" \
   && ok_msg "status 列出别的工作区在途的 Spec" || ng_msg "status 没有列出别的工作区在途的 Spec" "$st"
+printf '%s\n' "$st" | awk '/feat-t-000001 /{a=NR} /别的工作区/&&!b{b=NR} END{exit !(a&&b&&a<b)}' \
+  && ok_msg "status 先列自己的 Spec，再列别的工作区的" || ng_msg "status 的先后顺序不对" "$st"
 [ "$(at "$W/w1" bash scripts/ai-gate.sh status | grep -c 'feat-t-000001 ')" = 1 ] \
   && ok_msg "带过来的副本不重复列出" || ng_msg "带过来的副本被重复列出"
 rs=$(at "$W/w1" bash scripts/ai-resume.sh owner 2>&1)
 printf '%s\n' "$rs" | grep -q '主工作区在' && [ "$(printf '%s\n' "$rs" | grep -c '^  📂')" = 1 ] \
   && ok_msg "接手快照只列自己的 Spec 并指出主工作区" || ng_msg "接手快照没有只列自己的 Spec" "$rs"
-expect_fail "别的工作区里拒绝归档" "归档在主工作区做" at "$W/w1" bash scripts/ai-task-pool.sh archive feat-t-000002
+expect_fail "别的工作区里拒绝归档，并指出主工作区在哪" "归档在主工作区做（.*wt/main）" at "$W/w1" bash scripts/ai-task-pool.sh archive feat-t-000002
+
+# 主工作区不是工作区的布局（主工作区是裸仓库、--separate-git-dir）：不认多个工作区，各工作区照旧各管各的
+git clone -q --bare "$M" "$W/bare.git" && git -C "$W/bare.git" worktree add -q -b b1 "$W/b1" && git -C "$W/bare.git" worktree add -q -b b2 "$W/b2"
+expect_out  "裸仓库布局：任务文件收进所在工作区自己的任务池" "已收集 T-000002：process/task-pool/T-000002.md" at "$W/b1" bash scripts/ai-task-pool.sh add "裸仓库布局里的需求"
+[ -f "$W/b1/process/task-pool/T-000002.md" ] && [ ! -e "$W/bare.git/process" ] && ok_msg "裸仓库布局：没有往裸仓库目录里写" || ng_msg "裸仓库布局：任务文件写错了地方"
+expect_out  "裸仓库布局：带来的 Spec 照旧算自己的" "续做活跃 Spec：feat-t-000001" at "$W/b1" bash scripts/ai-task-pool.sh next
+case "$(at "$W/b1" bash scripts/ai-gate.sh status 2>&1)" in *别的工作区*) ng_msg "裸仓库布局：status 列出了别的工作区" ;; *feat-t-000001\ *) ok_msg "裸仓库布局：status 只列所在工作区的" ;; *) ng_msg "裸仓库布局：status 没有列出所在工作区的 Spec" ;; esac
+expect_fail "裸仓库布局：归档不受「只在主工作区做」限制" "活跃 Spec 不存在" at "$W/b1" bash scripts/ai-task-pool.sh archive feat-none
+git init -q --separate-git-dir "$W/sg.git" "$W/sg" && cp -r "$M/scripts" "$M/harness" "$W/sg/" && mkdir -p "$W/sg/process/specs" && cp -r "$M/process/specs/_templates" "$W/sg/process/specs/" \
+  && (cd "$W/sg" && git add -A && git_q commit -qm fixture && git worktree add -q "$W/sg2") >/dev/null
+expect_out  "--separate-git-dir 的布局：任务文件收进所在工作区自己的任务池" "已收集 T-000001：process/task-pool/T-000001.md" at "$W/sg2" bash scripts/ai-task-pool.sh add "这种布局里的需求"
+[ ! -e "$W/sg.git/process" ] && ok_msg "--separate-git-dir 的布局：没有往 Git 目录里写" || ng_msg "--separate-git-dir 的布局：任务文件写进了 Git 目录"
 
 # 挪出去做：已经在主工作区启动并提交的 Spec，归分支名和它相同的那个工作区
 git_q worktree add -q -b feat-t-000001 "$W/w2"
@@ -428,7 +446,7 @@ done_spec "$W/w1" feat-t-000002 b.txt; done_spec "$W/w3" feat-t-000003 c.txt
 save "$M" pool
 expect_out  "三道门的记录对得上时 status 显示可归档" "三道门已通过" at "$W/w1" bash scripts/ai-gate.sh status
 (cd "$W/w1" && git_q merge -q --no-edit "$MB") && git_q merge -q --ff-only w1
-[ "$(bash scripts/ai-gate.sh status | grep -c 'feat-t-000002 ')" = 1 ] && at "$W/w1" bash scripts/ai-gate.sh status | grep -q "别的工作区.*main" \
+[ "$(bash scripts/ai-gate.sh status | grep -c 'feat-t-000002 ')" = 1 ] && ! at "$W/w1" bash scripts/ai-task-pool.sh next | grep -q 'feat-t-000002' \
   && ok_msg "分支名不同于 Spec 名的工作区合入主线后，这个 Spec 归主工作区" || ng_msg "合入主线后 Spec 的归属不对"
 expect_out  "合入后在主工作区归档" "已归档 feat-t-000002" bash scripts/ai-task-pool.sh archive feat-t-000002
 ls process/specs/archive/*/feat-t-000002/T-000002.md >/dev/null 2>&1 && ok_msg "别的工作区里做的任务，任务文件也随 Spec 归档" || ng_msg "任务文件没有随 Spec 归档"
