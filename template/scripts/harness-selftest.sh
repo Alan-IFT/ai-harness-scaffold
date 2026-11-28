@@ -327,6 +327,105 @@ mkdir -p process/specs/archive/2026-01/feat-t-000009
 expect_out  "编号避开已有 Spec" "T-000010" bash scripts/ai-task-pool.sh add "第四条需求"
 cd "$SB" || exit 1
 
+section "11. 多个工作区"
+# 一个主工作区加几个别的工作区：任务池只有一份，Spec 归启动它的工作区，归档只在主工作区做，正式验证一次一个
+W="$TMP/wt"; M="$W/main"
+mkdir -p "$M/process/specs" "$M/harness" "$M/src"
+cp -r "$SB/scripts" "$M/scripts"; cp -r "$SB/process/specs/_templates" "$M/process/specs/_templates"
+cp "$TMP/redlines.fixture" "$M/harness/redlines.conf"
+printf 'a\n' >"$M/src/a.txt"
+# 检查命令占一个「端口」（公共 Git 目录下的一个目录）2 秒：两处同时跑，后跑的抢不到就失败
+cat >"$M/harness/verify.conf" <<'CONF'
+CUSTOM_CHECK='p="$(git rev-parse --git-common-dir)/port"; mkdir "$p" 2>/dev/null || exit 1; sleep 2; rmdir "$p"'
+CONF
+cd "$M" || exit 1
+git init -q . && git add -A && git_q commit -qm fixture || exit 1
+MB=$(git branch --show-current)
+at()   { (cd "$1" && shift && "$@"); }                          # 在某个工作区里运行
+save() { (cd "$1" && git add -A && git_q commit -qm "$2" >/dev/null); }
+done_spec() { # $1=工作区 $2=feat $3=新文件：改一处代码并提交，再造一份能过三道门的记录
+  (cd "$1" && printf 'x\n' >"src/$3" && git add -A && git_q commit -qm code >/dev/null && mk_spec "$2" \
+    && for g in g1 g2 g3; do bash scripts/ai-gate.sh pass "$2" "$g" >/dev/null; done && git add -A && git_q commit -qm gates >/dev/null)
+}
+expect_out "主工作区收录并就地启动" "已关联 feat-t-000001" bash scripts/ai-task-pool.sh intake "主线上的需求"
+save "$M" start
+git_q worktree add -q "$W/w1"; git_q worktree add -q "$W/w3"
+expect_out "带着主线 Spec 副本的工作区照常收录并启动" "已关联 feat-t-000002" at "$W/w1" bash scripts/ai-task-pool.sh intake "另一个工作区里的需求"
+[ -f process/task-pool/T-000002.md ] && [ ! -e "$W/w1/process/task-pool/T-000002.md" ] \
+  && ok_msg "任务文件写进主工作区的任务池" || ng_msg "任务文件没有写进主工作区的任务池"
+[ -d "$W/w1/process/specs/active/feat-t-000002" ] && [ ! -e process/specs/active/feat-t-000002 ] \
+  && ok_msg "Spec 建在收录它的工作区里" || ng_msg "Spec 没有建在收录它的工作区里"
+file_has    "别的工作区里的需求来源仍是仓库内的相对路径" "$W/w1/process/specs/active/feat-t-000002/requirements.md" '`process/task-pool/T-000002.md`'
+expect_out  "别的工作区只续做自己的 Spec" "续做活跃 Spec：feat-t-000002" at "$W/w1" bash scripts/ai-task-pool.sh next
+expect_out  "主工作区只续做自己的 Spec" "续做活跃 Spec：feat-t-000001" bash scripts/ai-task-pool.sh next
+same        "各工作区的 list 输出相同" "$(bash scripts/ai-task-pool.sh list)" "$(at "$W/w1" bash scripts/ai-task-pool.sh list)"
+case "$(bash scripts/ai-task-pool.sh list)" in *关联异常*) ng_msg "别的工作区里在做的任务被标成关联异常" ;; *) ok_msg "别的工作区里在做的任务显示进行中" ;; esac
+mkdir process/task-pool/.lock
+expect_fail "任务池的锁全仓库只有一把" "另一进程修改" at "$W/w1" bash scripts/ai-task-pool.sh add "锁着的时候"
+rmdir process/task-pool/.lock
+st=$(bash scripts/ai-gate.sh status)
+[ "$(printf '%s\n' "$st" | grep -c 'feat-t-000002 ')" = 1 ] && printf '%s\n' "$st" | grep -q "别的工作区.*w1" \
+  && ok_msg "status 列出别的工作区在途的 Spec" || ng_msg "status 没有列出别的工作区在途的 Spec" "$st"
+[ "$(at "$W/w1" bash scripts/ai-gate.sh status | grep -c 'feat-t-000001 ')" = 1 ] \
+  && ok_msg "带过来的副本不重复列出" || ng_msg "带过来的副本被重复列出"
+rs=$(at "$W/w1" bash scripts/ai-resume.sh owner 2>&1)
+printf '%s\n' "$rs" | grep -q '主工作区在' && [ "$(printf '%s\n' "$rs" | grep -c '^  📂')" = 1 ] \
+  && ok_msg "接手快照只列自己的 Spec 并指出主工作区" || ng_msg "接手快照没有只列自己的 Spec" "$rs"
+expect_fail "别的工作区里拒绝归档" "归档在主工作区做" at "$W/w1" bash scripts/ai-task-pool.sh archive feat-t-000002
+
+# 挪出去做：已经在主工作区启动并提交的 Spec，归分支名和它相同的那个工作区
+git_q worktree add -q -b feat-t-000001 "$W/w2"
+expect_out  "挪到同名分支的工作区后，那里续做它" "续做活跃 Spec：feat-t-000001" at "$W/w2" bash scripts/ai-task-pool.sh next
+expect_out  "挪走以后主工作区不再被它挡住" "暂无待办" bash scripts/ai-task-pool.sh next
+expect_out  "分支名不同的工作区不把它当成自己的" "已关联 feat-t-000003" at "$W/w3" bash scripts/ai-task-pool.sh intake "第三个工作区里的需求"
+mv "$W/w2" "$W/w2-gone"
+expect_out  "同名分支的工作区目录不在了，它回到主工作区" "续做活跃 Spec：feat-t-000001" bash scripts/ai-task-pool.sh next
+[ -z "$(bash scripts/ai-gate.sh status 2>&1 >/dev/null)" ] && ok_msg "目录不在了的工作区不让 status 报错" || ng_msg "目录不在了的工作区让 status 报错"
+mv "$W/w2-gone" "$W/w2"; git_q worktree remove "$W/w2" && git_q branch -q -D feat-t-000001
+bash scripts/ai-new-spec.sh feat-loose >/dev/null; git_q worktree add -q -b feat-loose "$W/w5"
+expect_out  "还没提交就开了同名分支的工作区时，Spec 仍归主工作区" "feat-loose " bash scripts/ai-gate.sh status
+git_q worktree remove "$W/w5" && git_q branch -q -D feat-loose; rm -rf process/specs/active/feat-loose
+
+# 正式验证同一时间只跑一个
+(cd "$W/w1" && bash scripts/ai-verify.sh --spec feat-t-000002 >"$TMP/v1.out" 2>&1; echo $? >"$TMP/v1.rc") &
+sleep 1
+(cd "$W/w3" && bash scripts/ai-verify.sh --spec feat-t-000003 >"$TMP/v3.out" 2>&1; echo $? >"$TMP/v3.rc")
+wait
+[ "$(cat "$TMP/v1.rc")$(cat "$TMP/v3.rc")" = 00 ] && [ ! -e "$W/w3/process/specs/active/feat-t-000003/.attempts" ] \
+  && ok_msg "两个工作区同时验证：后发起的等前一个结束，都不记失败" || ng_msg "两个工作区同时验证互相撞了" "$(cat "$TMP/v3.out")"
+file_has    "等待提示里有持锁的进程号和锁文件位置" "$TMP/v3.out" "进程 [0-9][0-9]*）.*ai-verify.lock"
+echo 999999 >.git/ai-verify.lock
+vout=$(at "$W/w1" timeout 30 bash scripts/ai-verify.sh --spec feat-t-000002 2>&1); vrc=$?
+case "$vrc:$vout" in 0:*等它结束*) ng_msg "锁里记的进程不在了却还在等" "$vout" ;; 0:*) ok_msg "锁里记的进程已经不在时不等待" ;; *) ng_msg "残留的锁挡住了验证" "$vout" ;; esac
+[ ! -e .git/ai-verify.lock ] && ok_msg "验证结束后不留锁" || ng_msg "验证结束后锁还在"
+mkdir .git/port
+expect_fail "检查失败时照常记失败" "验证失败" at "$W/w1" bash scripts/ai-verify.sh --spec feat-t-000002
+rmdir .git/port; rm -f "$W/w1/process/specs/active/feat-t-000002/.attempts"
+[ ! -e .git/ai-verify.lock ] && ok_msg "验证失败后也不留锁" || ng_msg "验证失败后锁还在"
+vout=$(at "$SB" bash scripts/ai-verify.sh --spec t-verify 2>&1)
+case "$vout" in *等它结束*) ng_msg "没有别的验证在跑时也打印了等待提示" "$vout" ;; *) ok_msg "没有别的验证在跑时不等待、不多输出" ;; esac
+
+# 合回主线：归档只在主工作区做，按主线当时的状态复核
+done_spec "$W/w1" feat-t-000002 b.txt; done_spec "$W/w3" feat-t-000003 c.txt
+save "$M" pool
+expect_out  "三道门的记录对得上时 status 显示可归档" "三道门已通过" at "$W/w1" bash scripts/ai-gate.sh status
+(cd "$W/w1" && git_q merge -q --no-edit "$MB") && git_q merge -q --ff-only w1
+[ "$(bash scripts/ai-gate.sh status | grep -c 'feat-t-000002 ')" = 1 ] && at "$W/w1" bash scripts/ai-gate.sh status | grep -q "别的工作区.*main" \
+  && ok_msg "分支名不同于 Spec 名的工作区合入主线后，这个 Spec 归主工作区" || ng_msg "合入主线后 Spec 的归属不对"
+expect_out  "合入后在主工作区归档" "已归档 feat-t-000002" bash scripts/ai-task-pool.sh archive feat-t-000002
+ls process/specs/archive/*/feat-t-000002/T-000002.md >/dev/null 2>&1 && ok_msg "别的工作区里做的任务，任务文件也随 Spec 归档" || ng_msg "任务文件没有随 Spec 归档"
+expect_out  "已归档的 Spec 单独查看时显示不变" "三道门已通过" bash scripts/ai-gate.sh status feat-t-000002
+save "$M" archive
+(cd "$W/w3" && git_q merge -q --no-edit "$MB")
+expect_out  "别的线先合入后，记录过期的 Spec 不再显示可归档" "已不对应当前状态" at "$W/w3" bash scripts/ai-gate.sh status
+git_q merge -q --ff-only w3
+expect_fail "后合入的线没有重新验证就归档被拒" "已失效" bash scripts/ai-task-pool.sh archive feat-t-000003
+# 主线上的 Spec 归档之后，带着它旧副本、还没同步的工作区仍只认自己的
+git_q worktree add -q "$W/w4"; at "$W/w4" bash scripts/ai-task-pool.sh intake "第四个工作区里的需求" >/dev/null
+mkdir -p process/specs/archive/2026-01 && git mv process/specs/active/feat-t-000001 process/specs/archive/2026-01/ && save "$M" archived
+expect_out  "主线的 Spec 归档后，没同步的工作区仍只认自己的" "续做活跃 Spec：feat-t-000004" at "$W/w4" bash scripts/ai-task-pool.sh next
+cd "$SB" || exit 1
+
 # ---------------------------------------------------------------- 汇总 --------
 printf '== %s: %ss ==\n' "$SECTION_NAME" "$((SECONDS - SECTION_START))"
 echo "== 自检结果：$TOTAL 项断言，失败 $FAILED 项 =="
