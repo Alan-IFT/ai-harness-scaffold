@@ -57,11 +57,11 @@
   - 对应验收：AC-01、AC-02、AC-03、AC-04、AC-05、AC-06、AC-07、AC-08
   - 涉及文件：`template/scripts/harness-selftest.sh`
   - 验证：`bash scripts/harness-selftest.sh`，再用 `LC_ALL=C` 复跑；对照的 `diff` 为空，命令串记在 WIP 区
-- [ ] Task 3：并行指南和规则入口
+- [x] Task 3：并行指南和规则入口
   - 对应验收：AC-09
   - 涉及文件：`template/.agents/skills/parallel.md`、`template/AGENTS.md`、`template/.agents/skills/archive-spec.md`
   - 验证：`wc -l`、`grep -c`、`bash scripts/ai-check-bloat.sh`
-- [ ] Task 4：说明同步
+- [x] Task 4：说明同步
   - 对应验收：AC-11
   - 涉及文件：`README.md`、`README.en.md`、`docs/architecture/modules/template-mechanism.md`、`docs/architecture/modules/guidance.md`、`template/.agents/skills/upgrade.md`
   - 验证：`grep` 各处新增内容；核对 `skill/SKILL.md` 有没有要跟着改的句子，结论记在 WIP 区
@@ -78,11 +78,13 @@
 
 ## 4. WIP 接力区
 > 换工具或换会话前更新；下一个 Agent 先读这里和 `git diff`，不要推倒重写已验证的代码。
-- 当前任务：Task 3（并行指南和规则入口）。
+- 当前任务：Task 5（真的 AI 会话四种情形，升级演练）。
 - 这个 Spec 在哪做：不在主工作区。主工作区里 `feat-t-000058` 在等维护者的 g3 决定，不能动非流程文件。本 Spec 在主工作区旁边另开的工作区里做，分支是 `feat-t-000059`；用 `git worktree list` 找目录。本仓库现在的脚本还是原样的：主工作区的 `list` 会把 T-000059 显示成「关联异常」，这个工作区的 `status` 会同时列出 058 的旧副本，都是预期的。
 - 已完成：需求收录和六轮讨论（任务文件）；维护者定了范围（Q1）、让查接入项目（Q2）、同名分支的判据（Q3）；requirements.md 和本方案；方案审查两轮，都已改完。
 - 原型在哪：系统临时目录里，重启可能被清掉，不要依赖它。逻辑都写在上面的方案里；指南第三稿全文在任务文件「目前的方向」一节。按第 1 轮审查改过的原型已在临时沙箱里跑过：归属的边角 23 项、锁与状态 19 项、并行场景 54 项、单线程对照和边角 14 项都过，现有自检全过。
 - 已排除的方案：见任务文件「需求讨论」和各轮提交历史；这一轮另排除了「副本一经修改就归修改者」和「验证锁加等待上限」，理由在方案里。
 - 已完成：g1（2026-11-27）；Task 1（2026-11-28）。动手前自检打印「77 项断言，失败 0 项」（分叉点提交 `c35b34c`）。五个脚本新增 63 行、删改 12 行，净增 51 行（`git diff --numstat c35b34c -- template/scripts`）。改后现有自检仍是 77 项全过。临时沙箱里对着这份实现跑过：并行场景 54 项、归属的边角 23 项、锁与状态显示 19 项、边角 14 项断言全过；AC-01 的 28 次调用，改前（取自 `c35b34c`）和改后各输出 182 行，逐字相同。这个工作区自己已经在用新脚本：接手快照开头指出主工作区，只列本 Spec，不再列 058 的旧副本。
 - 已完成：Task 2（2026-11-28）。`harness-selftest.sh` 新增「11. 多个工作区」一节，35 项断言；自检打印「112 项断言，失败 0 项」，`LC_ALL=C` 复跑结果相同。同一份自检配改动前的脚本（取自 `c35b34c`）跑：前十节 0 失败，新一节 35 项里 23 项失败，说明这些用例拦得住。新一节在本机要 55 秒，整套自检从约 50 秒变成约 105 秒（多数时间花在 Git Bash 起进程上，没有再压）。AC-01 的对照结果见上一条。
-- 下一步：Task 3，写 `parallel.md`，改 `template/AGENTS.md` 两处和 `archive-spec.md` 一处。
+- 已完成：Task 3（2026-11-28）。`template/.agents/skills/parallel.md` 23 行；`grep -c 'parallel.md'` 在 `template/AGENTS.md` 输出 2、在 `archive-spec.md` 输出 1；`template/AGENTS.md` 仍是 40 行，体积检查通过。指南相对任务文件里的第三稿改了方案第 8 条列的那几处，另外去掉了「主工作区先把 process/ 的改动提交掉」（任务池的改动并到归档那次提交里）。
+- 已完成：Task 4（2026-11-28）。`README.md` 改 5 行（日常使用、接手、目录树、脚本表两行），`README.en.md` 加一段，`template-mechanism.md` 加 7 条，`guidance.md` 加 1 条，`upgrade.md` 第 1 步加了多个工作区时怎么办。`skill/SKILL.md` 核对过：它只按路径引用升级说明、整目录复制模板，没有要跟着改的句子。
+- 下一步：Task 5。先核对方案里 AC-10 判据一节相对定稿提交 `cc38f30` 没有改动，再用本分支最终的 `template/` 生成沙箱。
