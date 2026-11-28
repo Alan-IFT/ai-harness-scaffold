@@ -2,7 +2,7 @@
 
 升级和降级是同一套步骤，只是目标版本不同。
 脚手架仓库：人给了本机路径就用它；否则把 `https://github.com/Alan-IFT/ai-harness-scaffold.git` 完整克隆到临时目录，不要浅克隆，结束前删除。
-1. 先提交项目当前改动；有在途 Spec 先归档，或确认本次变化不影响它。
+1. 先提交项目当前改动；有在途 Spec 先归档，或确认本次变化不影响它。项目有多个 Git 工作区时，升级在主工作区做；从支持并行的版本起，别的工作区共用主工作区的任务池，也不能在里面归档（见 `parallel.md`），它们同步主线之后才用上新脚本。别的工作区里有在途 Spec 的，先确认它的任务文件在主工作区的任务池里，不在就先合入归档再升级；用别的工作区长期维护不合并的分支、各自走 Spec 的，改用单独的克隆。
 2. 选目标版本：人点名了版本就用它；否则先 `git -C <脚手架仓库> fetch --tags`（失败就停下问人），取 `git -C <脚手架仓库> tag --sort=-v:refname` 的第一个；没有 tag 才用 HEAD。用 `git -C <脚手架仓库> rev-parse <版本>^{commit}` 得到目标提交。再读目标版本的本说明（`git -C <脚手架仓库> show <目标提交>:template/.agents/skills/upgrade.md`），与这里不同时按它做；取不到就按这里继续。
 3. 防降级：人没点名版本，且 `git -C <脚手架仓库> merge-base --is-ancestor <.ai-harness/version 的 commit> <目标提交>` 不成立时，停下问人：可能是把升级做成了降级，也可能是旧提交已取不到。
 4. 比对机制文件：`AGENTS.md`、`CLAUDE.md`、`.ai-harness/LICENSE.md`、`scripts/*.sh`、`.agents/skills/*.md`、`process/specs/_templates/*.md`。逐个与目标版本 `template/` 下的同名文件比对：

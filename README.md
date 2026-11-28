@@ -70,7 +70,7 @@ ai-harness 是一套装进项目里的 AI 开发规范，由规则文档、Bash 
 
 装好后，你只需要用自然语言说需求，流程由 AI 走：
 
-- **提需求**：直接说，AI 收录进任务池。有进行中的工作就排队，没有就开始。
+- **提需求**：直接说，AI 收录进任务池。有进行中的工作就排队，没有就开始。不该等的独立需求，AI 会另开一个 Git 工作区并行做，做完合回主线、在主工作区归档。
 - **换工具**：让新工具运行 `bash scripts/ai-resume.sh owner`，它会接着做。
 - **做决定**：需求里没说定、选法不同结果就不同的地方，AI 会列出选项、后果和推荐让你选，回「按推荐」或「你定」也行；涉及数据、权限、发布或架构取舍的需求，AI 会把风险交给你当次决定。
 - **设偏好**：回复语言、语气、详略这类习惯写进 `~/.ai-harness/PREFERENCES.md`，所有项目和 AI 工具共用；只对某个项目的写进该项目根的 `PREFERENCES.md`（不入库）。
@@ -122,7 +122,7 @@ flowchart TB
 
 项目文件和 Git 是接力状态的唯一来源，不依赖任何工具的会话记忆：
 
-- **接手**：`ai-resume.sh owner` 汇总门禁状态、活跃 Spec 的断点、任务池下一步和未提交的改动。
+- **接手**：`ai-resume.sh owner` 汇总门禁状态、活跃 Spec 的断点、任务池下一步和未提交的改动。有多个 Git 工作区时，门禁状态里也列出别的工作区在途的 Spec；任务池全仓库只有主工作区那一份。
 - **审查**：`ai-resume.sh review <feat> <base-ref>` 给审查者列出必读文件和 diff，不带实现者的解释。
 - **积累**：设计决策和已知坑写进模块活文档，只写「为什么」；用户纠正和反复尝试才解决的问题写进 `MEMORY.md`。
 
@@ -168,7 +168,7 @@ your-project/
 ├── CLAUDE.md                # 只有一行，导入 AGENTS.md
 ├── MEMORY.md                # 项目经验：踩过的坑、用户的纠正
 ├── PREFERENCES.md           # 本项目的个人偏好（不入库）
-├── .agents/skills/          # 按阶段读的指南：new-spec、code-review、archive-spec、upgrade
+├── .agents/skills/          # 按阶段读的指南：new-spec、code-review、archive-spec、parallel、upgrade
 ├── .ai-harness/
 │   ├── LICENSE.md           # 脚手架的许可声明
 │   └── version              # 所装版本的提交号，升级时作基线
@@ -196,11 +196,11 @@ your-project/
 | `ai-task-pool.sh` | 收录需求、排队、领取、归档 | `intake`、`add`、`list`、`next`、`start-next`、`archive` |
 | `ai-new-spec.sh` | 从模板新建 Spec | `<feat>` |
 | `ai-gate.sh` | 校验和推进三道门 | `status`、`check`、`pass`、`reset` |
-| `ai-verify.sh` | 跑验证命令，写入结果和状态指纹 | `--spec <feat>` |
+| `ai-verify.sh` | 跑验证命令，写入结果和状态指纹；全仓库同一时间只跑一个 | `--spec <feat>` |
 | `ai-state-id.sh` | 计算状态指纹 | 无参数 |
 | `ai-resume.sh` | 生成接手或审查快照 | `owner [feat]`、`review <feat> <base-ref>` |
 | `ai-check-bloat.sh` | 检查 `AGENTS.md` 和 `MEMORY.md` 的行数 | 无参数 |
-| `ai-config.sh` | 读取和校验红线配置，供其他脚本加载 | 不直接运行 |
+| `ai-config.sh` | 读取和校验红线配置、认出仓库的各个工作区，供其他脚本加载 | 不直接运行 |
 | `harness-selftest.sh` | 用坏样例和好样例检查脚本该拦的拦得住、该过的过得去 | 无参数 |
 
 ### 配置

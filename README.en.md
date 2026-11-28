@@ -64,6 +64,8 @@ flowchart TB
 
 To switch tools, have the new one run `bash scripts/ai-resume.sh owner`. It summarizes gate status, the current Spec's progress and uncommitted changes.
 
+A request that should not wait for the one in progress runs in parallel in a separate Git worktree. Every worktree works on one Spec at a time and shares the task pool kept in the main worktree; formal verification runs one at a time across worktrees; a Spec is archived in the main worktree after its branch is merged.
+
 ## Architecture
 
 The scaffold does not keep running. The AI installs the template into your project, and every AI tool then reads the same rules and runs the same scripts:
