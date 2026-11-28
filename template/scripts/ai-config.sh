@@ -19,12 +19,16 @@ ai_config_load() {
 }
 
 # 多个工作区（git worktree）：一个工作区同一时间只做一个 Spec；任务池全仓库只有主工作区那一份。
-worktrees() { git worktree list --porcelain 2>/dev/null | sed -n 's/^worktree //p'; } # 第一个是主工作区
+wt_list() { # Git 的工作区清单。第一项不是工作区时不输出（主工作区是裸仓库、--separate-git-dir、子模块这类布局）：不认多个工作区，各工作区照旧各管各的
+  local l m; l=$(git worktree list --porcelain 2>/dev/null) || return 0
+  m=${l%%$'\n'*}; [[ $'\n'"$l"$'\n' == *$'\nbare\n'* ]] || [ ! -e "${m#worktree }/.git" ] || printf '%s\n' "$l"
+}
+worktrees() { wt_list | sed -n 's/^worktree //p'; } # 第一个是主工作区
 main_wt() { # 在别的工作区里输出主工作区的目录；在主工作区或不在 Git 仓库里时没有输出
   [ "$(git rev-parse --git-dir 2>/dev/null)" = "$(git rev-parse --git-common-dir 2>/dev/null)" ] || worktrees | sed -n 1p
 }
 branch_wt() { # 检出了某个分支的工作区目录；目录已经不在的不算
-  local w; w=$(git worktree list --porcelain 2>/dev/null | awk -v b="branch refs/heads/$1" '/^worktree /{w=substr($0,10)} $0==b{print w}')
+  local w; w=$(wt_list | awk -v b="branch refs/heads/$1" '/^worktree /{w=substr($0,10)} $0==b{print w}')
   [ -n "$w" ] && [ -d "$w" ] && printf '%s\n' "$w"
 }
 own_specs() { # 当前工作区自己的活跃 Spec 目录：Spec 归启动它的工作区，挪到同名分支的工作区后归那个工作区

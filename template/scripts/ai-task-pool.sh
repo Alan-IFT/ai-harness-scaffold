@@ -32,11 +32,11 @@ task_file() {
 }
 lock_pool() {
   mkdir -p "$POOL"
-  mkdir "$POOL/.lock" 2>/dev/null || die "任务池正被另一进程修改；稍后重试（若异常中断，核实后移除 $POOL/.lock）"
+  mkdir "$POOL/.lock" 2>/dev/null || { [ -d "$POOL/.lock" ] || die "任务池目录写不进去：$POOL"; die "任务池正被另一进程修改；稍后重试（若异常中断，核实后移除 $POOL/.lock）"; }
   trap cleanup_lock EXIT
 }
 cleanup_lock() { rmdir "$POOL/.lock"; }
-elsewhere() { worktrees | { while IFS= read -r w; do [ ! -d "$w/process/specs/active/$1" ] || exit 0; done; exit 1; }; } # 这个 Spec 在本仓库的某个工作区里
+elsewhere() { local w; while IFS= read -r w; do [ ! -d "$w/process/specs/active/$1" ] || return 0; done < <(worktrees); return 1; } # 这个 Spec 在本仓库的某个工作区里
 status_for() {
   local f=$1 spec
   spec=$(field "$f" '关联 Spec')
